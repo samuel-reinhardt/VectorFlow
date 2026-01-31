@@ -9,22 +9,22 @@ import { Label } from '@/components/ui/label';
 import { Trash2 } from 'lucide-react';
 
 interface SettingsPanelProps {
-  selectedNode: Node | null;
+  selectedStep: Node | null;
   selectedEdge: Edge | null;
-  onAddNode: () => void;
-  onUpdateNodeLabel: (nodeId: string, label: string) => void;
-  onUpdateNodeColor: (nodeId: string, color: string) => void;
+  onAddStep: () => void;
+  onUpdateStepLabel: (stepId: string, label: string) => void;
+  onUpdateStepColor: (stepId: string, color: string) => void;
   onUpdateEdgeLabel: (edgeId: string, label: string) => void;
   onUpdateEdgeColor: (edgeId: string, color: string) => void;
   onDeleteSelection: () => void;
 }
 
 export function SettingsPanel({
-  selectedNode,
+  selectedStep,
   selectedEdge,
-  onAddNode,
-  onUpdateNodeLabel,
-  onUpdateNodeColor,
+  onAddStep,
+  onUpdateStepLabel,
+  onUpdateStepColor,
   onUpdateEdgeLabel,
   onUpdateEdgeColor,
   onDeleteSelection,
@@ -33,20 +33,20 @@ export function SettingsPanel({
   const [color, setColor] = useState('#E5E7EB');
 
   useEffect(() => {
-    if (selectedNode) {
-      setLabel(selectedNode.data.label || '');
-      setColor(selectedNode.data.color || '#E5E7EB');
+    if (selectedStep) {
+      setLabel(selectedStep.data.label || '');
+      setColor(selectedStep.data.color || '#E5E7EB');
     } else if (selectedEdge) {
       setLabel(selectedEdge.label?.toString() || '');
       setColor((selectedEdge.style?.stroke as string) || '#6B7280');
     }
-  }, [selectedNode, selectedEdge]);
+  }, [selectedStep, selectedEdge]);
 
   const handleLabelChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const newLabel = e.target.value;
     setLabel(newLabel);
-    if (selectedNode) {
-      onUpdateNodeLabel(selectedNode.id, newLabel);
+    if (selectedStep) {
+      onUpdateStepLabel(selectedStep.id, newLabel);
     } else if (selectedEdge) {
       onUpdateEdgeLabel(selectedEdge.id, newLabel);
     }
@@ -55,23 +55,23 @@ export function SettingsPanel({
   const handleColorChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const newColor = e.target.value;
     setColor(newColor);
-    if (selectedNode) {
-      onUpdateNodeColor(selectedNode.id, newColor);
+    if (selectedStep) {
+      onUpdateStepColor(selectedStep.id, newColor);
     } else if (selectedEdge) {
       onUpdateEdgeColor(selectedEdge.id, newColor);
     }
   };
 
-  const editingElement = selectedNode || selectedEdge;
+  const editingElement = selectedStep || selectedEdge;
 
   return (
     <aside className="w-80 border-l border-border bg-card h-full">
       <div className="h-full flex flex-col">
         <CardHeader>
-          <CardTitle className="font-headline">{editingElement ? (selectedNode ? 'Edit Node' : 'Edit Connection') : 'Controls'}</CardTitle>
+          <CardTitle className="font-headline">{editingElement ? (selectedStep ? 'Edit Step' : 'Edit Connection') : 'Controls'}</CardTitle>
           <CardDescription>
             {editingElement
-              ? `Editing selected ${selectedNode ? 'node' : 'connection'}`
+              ? `Editing selected ${selectedStep ? 'step' : 'connection'}`
               : 'Manage your graph.'}
           </CardDescription>
         </CardHeader>
@@ -102,13 +102,13 @@ export function SettingsPanel({
               </div>
               <Button variant="destructive" onClick={onDeleteSelection} className="w-full">
                 <Trash2 className="mr-2 h-4 w-4" />
-                Delete {selectedNode ? 'Node' : 'Connection'}
+                Delete {selectedStep ? 'Step' : 'Connection'}
               </Button>
             </div>
           ) : (
             <div className="flex flex-col gap-4">
-              <p className="text-sm text-muted-foreground">Select an element to edit its properties, or add a new node to the canvas.</p>
-              <Button onClick={onAddNode}>Add Node</Button>
+              <p className="text-sm text-muted-foreground">Select an element to edit its properties, or add a new step to the canvas.</p>
+              <Button onClick={onAddStep}>Add Step</Button>
             </div>
           )}
         </CardContent>

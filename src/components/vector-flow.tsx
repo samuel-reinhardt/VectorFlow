@@ -36,7 +36,7 @@ import { cn } from '@/lib/utils';
 
 const initialNodes: Node[] = [
   { id: '1', position: { x: 250, y: 150 }, data: { label: 'Welcome to VectorFlow!', color: '#F3F4F6' }, type: 'custom' },
-  { id: '2', position: { x: 100, y: 250 }, data: { label: 'This is a node', color: '#E5E7EB' }, type: 'custom' },
+  { id: '2', position: { x: 100, y: 250 }, data: { label: 'This is a step', color: '#E5E7EB' }, type: 'custom' },
   { id: '3', position: { x: 400, y: 250 }, data: { label: 'Connect them!', color: '#E5E7EB' }, type: 'custom' },
   { id: '4', position: { x: 250, y: 350 }, data: { label: 'Auto-Arrange', color: '#E5E7EB' }, type: 'custom' },
 ];
@@ -51,7 +51,7 @@ const nodeTypes = {
   custom: CustomNode,
 };
 
-function Outline({ nodes, selectedNodeId, onNodeSelect }: { nodes: Node[], selectedNodeId: string | null, onNodeSelect: (nodeId: string) => void }) {
+function Outline({ nodes, selectedStepId, onStepSelect }: { nodes: Node[], selectedStepId: string | null, onStepSelect: (nodeId: string) => void }) {
     const [searchTerm, setSearchTerm] = useState('');
     const filteredNodes = nodes.filter((node) => node.data.label.toLowerCase().includes(searchTerm.toLowerCase()));
 
@@ -65,7 +65,7 @@ function Outline({ nodes, selectedNodeId, onNodeSelect }: { nodes: Node[], selec
                 <div className="relative">
                     <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
                     <Input
-                        placeholder="Filter nodes..."
+                        placeholder="Filter steps..."
                         value={searchTerm}
                         onChange={(e) => setSearchTerm(e.target.value)}
                         className="w-full pl-8 h-9"
@@ -82,9 +82,9 @@ function Outline({ nodes, selectedNodeId, onNodeSelect }: { nodes: Node[], selec
                             variant="ghost"
                             className={cn(
                             'w-full justify-start text-left h-auto py-2 px-3 whitespace-normal text-sm',
-                            node.id === selectedNodeId ? 'bg-accent text-accent-foreground' : ''
+                            node.id === selectedStepId ? 'bg-accent text-accent-foreground' : ''
                             )}
-                            onClick={() => onNodeSelect(node.id)}
+                            onClick={() => onStepSelect(node.id)}
                         >
                             {node.data.label}
                         </Button>
@@ -93,7 +93,7 @@ function Outline({ nodes, selectedNodeId, onNodeSelect }: { nodes: Node[], selec
                     </ul>
                 ) : (
                     <p className="p-4 text-sm text-muted-foreground text-center">
-                    No nodes found.
+                    No steps found.
                     </p>
                 )}
                 </div>
@@ -105,7 +105,7 @@ function Outline({ nodes, selectedNodeId, onNodeSelect }: { nodes: Node[], selec
 export function VectorFlow() {
   const [nodes, setNodes] = useState<Node[]>(initialNodes);
   const [edges, setEdges] = useState<Edge[]>(initialEdges);
-  const [selectedNode, setSelectedNode] = useState<Node | null>(null);
+  const [selectedStep, setSelectedStep] = useState<Node | null>(null);
   const [selectedEdge, setSelectedEdge] = useState<Edge | null>(null);
   const [isRightSidebarOpen, setIsRightSidebarOpen] = useState(true);
   const { toast } = useToast();
@@ -117,18 +117,18 @@ export function VectorFlow() {
 
   const onSelectionChange = useCallback(({ nodes: selectedNodes, edges: selectedEdges }: { nodes: Node[], edges: Edge[] }) => {
     if (selectedNodes.length === 1) {
-      setSelectedNode(selectedNodes[0]);
+      setSelectedStep(selectedNodes[0]);
       setSelectedEdge(null);
     } else if (selectedEdges.length === 1) {
       setSelectedEdge(selectedEdges[0]);
-      setSelectedNode(null);
+      setSelectedStep(null);
     } else {
-      setSelectedNode(null);
+      setSelectedStep(null);
       setSelectedEdge(null);
     }
   }, []);
   
-  const handleNodeSelect = useCallback((nodeId: string) => {
+  const handleStepSelect = useCallback((nodeId: string) => {
     const nodeToSelect = getNode(nodeId);
     if (nodeToSelect) {
         setNodes((nds) => nds.map((n) => ({ ...n, selected: n.id === nodeId })));
@@ -138,7 +138,7 @@ export function VectorFlow() {
   }, [getNode, setNodes, setEdges, fitView]);
 
 
-  const addNode = useCallback(() => {
+  const addStep = useCallback(() => {
     const newNodeId = `node_${nodes.length + 1}_${Date.now()}`;
     const newNode: Node = {
       id: newNodeId,
@@ -146,28 +146,28 @@ export function VectorFlow() {
         x: Math.random() * window.innerWidth * 0.4,
         y: Math.random() * window.innerHeight * 0.4,
       },
-      data: { label: 'New Node', color: '#E5E7EB' },
+      data: { label: 'New Step', color: '#E5E7EB' },
       type: 'custom',
     };
     setNodes((nds) => nds.concat(newNode));
   }, [nodes.length]);
 
-  const updateNodeLabel = useCallback((nodeId: string, label: string) => {
+  const updateStepLabel = useCallback((stepId: string, label: string) => {
     setNodes((nds) =>
       nds.map((node) =>
-        node.id === nodeId ? { ...node, data: { ...node.data, label } } : node
+        node.id === stepId ? { ...node, data: { ...node.data, label } } : node
       )
     );
-    setSelectedNode(n => n ? { ...n, data: { ...n.data, label } } : null);
+    setSelectedStep(n => n ? { ...n, data: { ...n.data, label } } : null);
   }, [setNodes]);
   
-  const updateNodeColor = useCallback((nodeId: string, color: string) => {
+  const updateStepColor = useCallback((stepId: string, color: string) => {
     setNodes((nds) =>
       nds.map((node) =>
-        node.id === nodeId ? { ...node, data: { ...node.data, color } } : node
+        node.id === stepId ? { ...node, data: { ...node.data, color } } : node
       )
     );
-    setSelectedNode(n => n ? { ...n, data: { ...n.data, color } } : null);
+    setSelectedStep(n => n ? { ...n, data: { ...n.data, color } } : null);
   }, [setNodes]);
 
   const updateEdgeLabel = useCallback((edgeId: string, label: string) => {
@@ -187,21 +187,21 @@ export function VectorFlow() {
   }, [setEdges]);
 
   const deleteSelection = useCallback(() => {
-    if (selectedNode) {
-        setNodes((nds) => nds.filter((n) => n.id !== selectedNode.id));
-        setEdges((eds) => eds.filter((e) => e.source !== selectedNode.id && e.target !== selectedNode.id));
-        setSelectedNode(null);
+    if (selectedStep) {
+        setNodes((nds) => nds.filter((n) => n.id !== selectedStep.id));
+        setEdges((eds) => eds.filter((e) => e.source !== selectedStep.id && e.target !== selectedStep.id));
+        setSelectedStep(null);
     } else if (selectedEdge) {
         setEdges((eds) => eds.filter((e) => e.id !== selectedEdge.id));
         setSelectedEdge(null);
     }
-  }, [selectedNode, selectedEdge, setNodes, setEdges]);
+  }, [selectedStep, selectedEdge, setNodes, setEdges]);
 
   const handleAutoLayout = useCallback(() => {
     if (nodes.length === 0) {
       toast({
-        title: "No nodes to arrange",
-        description: "Add some nodes to the canvas first.",
+        title: "No steps to arrange",
+        description: "Add some steps to the canvas first.",
       });
       return;
     }
@@ -277,7 +277,7 @@ export function VectorFlow() {
     setNodes(newNodes);
     toast({
       title: "Layout Arranged",
-      description: "Nodes have been arranged from left to right.",
+      description: "Steps have been arranged from left to right.",
     });
     setTimeout(() => fitView({ duration: 500 }), 100);
 
@@ -293,7 +293,7 @@ export function VectorFlow() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []); // Run only once
 
-  const selectedNodeId = useMemo(() => selectedNode?.id ?? null, [selectedNode]);
+  const selectedStepId = useMemo(() => selectedStep?.id ?? null, [selectedStep]);
 
   return (
     <SidebarProvider>
@@ -324,7 +324,7 @@ export function VectorFlow() {
         </header>
         <div className="flex flex-1 overflow-hidden">
             <Sidebar side="left" collapsible="icon">
-                <Outline nodes={nodes} selectedNodeId={selectedNodeId} onNodeSelect={handleNodeSelect} />
+                <Outline nodes={nodes} selectedStepId={selectedStepId} onStepSelect={handleStepSelect} />
             </Sidebar>
 
             <main className="relative flex-1">
@@ -348,11 +348,11 @@ export function VectorFlow() {
             <div className={cn("transition-[width] ease-in-out duration-300 overflow-x-hidden", isRightSidebarOpen ? 'w-80' : 'w-0')}>
               <div className="w-80 h-full">
                 <SettingsPanel 
-                  selectedNode={selectedNode}
+                  selectedStep={selectedStep}
                   selectedEdge={selectedEdge}
-                  onAddNode={addNode}
-                  onUpdateNodeLabel={updateNodeLabel}
-                  onUpdateNodeColor={updateNodeColor}
+                  onAddStep={addStep}
+                  onUpdateStepLabel={updateStepLabel}
+                  onUpdateStepColor={updateStepColor}
                   onUpdateEdgeLabel={updateEdgeLabel}
                   onUpdateEdgeColor={updateEdgeColor}
                   onDeleteSelection={deleteSelection}

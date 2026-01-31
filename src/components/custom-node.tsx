@@ -3,9 +3,11 @@
 import { memo } from 'react';
 import { Handle, Position, NodeProps } from 'reactflow';
 import { Card, CardContent } from '@/components/ui/card';
-import { cn } from '@/lib/utils';
+import { cn, getTextColorForBackground } from '@/lib/utils';
 
 const CustomNode = ({ data, selected }: NodeProps<{ label: string; color: string }>) => {
+  const textColor = getTextColorForBackground(data.color);
+  
   return (
     <>
       <Handle type="target" position={Position.Left} className="!bg-border !w-3 !h-3" />
@@ -17,7 +19,7 @@ const CustomNode = ({ data, selected }: NodeProps<{ label: string; color: string
         style={{ backgroundColor: data.color || '#E5E7EB' }}
       >
         <CardContent className="p-3 min-w-32 text-center">
-          <p className="text-card-foreground font-medium truncate">{data.label}</p>
+          <p className="font-medium truncate" style={{ color: textColor }}>{data.label}</p>
         </CardContent>
       </Card>
       <Handle type="source" position={Position.Right} className="!bg-border !w-3 !h-3" />
