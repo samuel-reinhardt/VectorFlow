@@ -245,13 +245,23 @@ export function VectorFlow() {
       return;
     }
 
+    const nodesHaveDimensions = currentSelectedNodes.every(n => n.width && n.height);
+    if (!nodesHaveDimensions) {
+        toast({
+            variant: 'destructive',
+            title: 'Cannot Group Yet',
+            description: 'Still calculating step sizes. Please try again in a moment.'
+        });
+        return;
+    }
+
     const padding = 50;
     const { minX, maxX, minY, maxY } = currentSelectedNodes.reduce(
       (acc, node) => ({
         minX: Math.min(acc.minX, node.position.x),
-        maxX: Math.max(acc.maxX, node.position.x + (node.width || 176)), // 176 is min-w-32 + p-3*2
+        maxX: Math.max(acc.maxX, node.position.x + node.width!),
         minY: Math.min(acc.minY, node.position.y),
-        maxY: Math.max(acc.maxY, node.position.y + (node.height || 52)), // 52 is based on CardContent padding
+        maxY: Math.max(acc.maxY, node.position.y + node.height!),
       }),
       { minX: Infinity, maxX: -Infinity, minY: Infinity, maxY: -Infinity }
     );

@@ -21,8 +21,8 @@ const CustomNode = ({ data, selected }: NodeProps<{ label: string; color: string
         )}
         style={data.isGroup ? { borderColor: data.color } : { backgroundColor: data.color, borderColor: 'transparent' }}
       >
-        <CardContent className="p-3 min-w-32 text-center">
-          <p className="font-medium truncate" style={{ color: textColor }}>
+        <CardContent className="p-3 text-center">
+          <p className="font-medium" style={{ color: textColor }}>
             {data.label}
           </p>
         </CardContent>
