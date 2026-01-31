@@ -12,6 +12,7 @@ interface SettingsPanelProps {
   selectedSteps: Node[];
   selectedEdge: Edge | null;
   onAddStep: () => void;
+  onAddDeliverable: (stepId: string) => void;
   onUpdateStepLabel: (stepId: string, label: string) => void;
   onUpdateStepColor: (stepId: string, color: string) => void;
   onUpdateEdgeLabel: (edgeId: string, label: string) => void;
@@ -25,6 +26,7 @@ export function SettingsPanel({
   selectedSteps,
   selectedEdge,
   onAddStep,
+  onAddDeliverable,
   onUpdateStepLabel,
   onUpdateStepColor,
   onUpdateEdgeLabel,
@@ -39,6 +41,8 @@ export function SettingsPanel({
   const singleSelectedStep = selectedSteps.length === 1 ? selectedSteps[0] : null;
   const isMultiStepSelection = selectedSteps.length > 1;
   const isGroupSelected = !!singleSelectedStep?.data.isGroup;
+  const isDeliverableSelected = !!singleSelectedStep?.data.isDeliverable;
+  const isStepSelected = singleSelectedStep && !isGroupSelected && !isDeliverableSelected;
 
   useEffect(() => {
     if (singleSelectedStep) {
@@ -69,25 +73,36 @@ export function SettingsPanel({
       onUpdateEdgeColor(selectedEdge.id, newColor);
     }
   };
-  
+
   const editingElement = singleSelectedStep || selectedEdge;
+
+  const getPanelInfo = () => {
+    if (isMultiStepSelection) {
+      return { title: 'Multiple Items', description: `${selectedSteps.length} steps selected`, deleteText: 'Delete Selection' };
+    }
+    if (singleSelectedStep) {
+      if (isGroupSelected) return { title: 'Edit Group', description: 'Editing a group container', deleteText: 'Delete Group' };
+      if (isDeliverableSelected) return { title: 'Edit Deliverable', description: 'Editing a deliverable', deleteText: 'Delete Deliverable' };
+      if (isStepSelected) return { title: 'Edit Step', description: 'Editing a workflow step', deleteText: 'Delete Step' };
+    }
+    if (selectedEdge) {
+      return { title: 'Edit Connection', description: 'Editing a connection', deleteText: 'Delete Connection' };
+    }
+    return { title: 'Controls', description: 'Manage your graph.', deleteText: '' };
+  };
+
+  const { title, description, deleteText } = getPanelInfo();
 
   return (
     <aside className="w-80 border-l border-border bg-card h-full">
       <div className="h-full flex flex-col">
         <CardHeader>
-          <CardTitle className="font-headline">{editingElement ? (singleSelectedStep ? 'Edit Step' : 'Edit Connection') : 'Controls'}</CardTitle>
-          <CardDescription>
-            {isMultiStepSelection
-              ? `${selectedSteps.length} steps selected`
-              : editingElement
-              ? `Editing selected ${singleSelectedStep ? 'step' : 'connection'}`
-              : 'Manage your graph.'}
-          </CardDescription>
+          <CardTitle className="font-headline">{title}</CardTitle>
+          <CardDescription>{description}</CardDescription>
         </CardHeader>
         <CardContent className="flex-1 overflow-y-auto p-4">
           {editingElement && !isMultiStepSelection ? (
-            <div className="space-y-6">
+            <div className="space-y-4">
               <div className="space-y-2">
                 <Label htmlFor="label-input" className="font-semibold">Label</Label>
                 <Input
@@ -111,13 +126,17 @@ export function SettingsPanel({
                 </div>
               </div>
               
+              {isStepSelected && (
+                <Button onClick={() => onAddDeliverable(singleSelectedStep.id)} className="w-full">Add Deliverable</Button>
+              )}
+
               {isGroupSelected && (
                 <Button onClick={onUngroup} className="w-full">Ungroup</Button>
               )}
               
               <Button variant="destructive" onClick={onDeleteSelection} className="w-full">
                 <Trash2 className="mr-2 h-4 w-4" />
-                Delete {singleSelectedStep ? 'Step' : 'Connection'}
+                {deleteText}
               </Button>
             </div>
           ) : (
@@ -126,6 +145,10 @@ export function SettingsPanel({
                  <>
                   <p className="text-sm text-muted-foreground">You can group these steps into a single container.</p>
                   <Button onClick={onGroupSelection}>Group Selection</Button>
+                  <Button variant="destructive" onClick={onDeleteSelection} className="w-full">
+                    <Trash2 className="mr-2 h-4 w-4" />
+                    Delete Selection
+                  </Button>
                  </>
                ) : (
                 <>

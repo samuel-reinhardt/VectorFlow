@@ -1,33 +1,38 @@
 'use client';
 
-import { memo } from 'react';
-import { Handle, Position, NodeProps } from 'reactflow';
+import { memo, useMemo } from 'react';
+import { Handle, Position, NodeProps, useReactFlow } from 'reactflow';
 import { Card, CardContent } from '@/components/ui/card';
 import { cn, getTextColorForBackground } from '@/lib/utils';
 
-const CustomNode = ({ data, selected }: NodeProps<{ label: string; color: string; isGroup?: boolean }>) => {
+const CustomNode = ({ id, data, selected, type }: NodeProps<{ label: string; color: string; isGroup?: boolean; isDeliverable?: boolean }>) => {
+  const { getNodes } = useReactFlow();
+
+  const isParent = useMemo(() => getNodes().some(node => node.parentNode === id), [getNodes, id]);
+  
   const textColor = data.isGroup
     ? 'hsl(var(--foreground))'
     : getTextColorForBackground(data.color);
 
   return (
-    <div className={cn(data.isGroup ? 'w-full h-full' : '')}>
-      {!data.isGroup && <Handle type="target" position={Position.Left} className="!bg-border !w-3 !h-3" />}
+    <div className={cn('w-full h-full', { 'relative': isParent && type === 'custom' })}>
+      {!data.isGroup && !data.isDeliverable && <Handle type="target" position={Position.Left} className="!bg-border !w-3 !h-3" />}
       <Card
         className={cn(
           'shadow-lg',
           selected ? 'border-primary ring-2 ring-ring' : 'border-transparent',
-          data.isGroup ? 'border-dashed border-2 bg-card/50 h-full' : 'border-2'
+          data.isGroup ? 'border-dashed border-2 bg-card/50 h-full' : 'border-2',
+          isParent && !data.isGroup ? 'absolute top-0 left-0 w-full' : ''
         )}
         style={data.isGroup ? { borderColor: data.color } : { backgroundColor: data.color, borderColor: 'transparent' }}
       >
-        <CardContent className="p-3 text-center">
-          <p className="font-medium break-words" style={{ color: textColor }}>
+        <CardContent className={cn("text-center", data.isDeliverable ? 'p-2' : 'p-3')}>
+          <p className={cn("font-medium break-words", data.isDeliverable ? 'text-sm' : '')}>
             {data.label}
           </p>
         </CardContent>
       </Card>
-      {!data.isGroup && <Handle type="source" position={Position.Right} className="!bg-border !w-3 !h-3" />}
+      {!data.isGroup && !data.isDeliverable && <Handle type="source" position={Position.Right} className="!bg-border !w-3 !h-3" />}
     </div>
   );
 };

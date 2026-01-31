@@ -15,6 +15,7 @@ import ReactFlow, {
   applyEdgeChanges,
   useReactFlow,
   BackgroundVariant,
+  useUpdateNodeInternals,
 } from 'reactflow';
 import 'reactflow/dist/style.css';
 import { Orbit, ListTree, Search, LayoutGrid, Workflow, ChevronRight } from 'lucide-react';
@@ -116,8 +117,9 @@ function Outline({ nodes: flatNodes, selectedStepId, onStepSelect }: { nodes: No
                         <Button
                             variant="ghost"
                             className={cn(
-                            'w-full justify-start text-left h-auto py-2 px-3 whitespace-normal text-sm',
-                            node.id === selectedStepId ? 'bg-accent text-accent-foreground' : ''
+                            'w-full justify-start text-left h-auto py-2 px-3 whitespace-normal',
+                            node.id === selectedStepId ? 'bg-accent text-accent-foreground' : '',
+                            node.data.isDeliverable ? 'text-sm' : 'text-sm font-medium'
                             )}
                             style={{ paddingLeft: `${0.75 + node.level * 1.25}rem` }}
                             onClick={() => onStepSelect(node.id)}
@@ -146,7 +148,8 @@ export function VectorFlow() {
   const [selectedEdges, setSelectedEdges] = useState<Edge[]>([]);
   const [isRightSidebarOpen, setIsRightSidebarOpen] = useState(true);
   const { toast } = useToast();
-  const { fitView, getNode, getNodes, getEdges } = useReactFlow();
+  const { fitView, getNode, getNodes, getEdges, project } = useReactFlow();
+  const updateNodeInternals = useUpdateNodeInternals();
 
   const onNodesChange = useCallback((changes: NodeChange[]) => setNodes((nds) => applyNodeChanges(changes, nds)), [setNodes]);
   const onEdgesChange = useCallback((changes: EdgeChange[]) => setEdges((eds) => applyEdgeChanges(changes, eds)), [setEdges]);
@@ -168,18 +171,67 @@ export function VectorFlow() {
 
 
   const addStep = useCallback(() => {
+    const { x, y } = project({ x: window.innerWidth / 2 - 300, y: window.innerHeight / 2 });
     const newNodeId = `node_${nodes.length + 1}_${Date.now()}`;
     const newNode: Node = {
       id: newNodeId,
-      position: {
-        x: Math.random() * window.innerWidth * 0.4,
-        y: Math.random() * window.innerHeight * 0.4,
-      },
+      position: { x, y },
       data: { label: 'New Step', color: '#E5E7EB' },
       type: 'custom',
     };
     setNodes((nds) => nds.concat(newNode));
-  }, [nodes.length]);
+  }, [nodes.length, project, setNodes]);
+
+  const addDeliverable = useCallback((parentId: string) => {
+    const parentNode = getNode(parentId);
+    if (!parentNode || typeof parentNode.width === 'undefined' || typeof parentNode.height === 'undefined') {
+        toast({
+            variant: 'destructive',
+            title: 'Cannot add deliverable',
+            description: 'Parent step size not yet available. Please try again in a moment.'
+        });
+        return;
+    }
+    
+    const childDeliverables = getNodes().filter(n => n.parentNode === parentId && n.data.isDeliverable);
+
+    const deliverableHeight = 44;
+    const deliverableYPadding = 10;
+    const deliverableXPadding = 20;
+
+    const baseHeight = 52; // Base height of a step card
+    const newDeliverableY = baseHeight + deliverableYPadding + (childDeliverables.length * (deliverableHeight + deliverableYPadding));
+
+    const newDeliverableId = `deliverable_${getNodes().length + 1}_${Date.now()}`;
+    const newDeliverableNode: Node = {
+        id: newDeliverableId,
+        type: 'custom',
+        data: { label: 'New Deliverable', color: '#E0E7FF', isDeliverable: true },
+        position: { x: deliverableXPadding, y: newDeliverableY },
+        parentNode: parentId,
+        extent: 'parent',
+        style: {
+            width: parentNode.width - deliverableXPadding * 2,
+            height: deliverableHeight,
+        }
+    };
+
+    setNodes(nds => {
+        const newNodes = nds.map(n => {
+            if (n.id === parentId) {
+                const currentHeight = n.style?.height || parentNode.height;
+                return {
+                    ...n,
+                    style: { ...n.style, height: currentHeight + deliverableHeight + deliverableYPadding },
+                };
+            }
+            return n;
+        });
+        return [...newNodes, newDeliverableNode];
+    });
+
+    updateNodeInternals(parentId);
+  }, [getNodes, getNode, setNodes, toast, updateNodeInternals]);
 
   const updateStepLabel = useCallback((stepId: string, label: string) => {
     setNodes((nds) =>
@@ -220,7 +272,7 @@ export function VectorFlow() {
     let nodeIdsToDelete = new Set(currentSelectedNodes.map(n => n.id));
     
     currentSelectedNodes.forEach(node => {
-      if(node.data.isGroup) {
+      if(node.data.isGroup || getNodes().some(n => n.parentNode === node.id)) {
         getNodes().forEach(child => {
           if (child.parentNode === node.id) {
             nodeIdsToDelete.add(child.id);
@@ -485,6 +537,7 @@ export function VectorFlow() {
                   selectedSteps={selectedNodes}
                   selectedEdge={selectedEdges.length === 1 ? selectedEdges[0] : null}
                   onAddStep={addStep}
+                  onAddDeliverable={addDeliverable}
                   onUpdateStepLabel={updateStepLabel}
                   onUpdateStepColor={updateStepColor}
                   onUpdateEdgeLabel={updateEdgeLabel}
