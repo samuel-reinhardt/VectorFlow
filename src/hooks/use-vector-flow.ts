@@ -323,7 +323,7 @@ export const useVectorFlow = (initialNodes: Node[], initialEdges: Edge[]) => {
     let nodeIdsToDelete = new Set(currentSelectedNodes.map(n => n.id));
     
     currentSelectedNodes.forEach(node => {
-      if(node.data.isGroup || allNodes.some(n => n.parentNode === node.id)) {
+      if(node.type === 'group' || allNodes.some(n => n.parentNode === node.id)) {
         allNodes.forEach(child => {
           if (child.parentNode === node.id) {
             nodeIdsToDelete.add(child.id);
@@ -360,7 +360,7 @@ export const useVectorFlow = (initialNodes: Node[], initialEdges: Edge[]) => {
         return;
     }
 
-    const padding = 50;
+    const padding = 60; // Increased padding for better encapsulation
     const { minX, maxX, minY, maxY } = currentSelectedNodes.reduce(
       (acc, node) => ({
         minX: Math.min(acc.minX, node.position.x),
@@ -374,13 +374,19 @@ export const useVectorFlow = (initialNodes: Node[], initialEdges: Edge[]) => {
     const parentId = `group_${Date.now()}`;
     const parentNode: Node = {
       id: parentId,
-      type: 'custom',
-      data: { label: 'New Group', color: '#E5E7EB', isGroup: true },
+      type: 'group', // Use dedicated group type
+      data: { label: 'New Group', color: '#E5E7EB' },
       position: { x: minX - padding, y: minY - padding },
       style: {
         width: maxX - minX + padding * 2,
         height: maxY - minY + padding * 2,
+        border: 'none',
+        background: 'transparent',
+        boxShadow: 'none',
+        borderRadius: '12px',
+        padding: 0,
       },
+      className: '!border-0 !bg-transparent !p-0 !shadow-none !outline-none !ring-0',
       zIndex: -1,
     };
 
@@ -406,7 +412,7 @@ export const useVectorFlow = (initialNodes: Node[], initialEdges: Edge[]) => {
   }, [getNodes, setNodesState, toast]);
 
   const ungroupSelection = useCallback(() => {
-    const selectedGroup = getNodes().find(n => n.selected && n.data.isGroup);
+    const selectedGroup = getNodes().find(n => n.selected && n.type === 'group');
     if (!selectedGroup) return;
 
     setNodesState(nds => {
@@ -519,17 +525,30 @@ export const useVectorFlow = (initialNodes: Node[], initialEdges: Edge[]) => {
     const vSpacing = 50;
     const newNodes = getNodes().map(n => ({ ...n }));
 
+    // Helper to get or estimate node dimensions
+    const getNodeDimensions = (nodeId: string) => {
+        const node = allNodes.find(n => n.id === nodeId);
+        const width = node?.width || (node?.style?.width as number) || STEP_WIDTH;
+        
+        let height = node?.height || (node?.style?.height as number);
+        if (!height || typeof height === 'string') {
+            const deliverablesCount = node?.data?.deliverables?.length || 0;
+            if (deliverablesCount === 0) {
+                height = STEP_INITIAL_HEIGHT;
+            } else {
+                // Header (48) + padding (16) + deliverables (N * 40) + gaps ((N-1) * 8)
+                height = 48 + 16 + (deliverablesCount * 40) + (Math.max(0, deliverablesCount - 1) * 8);
+            }
+        }
+        return { width, height };
+    };
+
     let currentX = 0;
     columns.forEach((column) => {
-        const columnWidth = Math.max(...column.map(nodeId => {
-            const node = allNodes.find(n => n.id === nodeId);
-            return node?.width || STEP_WIDTH;
-        }));
+        const columnWidth = Math.max(...column.map(nodeId => getNodeDimensions(nodeId).width));
 
         const columnHeight = column.reduce((sum, nodeId) => {
-            const node = allNodes.find(n => n.id === nodeId);
-            const height = node?.height || STEP_INITIAL_HEIGHT;
-            return sum + height + vSpacing;
+            return sum + getNodeDimensions(nodeId).height + vSpacing;
         }, -vSpacing);
 
         let currentY = -columnHeight / 2;
@@ -537,11 +556,10 @@ export const useVectorFlow = (initialNodes: Node[], initialEdges: Edge[]) => {
         column.forEach((nodeId) => {
             const node = newNodes.find(n => n.id === nodeId);
             if (node) {
-                const nodeWidth = node.width || STEP_WIDTH;
-                const height = node.height || STEP_INITIAL_HEIGHT;
+                const { width: nodeWidth, height: nodeHeight } = getNodeDimensions(nodeId);
                 
                 node.position = { x: currentX + (columnWidth - nodeWidth) / 2, y: currentY };
-                currentY += height + vSpacing;
+                currentY += nodeHeight + vSpacing;
             }
         });
 

@@ -16,6 +16,7 @@ import { LayoutGrid } from 'lucide-react';
 import { Sidebar, SidebarHeader, SidebarContent } from '@/components/ui/layout/sidebar';
 import { SettingsPanel } from '@/components/settings-panel';
 import CustomNode from '@/components/custom-node';
+import GroupNode from '@/components/group-node';
 import { useVectorFlow } from '@/hooks/use-vector-flow';
 import { Header } from '@/components/header';
 import { Toolbar } from '@/components/toolbar';
@@ -24,10 +25,10 @@ import { FlowTabs } from '@/components/flow-tabs';
 import { useMediaQuery } from '@/hooks/use-media-query';
 
 const initialNodes: Node[] = [
-  { id: '1', position: { x: 250, y: 150 }, data: { label: 'Welcome to VectorFlow!', color: '#F3F4F6' }, type: 'custom', style: { width: 220, height: 60 } },
-  { id: '2', position: { x: 100, y: 250 }, data: { label: 'This is a step', color: '#E5E7EB' }, type: 'custom', style: { width: 220, height: 60 } },
-  { id: '3', position: { x: 400, y: 250 }, data: { label: 'Connect them!', color: '#E5E7EB' }, type: 'custom', style: { width: 220, height: 60 } },
-  { id: '4', position: { x: 250, y: 350 }, data: { label: 'Auto-Arrange', color: '#E5E7EB' }, type: 'custom', style: { width: 220, height: 60 } },
+  { id: '1', position: { x: 250, y: 150 }, data: { label: 'Welcome to VectorFlow!', color: '#F3F4F6' }, type: 'custom', style: { width: 220, height: 'auto' } },
+  { id: '2', position: { x: 100, y: 250 }, data: { label: 'This is a step', color: '#E5E7EB' }, type: 'custom', style: { width: 220, height: 'auto' } },
+  { id: '3', position: { x: 400, y: 250 }, data: { label: 'Connect them!', color: '#E5E7EB' }, type: 'custom', style: { width: 220, height: 'auto' } },
+  { id: '4', position: { x: 250, y: 350 }, data: { label: 'Auto-Arrange', color: '#E5E7EB' }, type: 'custom', style: { width: 220, height: 'auto' } },
 ];
 
 const initialEdges: Edge[] = [
@@ -38,6 +39,7 @@ const initialEdges: Edge[] = [
 
 const nodeTypes = {
   custom: CustomNode,
+  group: GroupNode,
 };
 
 export function VectorFlow() {
