@@ -18,7 +18,7 @@ import ReactFlow, {
   useUpdateNodeInternals,
 } from 'reactflow';
 import 'reactflow/dist/style.css';
-import { Orbit, ListTree, Search, LayoutGrid, Workflow, ChevronRight } from 'lucide-react';
+import { Orbit, ListTree, Search, LayoutGrid, Workflow, ChevronRight, PanelLeft } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import {
@@ -26,7 +26,6 @@ import {
   Sidebar,
   SidebarHeader,
   SidebarContent,
-  SidebarTrigger,
 } from '@/components/ui/sidebar';
 
 import { SettingsPanel } from '@/components/settings-panel';
@@ -153,10 +152,14 @@ export function VectorFlow() {
   const [edges, setEdges] = useState<Edge[]>(initialEdges);
   const [selectedNodes, setSelectedNodes] = useState<Node[]>([]);
   const [selectedEdges, setSelectedEdges] = useState<Edge[]>([]);
-  const [isRightSidebarOpen, setIsRightSidebarOpen] = useState(true);
   const { toast } = useToast();
   const { fitView, getNode, getNodes, getEdges, project } = useReactFlow();
   const updateNodeInternals = useUpdateNodeInternals();
+
+  const [leftSidebarOpen, setLeftSidebarOpen] = useState(true);
+  const [rightSidebarOpen, setRightSidebarOpen] = useState(true);
+  const [rightSidebarInfo, setRightSidebarInfo] = useState({ title: '', description: '', deleteText: '' });
+
 
   const onNodesChange = useCallback((changes: NodeChange[]) => setNodes((nds) => applyNodeChanges(changes, nds)), [setNodes]);
   const onEdgesChange = useCallback((changes: EdgeChange[]) => setEdges((eds) => applyEdgeChanges(changes, eds)), [setEdges]);
@@ -563,66 +566,80 @@ export function VectorFlow() {
 
   useEffect(() => {
     const timer = setTimeout(() => {
-      handleAutoLayout({ silent: true });
+      if (getNodes().length > 0) {
+        handleAutoLayout({ silent: true });
+      }
     }, 100);
-
+  
     return () => clearTimeout(timer);
-  }, [handleAutoLayout]);
+  }, []);
+  
 
   const selectedStepId = useMemo(() => selectedNodes.length === 1 ? selectedNodes[0].id : null, [selectedNodes]);
 
   return (
-    <SidebarProvider>
-      <div className="flex flex-col h-screen w-screen bg-background text-foreground font-body">
-        <header className="flex items-center justify-between p-4 border-b border-border shadow-sm z-10 bg-card">
-          <div className="flex items-center gap-3">
-              <SidebarTrigger />
-              <Orbit className="text-primary h-8 w-8" />
-              <h1 className="text-2xl font-headline font-bold">
-                  VectorFlow
-              </h1>
-          </div>
-          <div className="flex items-center gap-2">
-              <Button onClick={() => handleAutoLayout()}>
-                  <Workflow className="mr-2 h-4 w-4" />
-                  Auto-Arrange
-              </Button>
-              <Button
-                  variant="ghost"
-                  size="icon"
-                  onClick={() => setIsRightSidebarOpen(p => !p)}
-                  className="hidden md:flex"
-                  aria-label="Toggle settings panel"
-              >
-                  <LayoutGrid />
-              </Button>
-          </div>
-        </header>
-        <div className="flex flex-1 overflow-hidden">
+    <div className="flex flex-col h-screen w-screen bg-background text-foreground font-body">
+      <header className="flex items-center justify-between p-4 border-b border-border shadow-sm z-10 bg-card">
+        <div className="flex items-center gap-3">
+            <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => setLeftSidebarOpen(p => !p)}>
+              <PanelLeft />
+            </Button>
+            <Orbit className="text-primary h-8 w-8" />
+            <h1 className="text-2xl font-headline font-bold">
+                VectorFlow
+            </h1>
+        </div>
+        <div className="flex items-center gap-2">
+            <Button onClick={() => handleAutoLayout({silent: false})}>
+                <Workflow className="mr-2 h-4 w-4" />
+                Auto-Arrange
+            </Button>
+            <Button
+                variant="ghost"
+                size="icon"
+                onClick={() => setRightSidebarOpen(p => !p)}
+                className="h-8 w-8"
+                aria-label="Toggle settings panel"
+            >
+                <LayoutGrid />
+            </Button>
+        </div>
+      </header>
+      <div className="flex flex-1 overflow-hidden">
+          <SidebarProvider open={leftSidebarOpen} onOpenChange={setLeftSidebarOpen}>
             <Sidebar side="left" collapsible="icon">
-                <Outline nodes={nodes} selectedStepId={selectedStepId} onStepSelect={handleStepSelect} />
+              <Outline nodes={nodes} selectedStepId={selectedStepId} onStepSelect={handleStepSelect} />
             </Sidebar>
+          </SidebarProvider>
 
-            <main className="relative flex-1">
-                <ReactFlow
-                    nodes={nodes}
-                    edges={edges}
-                    onNodesChange={onNodesChange}
-                    onEdgesChange={onEdgesChange}
-                    onConnect={onConnect}
-                    onSelectionChange={onSelectionChange}
-                    nodeTypes={nodeTypes}
-                    fitView
-                    className="bg-background"
-                    deleteKeyCode={['Delete', 'Backspace']}
-                >
-                    <Controls />
-                    <Background variant={BackgroundVariant.Dots} gap={16} size={1} />
-                </ReactFlow>
-            </main>
-            
-            <div className={cn("transition-[width] ease-in-out duration-300 overflow-x-hidden", isRightSidebarOpen ? 'w-80' : 'w-0')}>
-              <div className="w-80 h-full">
+          <main className="relative flex-1">
+              <ReactFlow
+                  nodes={nodes}
+                  edges={edges}
+                  onNodesChange={onNodesChange}
+                  onEdgesChange={onEdgesChange}
+                  onConnect={onConnect}
+                  onSelectionChange={onSelectionChange}
+                  nodeTypes={nodeTypes}
+                  fitView
+                  className="bg-background"
+                  deleteKeyCode={['Delete', 'Backspace']}
+              >
+                  <Controls />
+                  <Background variant={BackgroundVariant.Dots} gap={16} size={1} />
+              </ReactFlow>
+          </main>
+          
+          <SidebarProvider open={rightSidebarOpen} onOpenChange={setRightSidebarOpen}>
+            <Sidebar side="right" collapsible="offcanvas" className="w-80 border-l">
+              <SidebarHeader>
+                <div className="flex items-center gap-2 mb-2">
+                  <LayoutGrid className="w-5 h-5" />
+                  <h2 className="text-lg font-semibold">{rightSidebarInfo.title}</h2>
+                </div>
+                <p className="text-sm text-muted-foreground h-8">{rightSidebarInfo.description}</p>
+              </SidebarHeader>
+              <SidebarContent>
                 <SettingsPanel 
                   selectedSteps={selectedNodes}
                   selectedEdge={selectedEdges.length === 1 ? selectedEdges[0] : null}
@@ -635,11 +652,12 @@ export function VectorFlow() {
                   onDeleteSelection={deleteSelection}
                   onGroupSelection={groupSelection}
                   onUngroup={ungroupSelection}
+                  onTitleChange={(title, description) => setRightSidebarInfo({ title, description, deleteText: '' })}
                 />
-              </div>
-            </div>
-        </div>
+              </SidebarContent>
+            </Sidebar>
+          </SidebarProvider>
       </div>
-    </SidebarProvider>
+    </div>
   );
 }
