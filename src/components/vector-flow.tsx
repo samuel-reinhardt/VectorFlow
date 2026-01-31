@@ -431,15 +431,17 @@ export function VectorFlow() {
   }, [getNodes, setNodes]);
 
 
-  const handleAutoLayout = useCallback(() => {
+  const handleAutoLayout = useCallback((options?: { silent: boolean }) => {
     const allNodes = getNodes();
     const allEdges = getEdges();
     
     if (allNodes.length === 0) {
-      toast({
-        title: "No steps to arrange",
-        description: "Add some steps to the canvas first.",
-      });
+      if (!options?.silent) {
+        toast({
+          title: "No steps to arrange",
+          description: "Add some steps to the canvas first.",
+        });
+      }
       return;
     }
 
@@ -506,11 +508,13 @@ export function VectorFlow() {
     const remainingNodes = topLevelNodes.filter(node => !visitedNodes.has(node.id));
     if (remainingNodes.length > 0) {
         columns.push(remainingNodes.map(node => node.id));
-        toast({
-            variant: "destructive",
-            title: "Cyclic Dependency Detected",
-            description: "Some steps form a loop and have been placed in the last column.",
-        });
+        if (!options?.silent) {
+          toast({
+              variant: "destructive",
+              title: "Cyclic Dependency Detected",
+              description: "Some steps form a loop and have been placed in the last column.",
+          });
+        }
     }
 
     const hSpacing = 100;
@@ -547,22 +551,23 @@ export function VectorFlow() {
     });
 
     setNodes(newNodes);
-    toast({
-      title: "Layout Arranged",
-      description: "Steps have been arranged from left to right.",
-    });
+    if (!options?.silent) {
+      toast({
+        title: "Layout Arranged",
+        description: "Steps have been arranged from left to right.",
+      });
+    }
     setTimeout(() => fitView({ duration: 500 }), 100);
 
   }, [getNodes, getEdges, setNodes, fitView, toast]);
 
   useEffect(() => {
     const timer = setTimeout(() => {
-      handleAutoLayout();
+      handleAutoLayout({ silent: true });
     }, 100);
 
     return () => clearTimeout(timer);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [handleAutoLayout]);
 
   const selectedStepId = useMemo(() => selectedNodes.length === 1 ? selectedNodes[0].id : null, [selectedNodes]);
 
@@ -578,7 +583,7 @@ export function VectorFlow() {
               </h1>
           </div>
           <div className="flex items-center gap-2">
-              <Button onClick={handleAutoLayout}>
+              <Button onClick={() => handleAutoLayout()}>
                   <Workflow className="mr-2 h-4 w-4" />
                   Auto-Arrange
               </Button>
