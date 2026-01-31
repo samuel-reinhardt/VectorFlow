@@ -2,47 +2,45 @@
 
 import * as React from 'react';
 import { cn } from '@/lib/utils';
-import { Sheet, SheetContent } from '@/components/ui/sheet';
+import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet';
 
 const Sidebar = React.forwardRef<
-  HTMLDivElement,
-  React.HTMLAttributes<HTMLDivElement> & {
+  HTMLElement,
+  React.HTMLAttributes<HTMLElement> & {
     side?: 'left' | 'right';
-    collapsible?: 'icon' | 'offcanvas';
     open?: boolean;
     onOpenChange?: (open: boolean) => void;
   }
->(({ side = 'left', collapsible = 'offcanvas', className, children, open, onOpenChange, ...props }, ref) => {
-
+>(({ side = 'left', className, children, open, onOpenChange }, ref) => {
   return (
     <>
       {/* Mobile view using Sheet */}
       <div className="md:hidden">
         <Sheet open={open} onOpenChange={onOpenChange}>
           <SheetContent side={side} className={cn('w-80 p-0', className)}>
+             <SheetHeader className="sr-only">
+                <SheetTitle>{side === 'left' ? 'Outline' : 'Controls'} Sidebar</SheetTitle>
+             </SheetHeader>
             {children}
           </SheetContent>
         </Sheet>
       </div>
 
       {/* Desktop view */}
-      <div
+      <aside
         ref={ref}
         className={cn(
-          'hidden md:flex flex-col h-full bg-card text-card-foreground border-border transition-all duration-200',
+          'hidden md:flex flex-col shrink-0 bg-card text-card-foreground border-border transition-all duration-200 ease-in-out',
           side === 'left' ? 'border-r' : 'border-l',
-          collapsible === 'icon' 
-            ? (open ? 'w-64' : 'w-0 border-0 p-0') // Simplified icon-collapse to just hide
-            : (open ? 'w-80' : 'w-0 border-0 p-0'),
-           !open && 'overflow-hidden',
+          open ? 'w-80' : 'w-0 p-0 border-0',
+          !open && 'overflow-hidden',
           className
         )}
-        {...props}
       >
-        <div className="overflow-hidden flex flex-col h-full w-full">
+        <div className="flex flex-col w-80 h-full overflow-hidden">
             {children}
         </div>
-      </div>
+      </aside>
     </>
   );
 });
@@ -50,7 +48,7 @@ Sidebar.displayName = 'Sidebar';
 
 const SidebarHeader = React.forwardRef<HTMLDivElement, React.HTMLAttributes<HTMLDivElement>>(
   ({ className, ...props }, ref) => (
-    <div ref={ref} className={cn('p-4 border-b', className)} {...props} />
+    <div ref={ref} className={cn('p-4 border-b shrink-0', className)} {...props} />
   )
 );
 SidebarHeader.displayName = 'SidebarHeader';

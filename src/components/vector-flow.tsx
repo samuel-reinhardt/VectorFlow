@@ -153,16 +153,24 @@ export function VectorFlow() {
   const { fitView, getNode, getNodes, getEdges, project } = useReactFlow();
   const updateNodeInternals = useUpdateNodeInternals();
 
-  const [leftSidebarOpen, setLeftSidebarOpen] = useState(true);
-  const [rightSidebarOpen, setRightSidebarOpen] = useState(true);
-  const [rightSidebarInfo, setRightSidebarInfo] = useState({ title: 'Controls', description: 'Manage your graph.', deleteText: '' });
+  const [leftSidebarOpen, setLeftSidebarOpen] = useState(false);
+  const [rightSidebarOpen, setRightSidebarOpen] = useState(false);
+  const [rightSidebarInfo, setRightSidebarInfo] = useState({ title: 'Controls', description: 'Manage your graph.' });
 
+
+  useEffect(() => {
+    const isDesktop = window.innerWidth >= 768; // Tailwind's `md` breakpoint
+    if (isDesktop) {
+      setLeftSidebarOpen(true);
+      setRightSidebarOpen(true);
+    }
+  }, []); // Empty dependency array ensures this runs only once on client-side mount
 
   const handleLeftSidebarToggle = useCallback(() => setLeftSidebarOpen(p => !p), []);
   const handleRightSidebarToggle = useCallback(() => setRightSidebarOpen(p => !p), []);
   
   const handleSettingsPanelTitleChange = useCallback((title: string, description: string) => {
-    setRightSidebarInfo({ title, description, deleteText: '' });
+    setRightSidebarInfo({ title, description });
   }, []);
 
 
@@ -585,7 +593,7 @@ export function VectorFlow() {
 
   return (
     <div className="flex flex-col h-screen w-screen bg-background text-foreground font-body">
-      <header className="flex items-center justify-between p-4 border-b border-border shadow-sm z-10 bg-card">
+      <header className="flex items-center justify-between p-4 border-b border-border shadow-sm z-10 bg-card shrink-0">
         <div className="flex items-center gap-3">
             <Orbit className="text-primary h-8 w-8" />
             <h1 className="text-2xl font-headline font-bold">
@@ -600,11 +608,11 @@ export function VectorFlow() {
         </div>
       </header>
       
-      <div className="flex items-center justify-between px-4 py-1 border-b border-border bg-card">
+      <div className="flex items-center justify-between px-4 py-1 border-b border-border bg-card shrink-0">
         <Button
           variant="ghost"
           size="icon"
-          className="h-8 w-8 md:hidden"
+          className="h-8 w-8"
           onClick={handleLeftSidebarToggle}
           aria-label="Toggle outline panel"
         >
@@ -615,7 +623,7 @@ export function VectorFlow() {
           variant="ghost"
           size="icon"
           onClick={handleRightSidebarToggle}
-          className="h-8 w-8 md:hidden"
+          className="h-8 w-8"
           aria-label="Toggle settings panel"
         >
           <LayoutGrid />
@@ -624,11 +632,11 @@ export function VectorFlow() {
 
 
       <div className="flex flex-1 overflow-hidden">
-        <Sidebar side="left" collapsible="offcanvas" open={leftSidebarOpen} onOpenChange={setLeftSidebarOpen}>
+        <Sidebar side="left" open={leftSidebarOpen} onOpenChange={setLeftSidebarOpen}>
             <Outline nodes={nodes} selectedStepId={selectedStepId} onStepSelect={handleStepSelect} />
         </Sidebar>
 
-          <main className="relative flex-1">
+          <main className="relative flex-1 h-full">
               <ReactFlow
                   nodes={nodes}
                   edges={edges}
@@ -646,7 +654,7 @@ export function VectorFlow() {
               </ReactFlow>
           </main>
           
-        <Sidebar side="right" collapsible="offcanvas" open={rightSidebarOpen} onOpenChange={setRightSidebarOpen}>
+        <Sidebar side="right" open={rightSidebarOpen} onOpenChange={setRightSidebarOpen}>
             <SidebarHeader>
             <div className="flex items-center gap-2">
                 <LayoutGrid className="w-5 h-5" />
