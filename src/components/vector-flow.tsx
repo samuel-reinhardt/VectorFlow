@@ -160,6 +160,10 @@ export function VectorFlow() {
 
   const handleLeftSidebarToggle = useCallback(() => setLeftSidebarOpen(p => !p), []);
   const handleRightSidebarToggle = useCallback(() => setRightSidebarOpen(p => !p), []);
+  
+  const handleSettingsPanelTitleChange = useCallback((title: string, description: string) => {
+    setRightSidebarInfo({ title, description, deleteText: '' });
+  }, []);
 
 
   const onNodesChange = useCallback((changes: NodeChange[]) => setNodes((nds) => applyNodeChanges(changes, nds)), [setNodes]);
@@ -595,27 +599,29 @@ export function VectorFlow() {
             </Button>
         </div>
       </header>
-
+      
       <div className="flex items-center justify-between px-4 py-1 border-b border-border bg-card">
         <Button
-            variant="ghost"
-            size="icon"
-            className="h-8 w-8"
-            onClick={handleLeftSidebarToggle}
-            aria-label="Toggle outline panel"
+          variant="ghost"
+          size="icon"
+          className="h-8 w-8 md:hidden"
+          onClick={handleLeftSidebarToggle}
+          aria-label="Toggle outline panel"
         >
-            <PanelLeft />
+          <PanelLeft />
         </Button>
+         <div className="flex-1" />
         <Button
-            variant="ghost"
-            size="icon"
-            onClick={handleRightSidebarToggle}
-            className="h-8 w-8"
-            aria-label="Toggle settings panel"
+          variant="ghost"
+          size="icon"
+          onClick={handleRightSidebarToggle}
+          className="h-8 w-8 md:hidden"
+          aria-label="Toggle settings panel"
         >
-            <LayoutGrid />
+          <LayoutGrid />
         </Button>
       </div>
+
 
       <div className="flex flex-1 overflow-hidden">
         <Sidebar side="left" collapsible="offcanvas" open={leftSidebarOpen} onOpenChange={setLeftSidebarOpen}>
@@ -661,7 +667,7 @@ export function VectorFlow() {
                 onDeleteSelection={deleteSelection}
                 onGroupSelection={groupSelection}
                 onUngroup={ungroupSelection}
-                onTitleChange={(title, description) => setRightSidebarInfo({ title, description, deleteText: '' })}
+                onTitleChange={handleSettingsPanelTitleChange}
             />
             </SidebarContent>
         </Sidebar>
