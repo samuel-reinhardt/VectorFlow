@@ -17,7 +17,7 @@ import ReactFlow, {
   BackgroundVariant,
 } from 'reactflow';
 import 'reactflow/dist/style.css';
-import { Orbit, ListTree, Search, LayoutGrid, Workflow } from 'lucide-react';
+import { Orbit, ListTree, Search, LayoutGrid, Workflow, ChevronRight } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import {
@@ -51,9 +51,44 @@ const nodeTypes = {
   custom: CustomNode,
 };
 
-function Outline({ nodes, selectedStepId, onStepSelect }: { nodes: Node[], selectedStepId: string | null, onStepSelect: (nodeId: string) => void }) {
+type TreeNode = Node & { children: TreeNode[], level: number };
+
+function Outline({ nodes: flatNodes, selectedStepId, onStepSelect }: { nodes: Node[], selectedStepId: string | null, onStepSelect: (nodeId: string) => void }) {
     const [searchTerm, setSearchTerm] = useState('');
-    const filteredNodes = nodes.filter((node) => node.data.label.toLowerCase().includes(searchTerm.toLowerCase()));
+    const { getNodes } = useReactFlow();
+
+    const nodeTree = useMemo(() => {
+        const allNodes = getNodes();
+        const nodesById = new Map(allNodes.map(node => [node.id, { ...node, children: [] }]));
+        
+        for (const node of nodesById.values()) {
+            if (node.parentNode && nodesById.has(node.parentNode)) {
+                nodesById.get(node.parentNode)!.children.push(node);
+            }
+        }
+        
+        const roots = allNodes.filter(n => !n.parentNode);
+
+        const flatList: TreeNode[] = [];
+        function traverse(nodes: Node[], level: number) {
+            for (const node of nodes) {
+                const fullNode = nodesById.get(node.id)!;
+                flatList.push({ ...fullNode, level });
+                if (fullNode.children.length > 0) {
+                    // Sort children by their y-position
+                    fullNode.children.sort((a,b) => a.position.y - b.position.y);
+                    traverse(fullNode.children, level + 1);
+                }
+            }
+        }
+        // Sort roots by their y-position
+        roots.sort((a,b) => a.position.y - b.position.y);
+        traverse(roots, 0);
+        return flatList;
+    }, [getNodes, flatNodes]);
+
+
+    const filteredNodes = nodeTree.filter((node) => node.data.label.toLowerCase().includes(searchTerm.toLowerCase()));
 
     return (
         <div className="flex flex-col h-full">
@@ -84,9 +119,11 @@ function Outline({ nodes, selectedStepId, onStepSelect }: { nodes: Node[], selec
                             'w-full justify-start text-left h-auto py-2 px-3 whitespace-normal text-sm',
                             node.id === selectedStepId ? 'bg-accent text-accent-foreground' : ''
                             )}
+                            style={{ paddingLeft: `${0.75 + node.level * 1.25}rem` }}
                             onClick={() => onStepSelect(node.id)}
                         >
-                            {node.data.label}
+                            {node.children.length > 0 && <ChevronRight className="h-4 w-4 mr-1 shrink-0" />}
+                            <span className="truncate">{node.data.label}</span>
                         </Button>
                         </li>
                     ))}
@@ -105,27 +142,19 @@ function Outline({ nodes, selectedStepId, onStepSelect }: { nodes: Node[], selec
 export function VectorFlow() {
   const [nodes, setNodes] = useState<Node[]>(initialNodes);
   const [edges, setEdges] = useState<Edge[]>(initialEdges);
-  const [selectedStep, setSelectedStep] = useState<Node | null>(null);
-  const [selectedEdge, setSelectedEdge] = useState<Edge | null>(null);
+  const [selectedNodes, setSelectedNodes] = useState<Node[]>([]);
+  const [selectedEdges, setSelectedEdges] = useState<Edge[]>([]);
   const [isRightSidebarOpen, setIsRightSidebarOpen] = useState(true);
   const { toast } = useToast();
-  const { fitView, getNode } = useReactFlow();
+  const { fitView, getNode, getNodes, getEdges } = useReactFlow();
 
   const onNodesChange = useCallback((changes: NodeChange[]) => setNodes((nds) => applyNodeChanges(changes, nds)), [setNodes]);
   const onEdgesChange = useCallback((changes: EdgeChange[]) => setEdges((eds) => applyEdgeChanges(changes, eds)), [setEdges]);
   const onConnect: OnConnect = useCallback((connection) => setEdges((eds) => addEdge({ ...connection, animated: true, label: '', style: { stroke: '#6B7280' } }, eds)), [setEdges]);
 
-  const onSelectionChange = useCallback(({ nodes: selectedNodes, edges: selectedEdges }: { nodes: Node[], edges: Edge[] }) => {
-    if (selectedNodes.length === 1) {
-      setSelectedStep(selectedNodes[0]);
-      setSelectedEdge(null);
-    } else if (selectedEdges.length === 1) {
-      setSelectedEdge(selectedEdges[0]);
-      setSelectedStep(null);
-    } else {
-      setSelectedStep(null);
-      setSelectedEdge(null);
-    }
+  const onSelectionChange = useCallback(({ nodes, edges }: { nodes: Node[], edges: Edge[] }) => {
+    setSelectedNodes(nodes);
+    setSelectedEdges(edges);
   }, []);
   
   const handleStepSelect = useCallback((nodeId: string) => {
@@ -158,7 +187,6 @@ export function VectorFlow() {
         node.id === stepId ? { ...node, data: { ...node.data, label } } : node
       )
     );
-    setSelectedStep(n => n ? { ...n, data: { ...n.data, label } } : null);
   }, [setNodes]);
   
   const updateStepColor = useCallback((stepId: string, color: string) => {
@@ -167,14 +195,12 @@ export function VectorFlow() {
         node.id === stepId ? { ...node, data: { ...node.data, color } } : node
       )
     );
-    setSelectedStep(n => n ? { ...n, data: { ...n.data, color } } : null);
   }, [setNodes]);
 
   const updateEdgeLabel = useCallback((edgeId: string, label: string) => {
     setEdges((eds) =>
       eds.map((edge) => (edge.id === edgeId ? { ...edge, label } : edge))
     );
-    setSelectedEdge(e => e ? { ...e, label } : null);
   }, [setEdges]);
 
   const updateEdgeColor = useCallback((edgeId: string, color: string) => {
@@ -183,22 +209,116 @@ export function VectorFlow() {
         edge.id === edgeId ? { ...edge, style: { ...edge.style, stroke: color } } : edge
       )
     );
-    setSelectedEdge(e => e ? { ...e, style: { ...e.style, stroke: color } } : null);
   }, [setEdges]);
 
   const deleteSelection = useCallback(() => {
-    if (selectedStep) {
-        setNodes((nds) => nds.filter((n) => n.id !== selectedStep.id));
-        setEdges((eds) => eds.filter((e) => e.source !== selectedStep.id && e.target !== selectedStep.id));
-        setSelectedStep(null);
-    } else if (selectedEdge) {
-        setEdges((eds) => eds.filter((e) => e.id !== selectedEdge.id));
-        setSelectedEdge(null);
+    const currentSelectedNodes = getNodes().filter(n => n.selected);
+    const currentSelectedEdges = getEdges().filter(e => e.selected);
+
+    if (currentSelectedNodes.length === 0 && currentSelectedEdges.length === 0) return;
+
+    let nodeIdsToDelete = new Set(currentSelectedNodes.map(n => n.id));
+    
+    currentSelectedNodes.forEach(node => {
+      if(node.data.isGroup) {
+        getNodes().forEach(child => {
+          if (child.parentNode === node.id) {
+            nodeIdsToDelete.add(child.id);
+          }
+        });
+      }
+    });
+
+    const edgeIdsToDelete = new Set(currentSelectedEdges.map(e => e.id));
+
+    setNodes(nds => nds.filter(n => !nodeIdsToDelete.has(n.id)));
+    setEdges(eds => eds.filter(e => !edgeIdsToDelete.has(e.id) && !nodeIdsToDelete.has(e.source) && !nodeIdsToDelete.has(e.target)));
+
+    setSelectedNodes([]);
+    setSelectedEdges([]);
+  }, [getNodes, getEdges, setNodes, setEdges]);
+  
+  const groupSelection = useCallback(() => {
+    const currentSelectedNodes = getNodes().filter(n => n.selected && !n.parentNode);
+    if (currentSelectedNodes.length < 2) {
+      toast({ variant: 'destructive', title: 'Cannot Group', description: 'Select at least two top-level steps to group them.'});
+      return;
     }
-  }, [selectedStep, selectedEdge, setNodes, setEdges]);
+
+    const padding = 50;
+    const { minX, maxX, minY, maxY } = currentSelectedNodes.reduce(
+      (acc, node) => ({
+        minX: Math.min(acc.minX, node.position.x),
+        maxX: Math.max(acc.maxX, node.position.x + (node.width || 176)), // 176 is min-w-32 + p-3*2
+        minY: Math.min(acc.minY, node.position.y),
+        maxY: Math.max(acc.maxY, node.position.y + (node.height || 52)), // 52 is based on CardContent padding
+      }),
+      { minX: Infinity, maxX: -Infinity, minY: Infinity, maxY: -Infinity }
+    );
+    
+    const parentId = `group_${Date.now()}`;
+    const parentNode: Node = {
+      id: parentId,
+      type: 'custom',
+      data: { label: 'New Group', color: '#E5E7EB', isGroup: true },
+      position: { x: minX - padding, y: minY - padding },
+      style: {
+        width: maxX - minX + padding * 2,
+        height: maxY - minY + padding * 2,
+      },
+    };
+
+    setNodes(nds => {
+      const newNodes = nds.map(n => {
+        if (currentSelectedNodes.some(sn => sn.id === n.id)) {
+          return {
+            ...n,
+            parentNode: parentId,
+            extent: 'parent',
+            position: {
+              x: n.position.x - parentNode.position.x,
+              y: n.position.y - parentNode.position.y,
+            },
+            selected: false,
+          };
+        }
+        return n;
+      });
+      return [...newNodes, parentNode];
+    });
+
+  }, [getNodes, setNodes, toast]);
+
+  const ungroupSelection = useCallback(() => {
+    const selectedGroup = getNodes().find(n => n.selected && n.data.isGroup);
+    if (!selectedGroup) return;
+
+    setNodes(nds => {
+      const children = nds.filter(n => n.parentNode === selectedGroup.id);
+      
+      const updatedChildren = children.map(child => ({
+        ...child,
+        parentNode: undefined,
+        extent: undefined,
+        position: {
+          x: selectedGroup.position.x + child.position.x,
+          y: selectedGroup.position.y + child.position.y,
+        }
+      }));
+
+      const childrenIds = new Set(children.map(c => c.id));
+      const remainingNodes = nds.filter(n => n.id !== selectedGroup.id && !childrenIds.has(n.id));
+
+      return [...remainingNodes, ...updatedChildren];
+    });
+  }, [getNodes, setNodes]);
+
 
   const handleAutoLayout = useCallback(() => {
-    if (nodes.length === 0) {
+    const allNodes = getNodes();
+    const allEdges = getEdges();
+    
+    if (allNodes.length === 0) {
       toast({
         title: "No steps to arrange",
         description: "Add some steps to the canvas first.",
@@ -206,26 +326,31 @@ export function VectorFlow() {
       return;
     }
 
-    const nodeWidth = 150;
-    const nodeHeight = 50;
+    const topLevelNodes = allNodes.filter(node => !node.parentNode);
+    const topLevelNodeIds = new Set(topLevelNodes.map(n => n.id));
+    const topLevelEdges = allEdges.filter(e => topLevelNodeIds.has(e.source) && topLevelNodeIds.has(e.target));
+
+
+    const nodeWidth = 176;
+    const nodeHeight = 52;
     const hSpacing = 100;
     const vSpacing = 50;
 
     const adj = new Map<string, string[]>();
     const inDegree = new Map<string, number>();
 
-    nodes.forEach(node => {
+    topLevelNodes.forEach(node => {
         adj.set(node.id, []);
         inDegree.set(node.id, 0);
     });
 
-    edges.forEach(edge => {
+    topLevelEdges.forEach(edge => {
         adj.get(edge.source)?.push(edge.target);
         inDegree.set(edge.target, (inDegree.get(edge.target) || 0) + 1);
     });
     
     const queue: string[] = [];
-    nodes.forEach(node => {
+    topLevelNodes.forEach(node => {
         if (inDegree.get(node.id) === 0) {
             queue.push(node.id);
         }
@@ -252,13 +377,13 @@ export function VectorFlow() {
     }
     
     const visitedNodes = new Set(columns.flat());
-    const remainingNodes = nodes.filter(node => !visitedNodes.has(node.id));
+    const remainingNodes = topLevelNodes.filter(node => !visitedNodes.has(node.id));
     if (remainingNodes.length > 0) {
         columns.push(remainingNodes.map(node => node.id));
     }
 
 
-    const newNodes = nodes.map(n => ({ ...n }));
+    const newNodes = getNodes().map(n => ({ ...n }));
 
     columns.forEach((column, colIndex) => {
         const x = colIndex * (nodeWidth + hSpacing);
@@ -281,19 +406,18 @@ export function VectorFlow() {
     });
     setTimeout(() => fitView({ duration: 500 }), 100);
 
-  }, [nodes, edges, setNodes, fitView, toast]);
+  }, [getNodes, getEdges, setNodes, fitView, toast]);
 
   useEffect(() => {
-    // Run auto-layout on initial load
     const timer = setTimeout(() => {
       handleAutoLayout();
-    }, 100); // Small delay to ensure everything is ready
+    }, 100);
 
     return () => clearTimeout(timer);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []); // Run only once
+  }, []);
 
-  const selectedStepId = useMemo(() => selectedStep?.id ?? null, [selectedStep]);
+  const selectedStepId = useMemo(() => selectedNodes.length === 1 ? selectedNodes[0].id : null, [selectedNodes]);
 
   return (
     <SidebarProvider>
@@ -348,14 +472,16 @@ export function VectorFlow() {
             <div className={cn("transition-[width] ease-in-out duration-300 overflow-x-hidden", isRightSidebarOpen ? 'w-80' : 'w-0')}>
               <div className="w-80 h-full">
                 <SettingsPanel 
-                  selectedStep={selectedStep}
-                  selectedEdge={selectedEdge}
+                  selectedSteps={selectedNodes}
+                  selectedEdge={selectedEdges.length === 1 ? selectedEdges[0] : null}
                   onAddStep={addStep}
                   onUpdateStepLabel={updateStepLabel}
                   onUpdateStepColor={updateStepColor}
                   onUpdateEdgeLabel={updateEdgeLabel}
                   onUpdateEdgeColor={updateEdgeColor}
                   onDeleteSelection={deleteSelection}
+                  onGroupSelection={groupSelection}
+                  onUngroup={ungroupSelection}
                 />
               </div>
             </div>
