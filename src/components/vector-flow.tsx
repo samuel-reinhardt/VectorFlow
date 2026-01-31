@@ -393,24 +393,35 @@ export function VectorFlow() {
     }
 
     const topLevelNodes = allNodes.filter(node => !node.parentNode);
-    const topLevelNodeIds = new Set(topLevelNodes.map(n => n.id));
-    const topLevelEdges = allEdges.filter(e => topLevelNodeIds.has(e.source) && topLevelNodeIds.has(e.target));
+    
+    const nodeMap = new Map(allNodes.map(n => [n.id, n]));
+    const getLayoutNodeId = (nodeId: string): string => {
+        let current = nodeMap.get(nodeId);
+        while (current?.parentNode) {
+            current = nodeMap.get(current.parentNode);
+        }
+        return current?.id || nodeId;
+    };
 
 
-    const hSpacing = 100;
-    const vSpacing = 50;
-
-    const adj = new Map<string, string[]>();
+    const adj = new Map<string, Set<string>>();
     const inDegree = new Map<string, number>();
 
     topLevelNodes.forEach(node => {
-        adj.set(node.id, []);
+        adj.set(node.id, new Set());
         inDegree.set(node.id, 0);
     });
 
-    topLevelEdges.forEach(edge => {
-        adj.get(edge.source)?.push(edge.target);
-        inDegree.set(edge.target, (inDegree.get(edge.target) || 0) + 1);
+    allEdges.forEach(edge => {
+        const sourceLayoutId = getLayoutNodeId(edge.source);
+        const targetLayoutId = getLayoutNodeId(edge.target);
+
+        if (sourceLayoutId !== targetLayoutId && adj.has(sourceLayoutId) && adj.has(targetLayoutId)) {
+             if (!adj.get(sourceLayoutId)!.has(targetLayoutId)) {
+                adj.get(sourceLayoutId)!.add(targetLayoutId);
+                inDegree.set(targetLayoutId, (inDegree.get(targetLayoutId) || 0) + 1);
+            }
+        }
     });
     
     const queue: string[] = [];
@@ -429,7 +440,7 @@ export function VectorFlow() {
             const u = queue.shift()!;
             currentColumn.push(u);
 
-            (adj.get(u) || []).forEach(v => {
+            (Array.from(adj.get(u) || [])).forEach(v => {
                 const newDegree = (inDegree.get(v) || 1) - 1;
                 inDegree.set(v, newDegree);
                 if (newDegree === 0) {
@@ -444,8 +455,15 @@ export function VectorFlow() {
     const remainingNodes = topLevelNodes.filter(node => !visitedNodes.has(node.id));
     if (remainingNodes.length > 0) {
         columns.push(remainingNodes.map(node => node.id));
+        toast({
+            variant: "destructive",
+            title: "Cyclic Dependency Detected",
+            description: "Some steps form a loop and have been placed in the last column.",
+        });
     }
 
+    const hSpacing = 100;
+    const vSpacing = 50;
     const newNodes = getNodes().map(n => ({ ...n }));
 
     let currentX = 0;
@@ -468,7 +486,7 @@ export function VectorFlow() {
             if (node) {
                 const nodeWidth = node.width || STEP_WIDTH;
                 const height = node.height || STEP_INITIAL_HEIGHT;
-                // Center node in the column
+                
                 node.position = { x: currentX + (columnWidth - nodeWidth) / 2, y: currentY };
                 currentY += height + vSpacing;
             }
