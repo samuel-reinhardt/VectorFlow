@@ -16,7 +16,11 @@ const Sidebar = React.forwardRef<
     <>
       {/* Mobile view using Sheet */}
       <Sheet open={open} onOpenChange={onOpenChange}>
-        <SheetContent side={side} className={cn('w-80 p-0 md:hidden', className)}>
+        <SheetContent
+          side={side}
+          className={cn('w-80 p-0 md:hidden', className)}
+          overlayClassName="md:hidden"
+        >
             <SheetHeader>
               <SheetTitle className="sr-only">{side === 'left' ? 'Outline' : 'Controls'} Sidebar</SheetTitle>
             </SheetHeader>
