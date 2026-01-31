@@ -616,8 +616,8 @@ export function VectorFlow() {
       </div>
 
       <div className="flex flex-1 overflow-hidden">
-          <SidebarProvider open={leftSidebarOpen} onOpenChange={setLeftSidebarOpen}>
-            <Sidebar side="left" collapsible="icon">
+          <SidebarProvider>
+            <Sidebar side="left" collapsible="icon" open={leftSidebarOpen} onOpenChange={setLeftSidebarOpen}>
               <Outline nodes={nodes} selectedStepId={selectedStepId} onStepSelect={handleStepSelect} />
             </Sidebar>
           </SidebarProvider>
@@ -640,8 +640,8 @@ export function VectorFlow() {
               </ReactFlow>
           </main>
           
-          <SidebarProvider open={rightSidebarOpen} onOpenChange={setRightSidebarOpen}>
-            <Sidebar side="right" collapsible="offcanvas" className="w-80 border-l">
+          <SidebarProvider>
+            <Sidebar side="right" collapsible="offcanvas" className="w-80 border-l" open={rightSidebarOpen} onOpenChange={setRightSidebarOpen}>
               <SidebarHeader>
                 <div className="flex items-center gap-2 mb-2">
                   <LayoutGrid className="w-5 h-5" />

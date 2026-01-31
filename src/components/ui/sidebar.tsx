@@ -34,7 +34,7 @@ const SIDEBAR_KEYBOARD_SHORTCUT = "b"
 type SidebarContext = {
   state: "expanded" | "collapsed"
   open: boolean
-  setOpen: (open: boolean) => void
+  setOpen: (open: boolean | ((prevState: boolean) => boolean)) => void
   isMobile: boolean
 }
 
@@ -54,7 +54,7 @@ const SidebarProvider = React.forwardRef<
   React.ComponentProps<"div"> & {
     defaultOpen?: boolean
     open?: boolean
-    onOpenChange?: (open: boolean) => void
+    onOpenChange?: (open: boolean | ((prevState: boolean) => boolean)) => void
   }
 >(
   (
@@ -76,19 +76,21 @@ const SidebarProvider = React.forwardRef<
     const [_open, _setOpen] = React.useState(defaultOpen)
     const open = openProp ?? _open
     const setOpen = React.useCallback(
-      (value: boolean | ((value: boolean) => boolean)) => {
-        const openState = typeof value === "function" ? value(open) : value
+      (value: boolean | ((prevState: boolean) => boolean)) => {
         if (setOpenProp) {
-          setOpenProp(openState)
+          setOpenProp(value)
         } else {
-          _setOpen(openState)
+          _setOpen(value)
         }
-
-        // This sets the cookie to keep the sidebar state.
-        document.cookie = `${SIDEBAR_COOKIE_NAME}=${openState}; path=/; max-age=${SIDEBAR_COOKIE_MAX_AGE}`
       },
-      [setOpenProp, open]
+      [setOpenProp]
     )
+
+    React.useEffect(() => {
+      if (typeof window !== 'undefined') {
+        document.cookie = `${SIDEBAR_COOKIE_NAME}=${open}; path=/; max-age=${SIDEBAR_COOKIE_MAX_AGE}`
+      }
+    }, [open]);
 
     // Helper to toggle the sidebar.
     const toggleSidebar = React.useCallback(() => {
@@ -158,6 +160,8 @@ const Sidebar = React.forwardRef<
     side?: "left" | "right"
     variant?: "sidebar" | "floating" | "inset"
     collapsible?: "offcanvas" | "icon" | "none"
+    open?: boolean
+    onOpenChange?: (open: boolean | ((prevState: boolean) => boolean)) => void
   }
 >(
   (
@@ -167,11 +171,23 @@ const Sidebar = React.forwardRef<
       collapsible = "offcanvas",
       className,
       children,
+      open: openProp,
+      onOpenChange: setOpenProp,
       ...props
     },
     ref
   ) => {
-    const { isMobile, state, open, setOpen } = useSidebar()
+    const isMobile = useIsMobile()
+    const [_open, _setOpen] = React.useState(true)
+
+    const open = openProp !== undefined ? openProp : _open
+    const setOpen = (value: boolean) => {
+      if (setOpenProp) {
+        setOpenProp(value)
+      } else {
+        _setOpen(value)
+      }
+    }
 
     if (collapsible === "none") {
       return (
@@ -202,8 +218,10 @@ const Sidebar = React.forwardRef<
             }
             side={side}
           >
-            <SheetHeader className="sr-only">
-              <SheetTitle>Sidebar</SheetTitle>
+            <SheetHeader className="p-2 pt-4">
+              <SheetTitle className="text-2xl">
+                {side === 'left' ? 'Outline' : 'Controls'}
+              </SheetTitle>
             </SheetHeader>
             <div className="flex h-full w-full flex-col">{children}</div>
           </SheetContent>
@@ -215,8 +233,8 @@ const Sidebar = React.forwardRef<
       <div
         ref={ref}
         className="group peer hidden md:block text-sidebar-foreground"
-        data-state={state}
-        data-collapsible={state === "collapsed" ? collapsible : ""}
+        data-state={open ? 'expanded' : 'collapsed'}
+        data-collapsible={open ? '' : collapsible}
         data-variant={variant}
         data-side={side}
       >
