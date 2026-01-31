@@ -24,17 +24,13 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip"
 
-const SIDEBAR_COOKIE_NAME = "sidebar_state"
-const SIDEBAR_COOKIE_MAX_AGE = 60 * 60 * 24 * 7
 const SIDEBAR_WIDTH = "16rem"
 const SIDEBAR_WIDTH_MOBILE = "18rem"
 const SIDEBAR_WIDTH_ICON = "3rem"
-const SIDEBAR_KEYBOARD_SHORTCUT = "b"
 
 type SidebarContext = {
   state: "expanded" | "collapsed"
   open: boolean
-  setOpen: (open: boolean | ((prevState: boolean) => boolean)) => void
   isMobile: boolean
 }
 
@@ -43,110 +39,10 @@ const SidebarContext = React.createContext<SidebarContext | null>(null)
 function useSidebar() {
   const context = React.useContext(SidebarContext)
   if (!context) {
-    throw new Error("useSidebar must be used within a SidebarProvider.")
+    throw new Error("useSidebar must be used within a Sidebar component.")
   }
-
   return context
 }
-
-const SidebarProvider = React.forwardRef<
-  HTMLDivElement,
-  React.ComponentProps<"div"> & {
-    defaultOpen?: boolean
-    open?: boolean
-    onOpenChange?: (open: boolean | ((prevState: boolean) => boolean)) => void
-  }
->(
-  (
-    {
-      defaultOpen = true,
-      open: openProp,
-      onOpenChange: onOpenChangeProp,
-      className,
-      style,
-      children,
-      ...props
-    },
-    ref
-  ) => {
-    const isMobile = useIsMobile()
-
-    const [_open, _setOpen] = React.useState(defaultOpen)
-    const open = openProp ?? _open
-    const setOpen = React.useCallback(
-      (value: boolean | ((prevState: boolean) => boolean)) => {
-        if (onOpenChangeProp) {
-          onOpenChangeProp(value)
-        } else {
-          _setOpen(value)
-        }
-      },
-      [onOpenChangeProp]
-    )
-
-    React.useEffect(() => {
-      if (typeof window !== 'undefined' && openProp !== undefined) {
-        document.cookie = `${SIDEBAR_COOKIE_NAME}=${openProp}; path=/; max-age=${SIDEBAR_COOKIE_MAX_AGE}`
-      }
-    }, [openProp]);
-
-    const toggleSidebar = React.useCallback(() => {
-      return setOpen((open) => !open)
-    }, [setOpen])
-
-    React.useEffect(() => {
-      const handleKeyDown = (event: KeyboardEvent) => {
-        if (
-          event.key === SIDEBAR_KEYBOARD_SHORTCUT &&
-          (event.metaKey || event.ctrlKey)
-        ) {
-          event.preventDefault()
-          toggleSidebar()
-        }
-      }
-
-      window.addEventListener("keydown", handleKeyDown)
-      return () => window.removeEventListener("keydown", handleKeyDown)
-    }, [toggleSidebar])
-
-    const state = open ? "expanded" : "collapsed"
-
-    const contextValue = React.useMemo<SidebarContext>(
-      () => ({
-        state,
-        open,
-        setOpen,
-        isMobile,
-      }),
-      [state, open, setOpen, isMobile]
-    )
-
-    return (
-      <SidebarContext.Provider value={contextValue}>
-        <TooltipProvider delayDuration={0}>
-          <div
-            style={
-              {
-                "--sidebar-width": SIDEBAR_WIDTH,
-                "--sidebar-width-icon": SIDEBAR_WIDTH_ICON,
-                ...style,
-              } as React.CSSProperties
-            }
-            className={cn(
-              "group/sidebar-wrapper h-full has-[[data-variant=inset]]:bg-sidebar",
-              className
-            )}
-            ref={ref}
-            {...props}
-          >
-            {children}
-          </div>
-        </TooltipProvider>
-      </SidebarContext.Provider>
-    )
-  }
-)
-SidebarProvider.displayName = "SidebarProvider"
 
 const Sidebar = React.forwardRef<
   HTMLDivElement,
@@ -165,23 +61,23 @@ const Sidebar = React.forwardRef<
       collapsible = "offcanvas",
       className,
       children,
-      open: openProp,
+      open = false,
       onOpenChange,
       ...props
     },
     ref
   ) => {
     const isMobile = useIsMobile()
-    const [_open, _setOpen] = React.useState(true)
+    const state = open ? "expanded" : "collapsed"
 
-    const open = openProp !== undefined ? openProp : _open
-    const handleOpenChange = React.useCallback((value: boolean) => {
-      if (onOpenChange) {
-        onOpenChange(value)
-      } else {
-        _setOpen(value)
-      }
-    }, [onOpenChange, _setOpen])
+    const contextValue = React.useMemo<SidebarContext>(
+      () => ({
+        state,
+        open,
+        isMobile,
+      }),
+      [state, open, isMobile]
+    )
 
     if (collapsible === "none") {
       return (
@@ -200,7 +96,7 @@ const Sidebar = React.forwardRef<
 
     if (isMobile) {
       return (
-        <Sheet open={open} onOpenChange={handleOpenChange} {...props}>
+        <Sheet open={open} onOpenChange={onOpenChange} {...props}>
           <SheetContent
             data-sidebar="sidebar"
             data-mobile="true"
@@ -217,7 +113,9 @@ const Sidebar = React.forwardRef<
                 {side === 'left' ? 'Outline' : 'Controls'}
                 </SheetTitle>
             </SheetHeader>
-            <div className="flex h-full w-full flex-col">{children}</div>
+            <SidebarContext.Provider value={contextValue}>
+              <div className="flex h-full w-full flex-col">{children}</div>
+            </SidebarContext.Provider>
           </SheetContent>
         </Sheet>
       )
@@ -261,7 +159,9 @@ const Sidebar = React.forwardRef<
             data-sidebar="sidebar"
             className="flex h-full w-full flex-col bg-sidebar group-data-[variant=floating]:rounded-lg group-data-[variant=floating]:border group-data-[variant=floating]:border-sidebar-border group-data-[variant=floating]:shadow"
           >
-            {children}
+            <SidebarContext.Provider value={contextValue}>
+              {children}
+            </SidebarContext.Provider>
           </div>
         </div>
       </div>
@@ -583,15 +483,17 @@ const SidebarMenuButton = React.forwardRef<
     }
 
     return (
-      <Tooltip>
-        <TooltipTrigger asChild>{button}</TooltipTrigger>
-        <TooltipContent
-          side="right"
-          align="center"
-          hidden={state !== "collapsed" || isMobile}
-          {...tooltip}
-        />
-      </Tooltip>
+      <TooltipProvider delayDuration={0}>
+        <Tooltip>
+          <TooltipTrigger asChild>{button}</TooltipTrigger>
+          <TooltipContent
+            side="right"
+            align="center"
+            hidden={state !== "collapsed" || isMobile}
+            {...tooltip}
+          />
+        </Tooltip>
+      </TooltipProvider>
     )
   }
 )
@@ -760,7 +662,6 @@ export {
   SidebarMenuSub,
   SidebarMenuSubButton,
   SidebarMenuSubItem,
-  SidebarProvider,
   SidebarRail,
   SidebarSeparator,
   SidebarTrigger,

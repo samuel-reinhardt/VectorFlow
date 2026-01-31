@@ -22,7 +22,6 @@ import { Orbit, ListTree, Search, LayoutGrid, Workflow, ChevronRight, PanelLeft 
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import {
-  SidebarProvider,
   Sidebar,
   SidebarHeader,
   SidebarContent,
@@ -159,6 +158,15 @@ export function VectorFlow() {
   const [leftSidebarOpen, setLeftSidebarOpen] = useState(true);
   const [rightSidebarOpen, setRightSidebarOpen] = useState(true);
   const [rightSidebarInfo, setRightSidebarInfo] = useState({ title: 'Controls', description: 'Manage your graph.', deleteText: '' });
+
+
+  const handleLeftSidebarToggle = useCallback(() => {
+    setLeftSidebarOpen(p => !p);
+  }, []);
+
+  const handleRightSidebarToggle = useCallback(() => {
+    setRightSidebarOpen(p => !p);
+  }, []);
 
 
   const onNodesChange = useCallback((changes: NodeChange[]) => setNodes((nds) => applyNodeChanges(changes, nds)), [setNodes]);
@@ -572,6 +580,7 @@ export function VectorFlow() {
     }, 100);
   
     return () => clearTimeout(timer);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
   
 
@@ -599,7 +608,7 @@ export function VectorFlow() {
             variant="ghost"
             size="icon"
             className="h-8 w-8"
-            onClick={() => setLeftSidebarOpen(p => !p)}
+            onClick={handleLeftSidebarToggle}
             aria-label="Toggle outline panel"
         >
             <PanelLeft />
@@ -607,7 +616,7 @@ export function VectorFlow() {
         <Button
             variant="ghost"
             size="icon"
-            onClick={() => setRightSidebarOpen(p => !p)}
+            onClick={handleRightSidebarToggle}
             className="h-8 w-8"
             aria-label="Toggle settings panel"
         >
@@ -616,11 +625,9 @@ export function VectorFlow() {
       </div>
 
       <div className="flex flex-1 overflow-hidden">
-          <SidebarProvider>
-            <Sidebar side="left" collapsible="icon" open={leftSidebarOpen} onOpenChange={setLeftSidebarOpen}>
-              <Outline nodes={nodes} selectedStepId={selectedStepId} onStepSelect={handleStepSelect} />
-            </Sidebar>
-          </SidebarProvider>
+        <Sidebar side="left" collapsible="icon" open={leftSidebarOpen} onOpenChange={setLeftSidebarOpen}>
+            <Outline nodes={nodes} selectedStepId={selectedStepId} onStepSelect={handleStepSelect} />
+        </Sidebar>
 
           <main className="relative flex-1">
               <ReactFlow
@@ -640,33 +647,31 @@ export function VectorFlow() {
               </ReactFlow>
           </main>
           
-          <SidebarProvider>
-            <Sidebar side="right" collapsible="offcanvas" className="w-80 border-l" open={rightSidebarOpen} onOpenChange={setRightSidebarOpen}>
-              <SidebarHeader>
-                <div className="flex items-center gap-2 mb-2">
-                  <LayoutGrid className="w-5 h-5" />
-                  <h2 className="text-lg font-semibold">{rightSidebarInfo.title}</h2>
-                </div>
-                <p className="text-sm text-muted-foreground h-8">{rightSidebarInfo.description}</p>
-              </SidebarHeader>
-              <SidebarContent>
-                <SettingsPanel 
-                  selectedSteps={selectedNodes}
-                  selectedEdge={selectedEdges.length === 1 ? selectedEdges[0] : null}
-                  onAddStep={addStep}
-                  onAddDeliverable={addDeliverable}
-                  onUpdateStepLabel={updateStepLabel}
-                  onUpdateStepColor={updateStepColor}
-                  onUpdateEdgeLabel={updateEdgeLabel}
-                  onUpdateEdgeColor={updateEdgeColor}
-                  onDeleteSelection={deleteSelection}
-                  onGroupSelection={groupSelection}
-                  onUngroup={ungroupSelection}
-                  onTitleChange={(title, description) => setRightSidebarInfo({ title, description, deleteText: '' })}
-                />
-              </SidebarContent>
-            </Sidebar>
-          </SidebarProvider>
+        <Sidebar side="right" collapsible="offcanvas" className="w-80 border-l" open={rightSidebarOpen} onOpenChange={setRightSidebarOpen}>
+            <SidebarHeader>
+            <div className="flex items-center gap-2 mb-2">
+                <LayoutGrid className="w-5 h-5" />
+                <h2 className="text-lg font-semibold">{rightSidebarInfo.title}</h2>
+            </div>
+            <p className="text-sm text-muted-foreground h-8">{rightSidebarInfo.description}</p>
+            </SidebarHeader>
+            <SidebarContent>
+            <SettingsPanel 
+                selectedSteps={selectedNodes}
+                selectedEdge={selectedEdges.length === 1 ? selectedEdges[0] : null}
+                onAddStep={addStep}
+                onAddDeliverable={addDeliverable}
+                onUpdateStepLabel={updateStepLabel}
+                onUpdateStepColor={updateStepColor}
+                onUpdateEdgeLabel={updateEdgeLabel}
+                onUpdateEdgeColor={updateEdgeColor}
+                onDeleteSelection={deleteSelection}
+                onGroupSelection={groupSelection}
+                onUngroup={ungroupSelection}
+                onTitleChange={(title, description) => setRightSidebarInfo({ title, description, deleteText: '' })}
+            />
+            </SidebarContent>
+        </Sidebar>
       </div>
     </div>
   );
