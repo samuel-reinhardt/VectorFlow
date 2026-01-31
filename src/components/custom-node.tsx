@@ -11,8 +11,8 @@ const CustomNode = ({ data, selected }: NodeProps<{ label: string; color: string
       <Handle type="target" position={Position.Top} className="!bg-primary !w-3 !h-3" />
       <Card
         className={cn(
-          'shadow-lg transition-all duration-300 border-2',
-          selected ? 'border-primary' : 'border-transparent'
+          'shadow-lg border-2',
+          selected ? 'border-primary ring-2 ring-ring' : 'border-transparent'
         )}
         style={{ backgroundColor: data.color || '#739072' }}
       >

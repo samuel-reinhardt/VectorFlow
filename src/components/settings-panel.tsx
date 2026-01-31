@@ -53,8 +53,8 @@ export function SettingsPanel({
   };
 
   return (
-    <aside className="w-80 border-l border-border bg-card/50 p-4 overflow-y-auto hidden md:block">
-      <div className="h-full">
+    <aside className="w-80 border-l border-border bg-card/50">
+      <div className="h-full flex flex-col">
         <CardHeader>
           <CardTitle className="font-headline">{selectedNode ? 'Edit Node' : 'Controls'}</CardTitle>
           <CardDescription>
@@ -63,7 +63,7 @@ export function SettingsPanel({
               : 'Manage your graph.'}
           </CardDescription>
         </CardHeader>
-        <CardContent>
+        <CardContent className="flex-1 overflow-y-auto p-4">
           {selectedNode ? (
             <div className="space-y-6">
               <div className="space-y-2">
