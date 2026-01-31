@@ -19,6 +19,7 @@ import { useVectorFlow } from '@/hooks/use-vector-flow';
 import { Header } from '@/components/header';
 import { Toolbar } from '@/components/toolbar';
 import { Outline } from '@/components/outline';
+import { useMediaQuery } from '@/hooks/use-media-query';
 
 const initialNodes: Node[] = [
   { id: '1', position: { x: 250, y: 150 }, data: { label: 'Welcome to VectorFlow!', color: '#F3F4F6' }, type: 'custom', style: { width: 220, height: 60 } },
@@ -62,34 +63,38 @@ export function VectorFlow() {
 
     const { fitView, getNode, getNodes, setEdges } = useReactFlow();
 
+    const isDesktop = useMediaQuery('(min-width: 768px)');
     const [leftSidebarOpen, setLeftSidebarOpen] = useState(false);
     const [rightSidebarOpen, setRightSidebarOpen] = useState(false);
     const [rightSidebarInfo, setRightSidebarInfo] = useState({ title: 'Controls', description: 'Manage your graph.' });
 
     useEffect(() => {
-        const isDesktop = window.innerWidth >= 768; // Tailwind's `md` breakpoint
-        if (isDesktop) {
-        setLeftSidebarOpen(true);
-        setRightSidebarOpen(true);
+        // Set initial state based on viewport, once isDesktop is determined.
+        if (isDesktop === true) {
+            setLeftSidebarOpen(true);
+            setRightSidebarOpen(true);
+        } else if (isDesktop === false) {
+            setLeftSidebarOpen(false);
+            setRightSidebarOpen(false);
         }
-    }, []);
+    }, [isDesktop]);
 
     const handleLeftSidebarToggle = useCallback(() => setLeftSidebarOpen(p => !p), []);
     const handleRightSidebarToggle = useCallback(() => setRightSidebarOpen(p => !p), []);
     
     const handleLeftSidebarChange = useCallback((open: boolean) => {
         // The Sheet component is for mobile only. It calls onOpenChange on outside clicks.
-        // We only want this behavior on mobile. On desktop, the sidebar should be persistent.
-        if (window.innerWidth < 768) {
+        // We only want this behavior on mobile.
+        if (isDesktop === false) {
             setLeftSidebarOpen(open);
         }
-    }, []);
+    }, [isDesktop]);
 
     const handleRightSidebarChange = useCallback((open: boolean) => {
-        if (window.innerWidth < 768) {
+        if (isDesktop === false) {
             setRightSidebarOpen(open);
         }
-    }, []);
+    }, [isDesktop]);
 
     const handleSettingsPanelTitleChange = useCallback((title: string, description: string) => {
         setRightSidebarInfo({ title, description });
@@ -127,7 +132,7 @@ export function VectorFlow() {
             />
 
             <div className="flex flex-1 overflow-hidden">
-                <Sidebar side="left" open={leftSidebarOpen} onOpenChange={handleLeftSidebarChange}>
+                <Sidebar side="left" open={leftSidebarOpen} onOpenChange={handleLeftSidebarChange} isDesktop={isDesktop}>
                     <Outline nodes={nodes} selectedStepId={selectedStepId} onStepSelect={handleStepSelect} />
                 </Sidebar>
 
@@ -149,7 +154,7 @@ export function VectorFlow() {
                     </ReactFlow>
                 </main>
                 
-                <Sidebar side="right" open={rightSidebarOpen} onOpenChange={handleRightSidebarChange}>
+                <Sidebar side="right" open={rightSidebarOpen} onOpenChange={handleRightSidebarChange} isDesktop={isDesktop}>
                     <SidebarHeader>
                     <div className="flex items-center gap-2">
                         <LayoutGrid className="w-5 h-5" />
