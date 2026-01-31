@@ -25,12 +25,12 @@ export function Outline({ nodes, selectedStepId, onStepSelect }: OutlineProps) {
   const nodeTree = useMemo(() => {
     const allNodes = getNodes();
     const nodesById = new Map(
-      allNodes.map((node) => ({ ...node, children: [] as TreeNode[] }))
+      allNodes.map((node) => [node.id, { ...node, children: [] as TreeNode[] }])
     );
 
     for (const node of nodesById.values()) {
-      if (node.parentId && nodesById.has(node.parentId)) {
-        nodesById.get(node.parentId)!.children.push(node as TreeNode);
+      if (node.parentNode && nodesById.has(node.parentNode)) {
+        nodesById.get(node.parentNode)!.children.push(node as TreeNode);
       }
     }
 
