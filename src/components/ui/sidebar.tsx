@@ -15,16 +15,14 @@ const Sidebar = React.forwardRef<
   return (
     <>
       {/* Mobile view using Sheet */}
-      <div className="md:hidden">
-        <Sheet open={open} onOpenChange={onOpenChange}>
-          <SheetContent side={side} className={cn('w-80 p-0', className)}>
-             <SheetHeader className="sr-only">
-                <SheetTitle>{side === 'left' ? 'Outline' : 'Controls'} Sidebar</SheetTitle>
-             </SheetHeader>
-            {children}
-          </SheetContent>
-        </Sheet>
-      </div>
+      <Sheet open={open} onOpenChange={onOpenChange}>
+        <SheetContent side={side} className={cn('w-80 p-0 md:hidden', className)}>
+            <SheetHeader>
+              <SheetTitle className="sr-only">{side === 'left' ? 'Outline' : 'Controls'} Sidebar</SheetTitle>
+            </SheetHeader>
+          {children}
+        </SheetContent>
+      </Sheet>
 
       {/* Desktop view */}
       <aside
