@@ -554,8 +554,10 @@ export const useVectorFlow = (initialNodes: Node[], initialEdges: Edge[]) => {
         title: "Layout Arranged",
         description: "Steps have been arranged from left to right.",
       });
+      setTimeout(() => fitView({ duration: 500 }), 100);
     }
-    setTimeout(() => fitView({ duration: 500 }), 100);
+    // Initial silent layout doesn't trigger fitView here; 
+    // VectorFlow handles initial fit after nodes are measured.
 
   }, [getNodes, getEdges, setNodesState, fitView, toast]);
 

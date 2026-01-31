@@ -7,6 +7,7 @@ import ReactFlow, {
   Node,
   Edge,
   useReactFlow,
+  useNodesInitialized,
   BackgroundVariant,
 } from 'reactflow';
 import 'reactflow/dist/style.css';
@@ -118,16 +119,27 @@ export function VectorFlow() {
         }
     }, [getNode, setNodes, setEdges, fitView]);
 
+    const nodesInitialized = useNodesInitialized();
+    const [initialFitDone, setInitialFitDone] = useState(false);
+
     useEffect(() => {
-        const timer = setTimeout(() => {
-        if (getNodes().length > 0) {
+        // Initial auto-layout ONLY once on mount after desktop state is known
+        if (isDesktop !== null && !initialFitDone && getNodes().length > 0) {
             handleAutoLayout({ silent: true });
         }
-        }, 100);
-    
-        return () => clearTimeout(timer);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, []);
+    }, [isDesktop]);
+
+    // Reliable fitView once nodes are MEASURED by the DOM
+    useEffect(() => {
+        if (isDesktop !== null && nodesInitialized && !initialFitDone) {
+            const timer = setTimeout(() => {
+                fitView({ duration: 600 });
+                setInitialFitDone(true);
+            }, 200); // Small buffer for CSS variables/animations
+            return () => clearTimeout(timer);
+        }
+    }, [isDesktop, nodesInitialized, initialFitDone, fitView]);
 
     const selectedStepId = useMemo(() => selectedNodes.length === 1 ? selectedNodes[0].id : null, [selectedNodes]);
 
