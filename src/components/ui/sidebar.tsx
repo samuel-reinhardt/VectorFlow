@@ -61,7 +61,7 @@ const SidebarProvider = React.forwardRef<
     {
       defaultOpen = true,
       open: openProp,
-      onOpenChange: setOpenProp,
+      onOpenChange: onOpenChangeProp,
       className,
       style,
       children,
@@ -71,33 +71,29 @@ const SidebarProvider = React.forwardRef<
   ) => {
     const isMobile = useIsMobile()
 
-    // This is the internal state of the sidebar.
-    // We use openProp and setOpenProp for control from outside the component.
     const [_open, _setOpen] = React.useState(defaultOpen)
     const open = openProp ?? _open
     const setOpen = React.useCallback(
       (value: boolean | ((prevState: boolean) => boolean)) => {
-        if (setOpenProp) {
-          setOpenProp(value)
+        if (onOpenChangeProp) {
+          onOpenChangeProp(value)
         } else {
           _setOpen(value)
         }
       },
-      [setOpenProp]
+      [onOpenChangeProp]
     )
 
     React.useEffect(() => {
-      if (typeof window !== 'undefined') {
-        document.cookie = `${SIDEBAR_COOKIE_NAME}=${open}; path=/; max-age=${SIDEBAR_COOKIE_MAX_AGE}`
+      if (typeof window !== 'undefined' && openProp !== undefined) {
+        document.cookie = `${SIDEBAR_COOKIE_NAME}=${openProp}; path=/; max-age=${SIDEBAR_COOKIE_MAX_AGE}`
       }
-    }, [open]);
+    }, [openProp]);
 
-    // Helper to toggle the sidebar.
     const toggleSidebar = React.useCallback(() => {
       return setOpen((open) => !open)
     }, [setOpen])
 
-    // Adds a keyboard shortcut to toggle the sidebar.
     React.useEffect(() => {
       const handleKeyDown = (event: KeyboardEvent) => {
         if (
@@ -113,8 +109,6 @@ const SidebarProvider = React.forwardRef<
       return () => window.removeEventListener("keydown", handleKeyDown)
     }, [toggleSidebar])
 
-    // We add a state so that we can do data-state="expanded" or "collapsed".
-    // This makes it easier to style the sidebar with Tailwind classes.
     const state = open ? "expanded" : "collapsed"
 
     const contextValue = React.useMemo<SidebarContext>(
@@ -161,7 +155,7 @@ const Sidebar = React.forwardRef<
     variant?: "sidebar" | "floating" | "inset"
     collapsible?: "offcanvas" | "icon" | "none"
     open?: boolean
-    onOpenChange?: (open: boolean | ((prevState: boolean) => boolean)) => void
+    onOpenChange?: (open: boolean) => void
   }
 >(
   (
@@ -172,7 +166,7 @@ const Sidebar = React.forwardRef<
       className,
       children,
       open: openProp,
-      onOpenChange: setOpenProp,
+      onOpenChange,
       ...props
     },
     ref
@@ -181,13 +175,13 @@ const Sidebar = React.forwardRef<
     const [_open, _setOpen] = React.useState(true)
 
     const open = openProp !== undefined ? openProp : _open
-    const setOpen = (value: boolean) => {
-      if (setOpenProp) {
-        setOpenProp(value)
+    const handleOpenChange = React.useCallback((value: boolean) => {
+      if (onOpenChange) {
+        onOpenChange(value)
       } else {
         _setOpen(value)
       }
-    }
+    }, [onOpenChange, _setOpen])
 
     if (collapsible === "none") {
       return (
@@ -206,7 +200,7 @@ const Sidebar = React.forwardRef<
 
     if (isMobile) {
       return (
-        <Sheet open={open} onOpenChange={setOpen} {...props}>
+        <Sheet open={open} onOpenChange={handleOpenChange} {...props}>
           <SheetContent
             data-sidebar="sidebar"
             data-mobile="true"
@@ -218,10 +212,10 @@ const Sidebar = React.forwardRef<
             }
             side={side}
           >
-            <SheetHeader className="p-2 pt-4">
-              <SheetTitle className="text-2xl">
+            <SheetHeader className="p-4">
+                <SheetTitle className="text-2xl sr-only">
                 {side === 'left' ? 'Outline' : 'Controls'}
-              </SheetTitle>
+                </SheetTitle>
             </SheetHeader>
             <div className="flex h-full w-full flex-col">{children}</div>
           </SheetContent>
