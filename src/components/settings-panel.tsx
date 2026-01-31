@@ -45,7 +45,7 @@ export function SettingsPanel({
 
   const singleSelectedStep = selectedSteps.length === 1 ? selectedSteps[0] : null;
   const isMultiStepSelection = selectedSteps.length > 1;
-  const isGroupSelected = !!singleSelectedStep?.data.isGroup;
+  const isGroupSelected = singleSelectedStep?.type === 'group';
   
   // Find selected deliverable
   const selectedDeliverable = singleSelectedStep && selectedDeliverableId 
