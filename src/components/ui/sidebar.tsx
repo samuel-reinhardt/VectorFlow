@@ -31,7 +31,8 @@ const SIDEBAR_WIDTH_ICON = "3rem"
 type SidebarContext = {
   state: "expanded" | "collapsed"
   open: boolean
-  isMobile: boolean
+  isMobile: boolean | null
+  onOpenChange?: (open: boolean) => void
 }
 
 const SidebarContext = React.createContext<SidebarContext | null>(null)
@@ -67,7 +68,13 @@ const Sidebar = React.forwardRef<
     },
     ref
   ) => {
-    const isMobile = useIsMobile()
+    const isMobile = useIsMobile();
+
+    // Prevent hydration mismatch by not rendering the mobile version on the server.
+    if (isMobile === null) {
+      return null;
+    }
+
     const state = open ? "expanded" : "collapsed"
 
     const contextValue = React.useMemo<SidebarContext>(
@@ -75,8 +82,9 @@ const Sidebar = React.forwardRef<
         state,
         open,
         isMobile,
+        onOpenChange,
       }),
-      [state, open, isMobile]
+      [state, open, isMobile, onOpenChange]
     )
 
     if (collapsible === "none") {
@@ -194,7 +202,7 @@ const SidebarRail = React.forwardRef<
   HTMLButtonElement,
   React.ComponentProps<"button">
 >(({ className, ...props }, ref) => {
-  const { setOpen } = useSidebar()
+  const { open, onOpenChange } = useSidebar()
 
   return (
     <button
@@ -202,7 +210,7 @@ const SidebarRail = React.forwardRef<
       data-sidebar="rail"
       aria-label="Toggle Sidebar"
       tabIndex={-1}
-      onClick={() => setOpen(open => !open)}
+      onClick={() => onOpenChange?.(!open)}
       title="Toggle Sidebar"
       className={cn(
         "absolute inset-y-0 z-20 hidden w-4 -translate-x-1/2 transition-all ease-linear after:absolute after:inset-y-0 after:left-1/2 after:w-[2px] hover:after:bg-sidebar-border group-data-[side=left]:-right-4 group-data-[side=right]:left-0 sm:flex",
@@ -489,7 +497,7 @@ const SidebarMenuButton = React.forwardRef<
           <TooltipContent
             side="right"
             align="center"
-            hidden={state !== "collapsed" || isMobile}
+            hidden={state !== "collapsed" || isMobile === true}
             {...tooltip}
           />
         </Tooltip>
