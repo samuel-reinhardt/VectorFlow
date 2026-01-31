@@ -26,6 +26,7 @@ import {
   Sidebar,
   SidebarHeader,
   SidebarContent,
+  SidebarTrigger
 } from '@/components/ui/sidebar';
 
 import { SettingsPanel } from '@/components/settings-panel';
@@ -158,7 +159,7 @@ export function VectorFlow() {
 
   const [leftSidebarOpen, setLeftSidebarOpen] = useState(true);
   const [rightSidebarOpen, setRightSidebarOpen] = useState(true);
-  const [rightSidebarInfo, setRightSidebarInfo] = useState({ title: '', description: '', deleteText: '' });
+  const [rightSidebarInfo, setRightSidebarInfo] = useState({ title: 'Controls', description: 'Manage your graph.', deleteText: '' });
 
 
   const onNodesChange = useCallback((changes: NodeChange[]) => setNodes((nds) => applyNodeChanges(changes, nds)), [setNodes]);
@@ -581,9 +582,6 @@ export function VectorFlow() {
     <div className="flex flex-col h-screen w-screen bg-background text-foreground font-body">
       <header className="flex items-center justify-between p-4 border-b border-border shadow-sm z-10 bg-card">
         <div className="flex items-center gap-3">
-            <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => setLeftSidebarOpen(p => !p)}>
-              <PanelLeft />
-            </Button>
             <Orbit className="text-primary h-8 w-8" />
             <h1 className="text-2xl font-headline font-bold">
                 VectorFlow
@@ -594,17 +592,24 @@ export function VectorFlow() {
                 <Workflow className="mr-2 h-4 w-4" />
                 Auto-Arrange
             </Button>
-            <Button
-                variant="ghost"
-                size="icon"
-                onClick={() => setRightSidebarOpen(p => !p)}
-                className="h-8 w-8"
-                aria-label="Toggle settings panel"
-            >
-                <LayoutGrid />
-            </Button>
         </div>
       </header>
+
+      <div className="flex items-center justify-between px-4 py-1 border-b border-border bg-card">
+        <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => setLeftSidebarOpen(p => !p)} aria-label="Toggle outline panel">
+            <PanelLeft />
+        </Button>
+        <Button
+            variant="ghost"
+            size="icon"
+            onClick={() => setRightSidebarOpen(p => !p)}
+            className="h-8 w-8"
+            aria-label="Toggle settings panel"
+        >
+            <LayoutGrid />
+        </Button>
+      </div>
+
       <div className="flex flex-1 overflow-hidden">
           <SidebarProvider open={leftSidebarOpen} onOpenChange={setLeftSidebarOpen}>
             <Sidebar side="left" collapsible="icon">
