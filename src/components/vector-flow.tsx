@@ -42,9 +42,9 @@ const initialNodes: Node[] = [
 ];
 
 const initialEdges: Edge[] = [
-  { id: 'e1-2', source: '1', target: '2', animated: true },
-  { id: 'e1-3', source: '1', target: '3', animated: true },
-  { id: 'e3-4', source: '3', target: '4', animated: true },
+  { id: 'e1-2', source: '1', target: '2', animated: true, label: '', style: { stroke: '#6B7280' } },
+  { id: 'e1-3', source: '1', target: '3', animated: true, label: '', style: { stroke: '#6B7280' } },
+  { id: 'e3-4', source: '3', target: '4', animated: true, label: '', style: { stroke: '#6B7280' } },
 ];
 
 const nodeTypes = {
@@ -106,27 +106,36 @@ export function VectorFlow() {
   const [nodes, setNodes] = useState<Node[]>(initialNodes);
   const [edges, setEdges] = useState<Edge[]>(initialEdges);
   const [selectedNode, setSelectedNode] = useState<Node | null>(null);
+  const [selectedEdge, setSelectedEdge] = useState<Edge | null>(null);
   const [isRightSidebarOpen, setIsRightSidebarOpen] = useState(true);
   const { toast } = useToast();
   const { fitView, getNode } = useReactFlow();
 
   const onNodesChange = useCallback((changes: NodeChange[]) => setNodes((nds) => applyNodeChanges(changes, nds)), [setNodes]);
   const onEdgesChange = useCallback((changes: EdgeChange[]) => setEdges((eds) => applyEdgeChanges(changes, eds)), [setEdges]);
-  const onConnect: OnConnect = useCallback((connection) => setEdges((eds) => addEdge({ ...connection, animated: true }, eds)), [setEdges]);
+  const onConnect: OnConnect = useCallback((connection) => setEdges((eds) => addEdge({ ...connection, animated: true, label: '', style: { stroke: '#6B7280' } }, eds)), [setEdges]);
 
-  const onSelectionChange = useCallback(({ nodes: selectedNodes }: { nodes: Node[] }) => {
-    setSelectedNode(selectedNodes.length === 1 ? selectedNodes[0] : null);
+  const onSelectionChange = useCallback(({ nodes: selectedNodes, edges: selectedEdges }: { nodes: Node[], edges: Edge[] }) => {
+    if (selectedNodes.length === 1) {
+      setSelectedNode(selectedNodes[0]);
+      setSelectedEdge(null);
+    } else if (selectedEdges.length === 1) {
+      setSelectedEdge(selectedEdges[0]);
+      setSelectedNode(null);
+    } else {
+      setSelectedNode(null);
+      setSelectedEdge(null);
+    }
   }, []);
   
   const handleNodeSelect = useCallback((nodeId: string) => {
     const nodeToSelect = getNode(nodeId);
     if (nodeToSelect) {
-        const newNodes = nodes.map(n => ({...n, selected: n.id === nodeId}));
-        setNodes(newNodes);
-        setSelectedNode(nodeToSelect);
+        setNodes((nds) => nds.map((n) => ({ ...n, selected: n.id === nodeId })));
+        setEdges((eds) => eds.map((e) => ({ ...e, selected: false })));
         fitView({ nodes: [{id: nodeId}], duration: 300, maxZoom: 1.2 });
     }
-  }, [getNode, setNodes, fitView, nodes]);
+  }, [getNode, setNodes, setEdges, fitView]);
 
 
   const addNode = useCallback(() => {
@@ -149,7 +158,8 @@ export function VectorFlow() {
         node.id === nodeId ? { ...node, data: { ...node.data, label } } : node
       )
     );
-  }, []);
+    setSelectedNode(n => n ? { ...n, data: { ...n.data, label } } : null);
+  }, [setNodes]);
   
   const updateNodeColor = useCallback((nodeId: string, color: string) => {
     setNodes((nds) =>
@@ -157,7 +167,35 @@ export function VectorFlow() {
         node.id === nodeId ? { ...node, data: { ...node.data, color } } : node
       )
     );
-  }, []);
+    setSelectedNode(n => n ? { ...n, data: { ...n.data, color } } : null);
+  }, [setNodes]);
+
+  const updateEdgeLabel = useCallback((edgeId: string, label: string) => {
+    setEdges((eds) =>
+      eds.map((edge) => (edge.id === edgeId ? { ...edge, label } : edge))
+    );
+    setSelectedEdge(e => e ? { ...e, label } : null);
+  }, [setEdges]);
+
+  const updateEdgeColor = useCallback((edgeId: string, color: string) => {
+    setEdges((eds) =>
+      eds.map((edge) =>
+        edge.id === edgeId ? { ...edge, style: { ...edge.style, stroke: color } } : edge
+      )
+    );
+    setSelectedEdge(e => e ? { ...e, style: { ...e.style, stroke: color } } : null);
+  }, [setEdges]);
+
+  const deleteSelection = useCallback(() => {
+    if (selectedNode) {
+        setNodes((nds) => nds.filter((n) => n.id !== selectedNode.id));
+        setEdges((eds) => eds.filter((e) => e.source !== selectedNode.id && e.target !== selectedNode.id));
+        setSelectedNode(null);
+    } else if (selectedEdge) {
+        setEdges((eds) => eds.filter((e) => e.id !== selectedEdge.id));
+        setSelectedEdge(null);
+    }
+  }, [selectedNode, selectedEdge, setNodes, setEdges]);
 
   const handleAutoLayout = useCallback(() => {
     if (nodes.length === 0) {
@@ -311,9 +349,13 @@ export function VectorFlow() {
               <div className="w-80 h-full">
                 <SettingsPanel 
                   selectedNode={selectedNode}
+                  selectedEdge={selectedEdge}
                   onAddNode={addNode}
-                  onUpdateLabel={updateNodeLabel}
-                  onUpdateColor={updateNodeColor}
+                  onUpdateNodeLabel={updateNodeLabel}
+                  onUpdateNodeColor={updateNodeColor}
+                  onUpdateEdgeLabel={updateEdgeLabel}
+                  onUpdateEdgeColor={updateEdgeColor}
+                  onDeleteSelection={deleteSelection}
                 />
               </div>
             </div>

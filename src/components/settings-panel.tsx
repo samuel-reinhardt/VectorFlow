@@ -1,70 +1,82 @@
 'use client';
 
-import { useEffect, useState, useTransition } from 'react';
-import type { Node } from 'reactflow';
+import { useEffect, useState } from 'react';
+import type { Node, Edge } from 'reactflow';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Trash2 } from 'lucide-react';
 
 interface SettingsPanelProps {
   selectedNode: Node | null;
+  selectedEdge: Edge | null;
   onAddNode: () => void;
-  onUpdateLabel: (nodeId: string, label: string) => void;
-  onUpdateColor: (nodeId: string, color: string) => void;
+  onUpdateNodeLabel: (nodeId: string, label: string) => void;
+  onUpdateNodeColor: (nodeId: string, color: string) => void;
+  onUpdateEdgeLabel: (edgeId: string, label: string) => void;
+  onUpdateEdgeColor: (edgeId: string, color: string) => void;
+  onDeleteSelection: () => void;
 }
 
 export function SettingsPanel({
   selectedNode,
+  selectedEdge,
   onAddNode,
-  onUpdateLabel,
-  onUpdateColor,
+  onUpdateNodeLabel,
+  onUpdateNodeColor,
+  onUpdateEdgeLabel,
+  onUpdateEdgeColor,
+  onDeleteSelection,
 }: SettingsPanelProps) {
   const [label, setLabel] = useState('');
   const [color, setColor] = useState('#E5E7EB');
-  const [isPending, startTransition] = useTransition();
-
 
   useEffect(() => {
     if (selectedNode) {
       setLabel(selectedNode.data.label || '');
       setColor(selectedNode.data.color || '#E5E7EB');
+    } else if (selectedEdge) {
+      setLabel(selectedEdge.label?.toString() || '');
+      setColor((selectedEdge.style?.stroke as string) || '#6B7280');
     }
-  }, [selectedNode]);
+  }, [selectedNode, selectedEdge]);
 
   const handleLabelChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const newLabel = e.target.value;
+    setLabel(newLabel);
     if (selectedNode) {
-      const newLabel = e.target.value;
-      setLabel(newLabel);
-      startTransition(() => {
-        onUpdateLabel(selectedNode.id, newLabel);
-      });
+      onUpdateNodeLabel(selectedNode.id, newLabel);
+    } else if (selectedEdge) {
+      onUpdateEdgeLabel(selectedEdge.id, newLabel);
     }
   };
-  
+
   const handleColorChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const newColor = e.target.value;
+    setColor(newColor);
     if (selectedNode) {
-      const newColor = e.target.value;
-      setColor(newColor);
-       startTransition(() => {
-        onUpdateColor(selectedNode.id, newColor);
-      });
+      onUpdateNodeColor(selectedNode.id, newColor);
+    } else if (selectedEdge) {
+      onUpdateEdgeColor(selectedEdge.id, newColor);
     }
   };
+
+  const editingElement = selectedNode || selectedEdge;
 
   return (
     <aside className="w-80 border-l border-border bg-card h-full">
       <div className="h-full flex flex-col">
         <CardHeader>
-          <CardTitle className="font-headline">{selectedNode ? 'Edit Node' : 'Controls'}</CardTitle>
+          <CardTitle className="font-headline">{editingElement ? (selectedNode ? 'Edit Node' : 'Edit Edge') : 'Controls'}</CardTitle>
           <CardDescription>
-            {selectedNode
-              ? `Editing: "${selectedNode.data.label}"`
+            {editingElement
+              ? `Editing selected ${selectedNode ? 'node' : 'edge'}`
               : 'Manage your graph.'}
           </CardDescription>
         </CardHeader>
         <CardContent className="flex-1 overflow-y-auto p-4">
-          {selectedNode ? (
+          {editingElement ? (
             <div className="space-y-6">
               <div className="space-y-2">
                 <Label htmlFor="label-input" className="font-semibold">Label</Label>
@@ -72,7 +84,7 @@ export function SettingsPanel({
                   id="label-input"
                   value={label}
                   onChange={handleLabelChange}
-                  placeholder="Enter node label"
+                  placeholder="Enter label"
                 />
               </div>
               <div className="space-y-2">
@@ -88,10 +100,14 @@ export function SettingsPanel({
                    <Input value={color} onChange={handleColorChange} placeholder="#RRGGBB" />
                 </div>
               </div>
+              <Button variant="destructive" onClick={onDeleteSelection} className="w-full">
+                <Trash2 className="mr-2 h-4 w-4" />
+                Delete {selectedNode ? 'Node' : 'Edge'}
+              </Button>
             </div>
           ) : (
             <div className="flex flex-col gap-4">
-              <p className="text-sm text-muted-foreground">Select a node to edit its properties, or add a new node to the canvas.</p>
+              <p className="text-sm text-muted-foreground">Select an element to edit its properties, or add a new node to the canvas.</p>
               <Button onClick={onAddNode}>Add Node</Button>
             </div>
           )}
