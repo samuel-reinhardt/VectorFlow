@@ -26,7 +26,6 @@ import {
   Sidebar,
   SidebarHeader,
   SidebarContent,
-  SidebarTrigger
 } from '@/components/ui/sidebar';
 
 import { SettingsPanel } from '@/components/settings-panel';
@@ -596,7 +595,13 @@ export function VectorFlow() {
       </header>
 
       <div className="flex items-center justify-between px-4 py-1 border-b border-border bg-card">
-        <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => setLeftSidebarOpen(p => !p)} aria-label="Toggle outline panel">
+        <Button
+            variant="ghost"
+            size="icon"
+            className="h-8 w-8"
+            onClick={() => setLeftSidebarOpen(p => !p)}
+            aria-label="Toggle outline panel"
+        >
             <PanelLeft />
         </Button>
         <Button
