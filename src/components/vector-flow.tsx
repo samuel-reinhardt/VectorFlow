@@ -77,6 +77,20 @@ export function VectorFlow() {
     const handleLeftSidebarToggle = useCallback(() => setLeftSidebarOpen(p => !p), []);
     const handleRightSidebarToggle = useCallback(() => setRightSidebarOpen(p => !p), []);
     
+    const handleLeftSidebarChange = useCallback((open: boolean) => {
+        // The Sheet component is for mobile only. It calls onOpenChange on outside clicks.
+        // We only want this behavior on mobile. On desktop, the sidebar should be persistent.
+        if (window.innerWidth < 768) {
+            setLeftSidebarOpen(open);
+        }
+    }, []);
+
+    const handleRightSidebarChange = useCallback((open: boolean) => {
+        if (window.innerWidth < 768) {
+            setRightSidebarOpen(open);
+        }
+    }, []);
+
     const handleSettingsPanelTitleChange = useCallback((title: string, description: string) => {
         setRightSidebarInfo({ title, description });
     }, []);
@@ -113,7 +127,7 @@ export function VectorFlow() {
             />
 
             <div className="flex flex-1 overflow-hidden">
-                <Sidebar side="left" open={leftSidebarOpen} onOpenChange={setLeftSidebarOpen}>
+                <Sidebar side="left" open={leftSidebarOpen} onOpenChange={handleLeftSidebarChange}>
                     <Outline nodes={nodes} selectedStepId={selectedStepId} onStepSelect={handleStepSelect} />
                 </Sidebar>
 
@@ -135,7 +149,7 @@ export function VectorFlow() {
                     </ReactFlow>
                 </main>
                 
-                <Sidebar side="right" open={rightSidebarOpen} onOpenChange={setRightSidebarOpen}>
+                <Sidebar side="right" open={rightSidebarOpen} onOpenChange={handleRightSidebarChange}>
                     <SidebarHeader>
                     <div className="flex items-center gap-2">
                         <LayoutGrid className="w-5 h-5" />
