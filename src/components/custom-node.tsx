@@ -55,7 +55,10 @@ const CustomNode = ({ id, data, selected }: NodeProps<{ label: string; color: st
         style={{ borderColor: data.color }}
       >
         <CardHeader
-          className="p-3 flex-shrink-0"
+          className={cn(
+            "p-3",
+            data.hasDeliverables ? "flex-shrink-0" : "flex-grow flex items-center"
+          )}
           style={{ backgroundColor: data.color }}
         >
           <CardTitle className="text-base break-words" style={{ color: textColor }}>
