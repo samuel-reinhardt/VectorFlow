@@ -294,7 +294,7 @@ export function VectorFlow() {
         }
         return n;
       });
-      return [...newNodes, parentNode];
+      return [parentNode, ...newNodes];
     });
 
   }, [getNodes, setNodes, toast]);
