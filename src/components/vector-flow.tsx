@@ -113,8 +113,7 @@ function Outline({ nodes: flatNodes, selectedStepId, onStepSelect }: { nodes: No
                     />
                 </div>
             </SidebarHeader>
-            <SidebarContent>
-                <div className="p-2">
+            <SidebarContent className="p-2">
                 {filteredNodes.length > 0 ? (
                     <ul className="space-y-1">
                     {filteredNodes.map((node) => (
@@ -140,7 +139,6 @@ function Outline({ nodes: flatNodes, selectedStepId, onStepSelect }: { nodes: No
                     No steps found.
                     </p>
                 )}
-                </div>
             </SidebarContent>
         </div>
     )
@@ -160,13 +158,8 @@ export function VectorFlow() {
   const [rightSidebarInfo, setRightSidebarInfo] = useState({ title: 'Controls', description: 'Manage your graph.', deleteText: '' });
 
 
-  const handleLeftSidebarToggle = useCallback(() => {
-    setLeftSidebarOpen(p => !p);
-  }, []);
-
-  const handleRightSidebarToggle = useCallback(() => {
-    setRightSidebarOpen(p => !p);
-  }, []);
+  const handleLeftSidebarToggle = useCallback(() => setLeftSidebarOpen(p => !p), []);
+  const handleRightSidebarToggle = useCallback(() => setRightSidebarOpen(p => !p), []);
 
 
   const onNodesChange = useCallback((changes: NodeChange[]) => setNodes((nds) => applyNodeChanges(changes, nds)), [setNodes]);
@@ -625,7 +618,7 @@ export function VectorFlow() {
       </div>
 
       <div className="flex flex-1 overflow-hidden">
-        <Sidebar side="left" collapsible="icon" open={leftSidebarOpen} onOpenChange={setLeftSidebarOpen}>
+        <Sidebar side="left" collapsible="offcanvas" open={leftSidebarOpen} onOpenChange={setLeftSidebarOpen}>
             <Outline nodes={nodes} selectedStepId={selectedStepId} onStepSelect={handleStepSelect} />
         </Sidebar>
 
@@ -647,15 +640,15 @@ export function VectorFlow() {
               </ReactFlow>
           </main>
           
-        <Sidebar side="right" collapsible="offcanvas" className="w-80 border-l" open={rightSidebarOpen} onOpenChange={setRightSidebarOpen}>
+        <Sidebar side="right" collapsible="offcanvas" open={rightSidebarOpen} onOpenChange={setRightSidebarOpen}>
             <SidebarHeader>
-            <div className="flex items-center gap-2 mb-2">
+            <div className="flex items-center gap-2">
                 <LayoutGrid className="w-5 h-5" />
                 <h2 className="text-lg font-semibold">{rightSidebarInfo.title}</h2>
             </div>
             <p className="text-sm text-muted-foreground h-8">{rightSidebarInfo.description}</p>
             </SidebarHeader>
-            <SidebarContent>
+            <SidebarContent className="p-4">
             <SettingsPanel 
                 selectedSteps={selectedNodes}
                 selectedEdge={selectedEdges.length === 1 ? selectedEdges[0] : null}
