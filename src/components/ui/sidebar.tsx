@@ -69,14 +69,7 @@ const Sidebar = React.forwardRef<
     ref
   ) => {
     const isMobile = useIsMobile();
-
-    // Prevent hydration mismatch by not rendering the mobile version on the server.
-    if (isMobile === null) {
-      return null;
-    }
-
     const state = open ? "expanded" : "collapsed"
-
     const contextValue = React.useMemo<SidebarContext>(
       () => ({
         state,
@@ -86,6 +79,11 @@ const Sidebar = React.forwardRef<
       }),
       [state, open, isMobile, onOpenChange]
     )
+
+    // Prevent hydration mismatch by not rendering the mobile version on the server.
+    if (isMobile === null) {
+      return null;
+    }
 
     if (collapsible === "none") {
       return (
