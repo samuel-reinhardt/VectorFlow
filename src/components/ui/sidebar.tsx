@@ -96,11 +96,11 @@ const Sidebar = React.forwardRef<
 
     if (isMobile) {
       return (
-        <Sheet open={open} onOpenChange={onOpenChange} {...props}>
+        <Sheet open={open} onOpenChange={onOpenChange}>
           <SheetContent
             data-sidebar="sidebar"
             data-mobile="true"
-            className="w-[--sidebar-width] bg-sidebar p-0 text-sidebar-foreground [&>button]:hidden"
+            className={cn("w-[--sidebar-width] bg-sidebar p-0 text-sidebar-foreground [&>button]:hidden", className)}
             style={
               {
                 "--sidebar-width": SIDEBAR_WIDTH_MOBILE,
@@ -118,7 +118,7 @@ const Sidebar = React.forwardRef<
             </SidebarContext.Provider>
           </SheetContent>
         </Sheet>
-      )
+      );
     }
 
     return (
