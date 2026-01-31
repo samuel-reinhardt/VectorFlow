@@ -8,7 +8,7 @@ import { cn } from '@/lib/utils';
 const CustomNode = ({ data, selected }: NodeProps<{ label: string; color: string }>) => {
   return (
     <>
-      <Handle type="target" position={Position.Top} className="!bg-border !w-3 !h-3" />
+      <Handle type="target" position={Position.Left} className="!bg-border !w-3 !h-3" />
       <Card
         className={cn(
           'shadow-lg border-2',
@@ -20,7 +20,7 @@ const CustomNode = ({ data, selected }: NodeProps<{ label: string; color: string
           <p className="text-card-foreground font-medium truncate">{data.label}</p>
         </CardContent>
       </Card>
-      <Handle type="source" position={Position.Bottom} className="!bg-border !w-3 !h-3" />
+      <Handle type="source" position={Position.Right} className="!bg-border !w-3 !h-3" />
     </>
   );
 };

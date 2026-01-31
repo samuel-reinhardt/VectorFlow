@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useCallback, useMemo } from 'react';
+import { useState, useCallback, useMemo, useEffect } from 'react';
 import ReactFlow, {
   Controls,
   Background,
@@ -243,6 +243,16 @@ export function VectorFlow() {
     setTimeout(() => fitView({ duration: 500 }), 100);
 
   }, [nodes, edges, setNodes, fitView, toast]);
+
+  useEffect(() => {
+    // Run auto-layout on initial load
+    const timer = setTimeout(() => {
+      handleAutoLayout();
+    }, 100); // Small delay to ensure everything is ready
+
+    return () => clearTimeout(timer);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []); // Run only once
 
   const selectedNodeId = useMemo(() => selectedNode?.id ?? null, [selectedNode]);
 
