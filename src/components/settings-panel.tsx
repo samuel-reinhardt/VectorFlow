@@ -21,14 +21,14 @@ export function SettingsPanel({
   onUpdateColor,
 }: SettingsPanelProps) {
   const [label, setLabel] = useState('');
-  const [color, setColor] = useState('#739072');
+  const [color, setColor] = useState('#E5E7EB');
   const [isPending, startTransition] = useTransition();
 
 
   useEffect(() => {
     if (selectedNode) {
       setLabel(selectedNode.data.label || '');
-      setColor(selectedNode.data.color || '#739072');
+      setColor(selectedNode.data.color || '#E5E7EB');
     }
   }, [selectedNode]);
 
@@ -53,7 +53,7 @@ export function SettingsPanel({
   };
 
   return (
-    <aside className="w-80 border-l border-border bg-card/50">
+    <aside className="w-80 border-l border-border bg-card h-full">
       <div className="h-full flex flex-col">
         <CardHeader>
           <CardTitle className="font-headline">{selectedNode ? 'Edit Node' : 'Controls'}</CardTitle>

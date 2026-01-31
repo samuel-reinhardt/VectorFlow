@@ -24,7 +24,6 @@ import {
   Sidebar,
   SidebarHeader,
   SidebarContent,
-  SidebarInset,
   SidebarTrigger,
 } from '@/components/ui/sidebar';
 
@@ -36,10 +35,10 @@ import { cn } from '@/lib/utils';
 
 
 const initialNodes: Node[] = [
-  { id: '1', position: { x: 250, y: 150 }, data: { label: 'Welcome to VectorFlow!', color: '#A9B388' }, type: 'custom' },
-  { id: '2', position: { x: 100, y: 250 }, data: { label: 'This is a node', color: '#739072' }, type: 'custom' },
-  { id: '3', position: { x: 400, y: 250 }, data: { label: 'Connect them!', color: '#739072' }, type: 'custom' },
-  { id: '4', position: { x: 250, y: 350 }, data: { label: 'Arrange with AI', color: '#739072' }, type: 'custom' },
+  { id: '1', position: { x: 250, y: 150 }, data: { label: 'Welcome to VectorFlow!', color: '#F3F4F6' }, type: 'custom' },
+  { id: '2', position: { x: 100, y: 250 }, data: { label: 'This is a node', color: '#E5E7EB' }, type: 'custom' },
+  { id: '3', position: { x: 400, y: 250 }, data: { label: 'Connect them!', color: '#E5E7EB' }, type: 'custom' },
+  { id: '4', position: { x: 250, y: 350 }, data: { label: 'Arrange with AI', color: '#E5E7EB' }, type: 'custom' },
 ];
 
 const initialEdges: Edge[] = [
@@ -139,7 +138,7 @@ export function VectorFlow() {
         x: Math.random() * window.innerWidth * 0.4,
         y: Math.random() * window.innerHeight * 0.4,
       },
-      data: { label: 'New Node', color: '#739072' },
+      data: { label: 'New Node', color: '#E5E7EB' },
       type: 'custom',
     };
     setNodes((nds) => nds.concat(newNode));
@@ -205,11 +204,11 @@ export function VectorFlow() {
   return (
     <SidebarProvider>
       <div className="flex flex-col h-screen w-screen bg-background text-foreground font-body">
-        <header className="flex items-center justify-between p-4 border-b border-border shadow-sm z-10 bg-background">
+        <header className="flex items-center justify-between p-4 border-b border-border shadow-sm z-10 bg-card">
           <div className="flex items-center gap-3">
               <SidebarTrigger />
               <Orbit className="text-primary h-8 w-8" />
-              <h1 className="text-2xl font-headline font-bold text-primary">
+              <h1 className="text-2xl font-headline font-bold">
                   VectorFlow
               </h1>
           </div>
@@ -223,6 +222,7 @@ export function VectorFlow() {
                   size="icon"
                   onClick={() => setIsRightSidebarOpen(p => !p)}
                   className="hidden md:flex"
+                  aria-label="Toggle settings panel"
               >
                   <LayoutGrid />
               </Button>
@@ -233,7 +233,7 @@ export function VectorFlow() {
                 <Outline nodes={nodes} selectedNodeId={selectedNodeId} onNodeSelect={handleNodeSelect} />
             </Sidebar>
 
-            <SidebarInset>
+            <main className="relative flex-1">
                 <ReactFlow
                     nodes={nodes}
                     edges={edges}
@@ -248,16 +248,18 @@ export function VectorFlow() {
                     <Controls />
                     <Background variant={BackgroundVariant.Dots} gap={16} size={1} />
                 </ReactFlow>
-            </SidebarInset>
+            </main>
             
-            {isRightSidebarOpen && (
-              <SettingsPanel 
-                selectedNode={selectedNode}
-                onAddNode={addNode}
-                onUpdateLabel={updateNodeLabel}
-                onUpdateColor={updateNodeColor}
-              />
-            )}
+            <div className={cn("transition-[width] ease-in-out duration-300 overflow-x-hidden", isRightSidebarOpen ? 'w-80' : 'w-0')}>
+              <div className="w-80 h-full">
+                <SettingsPanel 
+                  selectedNode={selectedNode}
+                  onAddNode={addNode}
+                  onUpdateLabel={updateNodeLabel}
+                  onUpdateColor={updateNodeColor}
+                />
+              </div>
+            </div>
         </div>
       </div>
     </SidebarProvider>
