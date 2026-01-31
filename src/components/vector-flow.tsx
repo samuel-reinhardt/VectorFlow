@@ -16,7 +16,7 @@ import ReactFlow, {
   BackgroundVariant,
 } from 'reactflow';
 import 'reactflow/dist/style.css';
-import { Loader2, BrainCircuit, Orbit, ListTree, Search, LayoutGrid } from 'lucide-react';
+import { Orbit, ListTree, Search, LayoutGrid, Workflow } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import {
@@ -27,7 +27,6 @@ import {
   SidebarTrigger,
 } from '@/components/ui/sidebar';
 
-import { arrangeLayoutAction } from '@/app/actions';
 import { SettingsPanel } from '@/components/settings-panel';
 import CustomNode from '@/components/custom-node';
 import { useToast } from '@/hooks/use-toast';
@@ -38,7 +37,7 @@ const initialNodes: Node[] = [
   { id: '1', position: { x: 250, y: 150 }, data: { label: 'Welcome to VectorFlow!', color: '#F3F4F6' }, type: 'custom' },
   { id: '2', position: { x: 100, y: 250 }, data: { label: 'This is a node', color: '#E5E7EB' }, type: 'custom' },
   { id: '3', position: { x: 400, y: 250 }, data: { label: 'Connect them!', color: '#E5E7EB' }, type: 'custom' },
-  { id: '4', position: { x: 250, y: 350 }, data: { label: 'Arrange with AI', color: '#E5E7EB' }, type: 'custom' },
+  { id: '4', position: { x: 250, y: 350 }, data: { label: 'Auto-Arrange', color: '#E5E7EB' }, type: 'custom' },
 ];
 
 const initialEdges: Edge[] = [
@@ -106,7 +105,6 @@ export function VectorFlow() {
   const [nodes, setNodes] = useState<Node[]>(initialNodes);
   const [edges, setEdges] = useState<Edge[]>(initialEdges);
   const [selectedNode, setSelectedNode] = useState<Node | null>(null);
-  const [isArranging, setIsArranging] = useState(false);
   const [isRightSidebarOpen, setIsRightSidebarOpen] = useState(true);
   const { toast } = useToast();
   const { fitView, getNode } = useReactFlow();
@@ -160,44 +158,91 @@ export function VectorFlow() {
     );
   }, []);
 
-  const handleArrangeLayout = useCallback(async () => {
-    if (nodes.length <= 1) {
+  const handleAutoLayout = useCallback(() => {
+    if (nodes.length === 0) {
       toast({
-        title: "Not enough nodes",
-        description: "Add more nodes to arrange the layout.",
+        title: "No nodes to arrange",
+        description: "Add some nodes to the canvas first.",
       });
       return;
     }
-    setIsArranging(true);
-    const layoutNodes = nodes.map(({ id, data }) => ({
-      id,
-      label: data.label || '',
-    }));
-    const layoutEdges = edges.map(({ source, target }) => ({ source, target }));
+
+    const nodeWidth = 150;
+    const nodeHeight = 50;
+    const hSpacing = 100;
+    const vSpacing = 50;
+
+    const adj = new Map<string, string[]>();
+    const inDegree = new Map<string, number>();
+
+    nodes.forEach(node => {
+        adj.set(node.id, []);
+        inDegree.set(node.id, 0);
+    });
+
+    edges.forEach(edge => {
+        adj.get(edge.source)?.push(edge.target);
+        inDegree.set(edge.target, (inDegree.get(edge.target) || 0) + 1);
+    });
     
-    const result = await arrangeLayoutAction({ nodes: layoutNodes, edges: layoutEdges });
+    const queue: string[] = [];
+    nodes.forEach(node => {
+        if (inDegree.get(node.id) === 0) {
+            queue.push(node.id);
+        }
+    });
+
+    const columns: string[][] = [];
     
-    if (result.success && result.data) {
-      const suggestedLayout = result.data;
-      const newNodes = nodes.map(node => {
-        const layoutNode = suggestedLayout.find(n => n.id === node.id);
-        return layoutNode ? { ...node, position: { x: layoutNode.x, y: layoutNode.y } } : node;
-      });
-      setNodes(newNodes);
-      toast({
-        title: "Layout Arranged",
-        description: "The AI has optimized your node layout.",
-      });
-      setTimeout(() => fitView({ duration: 500 }), 100);
-    } else {
-      toast({
-        variant: "destructive",
-        title: "Arrangement Failed",
-        description: result.error,
-      });
+    while (queue.length > 0) {
+        const levelSize = queue.length;
+        const currentColumn: string[] = [];
+        for (let i = 0; i < levelSize; i++) {
+            const u = queue.shift()!;
+            currentColumn.push(u);
+
+            (adj.get(u) || []).forEach(v => {
+                const newDegree = (inDegree.get(v) || 1) - 1;
+                inDegree.set(v, newDegree);
+                if (newDegree === 0) {
+                    queue.push(v);
+                }
+            });
+        }
+        columns.push(currentColumn);
     }
-    setIsArranging(false);
-  }, [nodes, edges, toast, fitView]);
+    
+    const visitedNodes = new Set(columns.flat());
+    const remainingNodes = nodes.filter(node => !visitedNodes.has(node.id));
+    if (remainingNodes.length > 0) {
+        columns.push(remainingNodes.map(node => node.id));
+    }
+
+
+    const newNodes = nodes.map(n => ({ ...n }));
+
+    columns.forEach((column, colIndex) => {
+        const x = colIndex * (nodeWidth + hSpacing);
+        const colHeight = column.length * (nodeHeight + vSpacing);
+        const startY = (-(colHeight / 2)) + (nodeHeight / 2) ;
+
+        column.forEach((nodeId, nodeIndex) => {
+            const y = startY + nodeIndex * (nodeHeight + vSpacing);
+            const node = newNodes.find(n => n.id === nodeId);
+            if (node) {
+                node.position = { x, y };
+            }
+        });
+    });
+
+    setNodes(newNodes);
+    toast({
+      title: "Layout Arranged",
+      description: "Nodes have been arranged from left to right.",
+    });
+    setTimeout(() => fitView({ duration: 500 }), 100);
+
+  }, [nodes, edges, setNodes, fitView, toast]);
 
   const selectedNodeId = useMemo(() => selectedNode?.id ?? null, [selectedNode]);
 
@@ -213,9 +258,9 @@ export function VectorFlow() {
               </h1>
           </div>
           <div className="flex items-center gap-2">
-              <Button onClick={handleArrangeLayout} disabled={isArranging}>
-                  {isArranging ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <BrainCircuit className="mr-2 h-4 w-4" />}
-                  {isArranging ? 'Arranging...' : 'Arrange with AI'}
+              <Button onClick={handleAutoLayout}>
+                  <Workflow className="mr-2 h-4 w-4" />
+                  Auto-Arrange
               </Button>
               <Button
                   variant="ghost"
