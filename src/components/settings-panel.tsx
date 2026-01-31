@@ -68,10 +68,10 @@ export function SettingsPanel({
     <aside className="w-80 border-l border-border bg-card h-full">
       <div className="h-full flex flex-col">
         <CardHeader>
-          <CardTitle className="font-headline">{editingElement ? (selectedNode ? 'Edit Node' : 'Edit Edge') : 'Controls'}</CardTitle>
+          <CardTitle className="font-headline">{editingElement ? (selectedNode ? 'Edit Node' : 'Edit Connection') : 'Controls'}</CardTitle>
           <CardDescription>
             {editingElement
-              ? `Editing selected ${selectedNode ? 'node' : 'edge'}`
+              ? `Editing selected ${selectedNode ? 'node' : 'connection'}`
               : 'Manage your graph.'}
           </CardDescription>
         </CardHeader>
@@ -102,7 +102,7 @@ export function SettingsPanel({
               </div>
               <Button variant="destructive" onClick={onDeleteSelection} className="w-full">
                 <Trash2 className="mr-2 h-4 w-4" />
-                Delete {selectedNode ? 'Node' : 'Edge'}
+                Delete {selectedNode ? 'Node' : 'Connection'}
               </Button>
             </div>
           ) : (
