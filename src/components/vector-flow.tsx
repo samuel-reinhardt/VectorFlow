@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useCallback, useMemo, useEffect } from 'react';
@@ -299,6 +300,7 @@ export function VectorFlow() {
                     nodeTypes={nodeTypes}
                     fitView
                     className="bg-background"
+                    deleteKeyCode={['Delete', 'Backspace']}
                 >
                     <Controls />
                     <Background variant={BackgroundVariant.Dots} gap={16} size={1} />
