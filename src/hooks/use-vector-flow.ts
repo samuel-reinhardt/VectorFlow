@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import {
   Node,
   Edge,
@@ -23,23 +23,240 @@ const DELIVERABLE_Y_PADDING = 8;
 const DELIVERABLE_X_PADDING = 12;
 const DELIVERABLE_WIDTH = STEP_WIDTH - (DELIVERABLE_X_PADDING * 2);
 
+export type Deliverable = {
+  id: string;
+  label: string;
+  color: string;
+};
+
+export type Flow = {
+  id: string;
+  title: string;
+  nodes: Node[];
+  edges: Edge[];
+};
+
 export const useVectorFlow = (initialNodes: Node[], initialEdges: Edge[]) => {
-  const [nodes, setNodes] = useState<Node[]>(initialNodes);
+  const [flows, setFlows] = useState<Flow[]>([
+    { id: '1', title: 'Flow 1', nodes: initialNodes, edges: initialEdges }
+  ]);
+  const [activeFlowId, setActiveFlowId] = useState<string>('1');
+
+  const [nodes, setNodesState] = useState<Node[]>(initialNodes);
   const [edges, setEdges] = useState<Edge[]>(initialEdges);
   const [selectedNodes, setSelectedNodes] = useState<Node[]>([]);
   const [selectedEdges, setSelectedEdges] = useState<Edge[]>([]);
+  const [selectedDeliverableId, setSelectedDeliverableId] = useState<string | null>(null);
   
   const { toast } = useToast();
-  const { fitView, getNode, getNodes, getEdges, project } = useReactFlow();
+  const { fitView, getNodes, getEdges, project } = useReactFlow();
   const updateNodeInternals = useUpdateNodeInternals();
 
-  const onNodesChange = useCallback((changes: NodeChange[]) => setNodes((nds) => applyNodeChanges(changes, nds)), [setNodes]);
+  // Wrapper to inject handlers into node data
+  const setNodes = useCallback((value: Node[] | ((prev: Node[]) => Node[])) => {
+    setNodesState((prev) => {
+      const next = typeof value === 'function' ? value(prev) : value;
+      // We need these handlers to be stable or the nodes will re-render constantly?
+      // Actually, passing functions in data is okay if they are memoized or if we accept re-renders.
+      // But we can't memoize them inside this callback easily without recursion issues.
+      // Better: Define handlers outside and expect them to be attached.
+      // For now, we just map basic data. The handlers are attached in the RETURN object or contexts?
+      // React Flow doesn't automatically pass hook functions to Node components.
+      // We MUST inject them into `data`.
+      return next.map(n => ({
+        ...n,
+        data: {
+          ...n.data,
+          onAddDeliverable: handleAddDeliverable,
+          onSelectDeliverable: handleSelectDeliverable,
+          onReorderDeliverables: handleReorderDeliverables,
+          selectedDeliverableId: selectedDeliverableId // Inject current selection
+        }
+      }));
+    });
+  }, [selectedDeliverableId]); // Dependencies here allow data injection to update
+
+  // We need to re-inject data when selectedDeliverableId changes
+  // This effect ensures nodes are up-to-date with selection state
+  // But wait, setNodes wraps setNodesState. If we just call setNodesState in an effect, it might loop?
+  // Let's separate the "raw" nodes from "rendered" nodes? No, simpler.
+  // Just update the nodes when selection changes using setNodesState directly.
+  
+  // Actually, separating logic is cleaner:
+  // 1. Handlers defined (stable).
+  // 2. Nodes state holds the data + handlers.
+
+  // Let's define handlers first.
+  
+  const handleAddDeliverable = useCallback((stepId: string) => {
+    setNodesState(nds => nds.map(n => {
+      if (n.id === stepId) {
+        const newDeliverable: Deliverable = {
+          id: `del_${Date.now()}`,
+          label: 'New Deliverable',
+          color: '#E0E7FF'
+        };
+        const currentDeliverables = n.data.deliverables || [];
+        return {
+          ...n,
+          data: {
+            ...n.data,
+            deliverables: [...currentDeliverables, newDeliverable]
+          }
+        };
+      }
+      return n;
+    }));
+  }, []);
+
+  const handleSelectDeliverable = useCallback((deliverableId: string | null) => {
+    setSelectedDeliverableId(deliverableId);
+  }, []);
+
+  const handleReorderDeliverables = useCallback((stepId: string, newDeliverables: Deliverable[]) => {
+    setNodesState(nds => nds.map(n => {
+      if (n.id === stepId) {
+        return { ...n, data: { ...n.data, deliverables: newDeliverables } };
+      }
+      return n;
+    }));
+  }, []);
+
+  const handleDeleteDeliverable = useCallback((stepId: string, deliverableId: string) => {
+    setNodesState(nds => nds.map(n => {
+      if (n.id === stepId) {
+        return {
+          ...n,
+          data: {
+            ...n.data,
+            deliverables: (n.data.deliverables || []).filter((d: Deliverable) => d.id !== deliverableId)
+          }
+        };
+      }
+      return n;
+    }));
+    if (selectedDeliverableId === deliverableId) {
+      setSelectedDeliverableId(null);
+    }
+  }, [selectedDeliverableId]);
+
+  const handleUpdateDeliverable = useCallback((stepId: string, deliverableId: string, updates: Partial<Deliverable>) => {
+    setNodesState(nds => nds.map(n => {
+      if (n.id === stepId) {
+        return {
+            ...n,
+            data: {
+                ...n.data,
+                deliverables: (n.data.deliverables || []).map((d: Deliverable) => 
+                    d.id === deliverableId ? { ...d, ...updates } : d
+                )
+            }
+        };
+      }
+      return n;
+    }));
+  }, []);
+
+  // Now the main setNodes wrapper that injects these handlers
+  // We use a useEffect to keep data sync'd with current handlers?
+  // Or just inject deeply every time we modify nodes?
+  // The 'setNodes' exported is the one RF uses.
+  
+  // Ideally, we move `data` updates to a `useEffect` that watches `nodes` state?
+  // No, that causes double renders.
+  // Best way: Map on the fly during render? No, `nodes` is passed to RF.
+  
+  // Let's just modify the `nodes` state directly to include functions.
+  // It's not serializable but RF handles it in memory.
+  
+  // IMPORTANT: We need `nodes` to be up to date with `selectedDeliverableId` for highlighting.
+  // So we really need to update nodes when `selectedDeliverableId` changes.
+  
+  useEffect(() => {
+    setNodesState(nds => nds.map(n => ({
+      ...n,
+      data: {
+        ...n.data,
+        onAddDeliverable: handleAddDeliverable,
+        onSelectDeliverable: handleSelectDeliverable,
+        onReorderDeliverables: handleReorderDeliverables,
+        selectedDeliverableId // Dynamic prop
+      }
+    })));
+  }, [selectedDeliverableId, handleAddDeliverable, handleSelectDeliverable, handleReorderDeliverables]);
+
+
+  const saveCurrentFlow = useCallback(() => {
+    setFlows(prevFlows => prevFlows.map(f => 
+      f.id === activeFlowId ? { ...f, nodes: getNodes(), edges: getEdges() } : f
+    ));
+  }, [activeFlowId, getNodes, getEdges]);
+
+  const switchFlow = useCallback((flowId: string) => {
+    const currentNodes = getNodes();
+    const currentEdges = getEdges();
+    
+    setFlows(prev => {
+        // Save current
+        const saved = prev.map(f => 
+            f.id === activeFlowId ? { ...f, nodes: currentNodes, edges: currentEdges } : f
+        );
+        
+        // Find next
+        const nextFlow = saved.find(f => f.id === flowId);
+        if (nextFlow) {
+            setNodesState(nextFlow.nodes); // Raw state update
+            setEdges(nextFlow.edges);
+            setActiveFlowId(flowId);
+            setSelectedDeliverableId(null); // Reset selection
+            setTimeout(() => fitView({ duration: 300 }), 50);
+        }
+        return saved;
+    });
+
+  }, [activeFlowId, getNodes, getEdges, fitView]);
+
+  const addFlow = useCallback(() => {
+    const currentNodes = getNodes();
+    const currentEdges = getEdges();
+    
+    const newId = `flow_${Date.now()}`;
+    const newFlow: Flow = {
+        id: newId,
+        title: `Flow ${flows.length + 1}`,
+        nodes: [],
+        edges: []
+    };
+
+    setFlows(prev => {
+         const saved = prev.map(f => 
+            f.id === activeFlowId ? { ...f, nodes: currentNodes, edges: currentEdges } : f
+        );
+        return [...saved, newFlow];
+    });
+
+    setNodesState([]);
+    setEdges([]);
+    setActiveFlowId(newId);
+    setSelectedDeliverableId(null);
+    
+  }, [activeFlowId, flows.length, getNodes, getEdges]);
+
+  const updateFlowTitle = useCallback((flowId: string, newTitle: string) => {
+    setFlows(prev => prev.map(f => f.id === flowId ? { ...f, title: newTitle } : f));
+  }, []);
+
+  const onNodesChange = useCallback((changes: NodeChange[]) => setNodesState((nds) => applyNodeChanges(changes, nds)), [setNodesState]);
   const onEdgesChange = useCallback((changes: EdgeChange[]) => setEdges((eds) => applyEdgeChanges(changes, eds)), [setEdges]);
   const onConnect: OnConnect = useCallback((connection) => setEdges((eds) => addEdge({ ...connection, animated: true, label: '', style: { stroke: '#6B7280' } }, eds)), [setEdges]);
 
   const onSelectionChange = useCallback(({ nodes, edges }: { nodes: Node[], edges: Edge[] }) => {
     setSelectedNodes(nodes);
     setSelectedEdges(edges);
+    // If we deselect everything, also deselect deliverable
+    if (nodes.length === 0) {
+        setSelectedDeliverableId(null);
+    }
   }, []);
 
   const addStep = useCallback(() => {
@@ -48,75 +265,33 @@ export const useVectorFlow = (initialNodes: Node[], initialEdges: Edge[]) => {
     const newNode: Node = {
       id: newNodeId,
       position: { x, y },
-      data: { label: 'New Step', color: '#E5E7EB' },
+      data: { label: 'New Step', color: '#E5E7EB', deliverables: [] }, // Init deliverables
       type: 'custom',
-      style: { width: STEP_WIDTH, height: STEP_INITIAL_HEIGHT },
+      style: { width: STEP_WIDTH, height: 'auto' }, // Use auto height
     };
-    setNodes((nds) => nds.concat(newNode));
-  }, [nodes.length, project, setNodes]);
+    setNodesState((nds) => nds.concat(newNode));
+  }, [nodes.length, project, setNodesState]);
 
-  const addDeliverable = useCallback((parentId: string) => {
-    const parentNode = getNode(parentId);
-    if (!parentNode) {
-        toast({
-            variant: 'destructive',
-            title: 'Cannot add deliverable',
-            description: 'Parent step not found.'
-        });
-        return;
-    }
-    
-    const childDeliverables = getNodes().filter(n => n.parentNode === parentId && n.data.isDeliverable);
-
-    const newDeliverableY = STEP_HEADER_HEIGHT + DELIVERABLE_Y_PADDING + (childDeliverables.length * (DELIVERABLE_HEIGHT + DELIVERABLE_Y_PADDING));
-
-    const newDeliverableId = `deliverable_${getNodes().length + 1}_${Date.now()}`;
-    const newDeliverableNode: Node = {
-        id: newDeliverableId,
-        type: 'custom',
-        data: { label: 'New Deliverable', color: '#E0E7FF', isDeliverable: true },
-        position: { x: DELIVERABLE_X_PADDING, y: newDeliverableY },
-        parentNode: parentId,
-        extent: 'parent',
-        style: {
-            width: DELIVERABLE_WIDTH,
-            height: DELIVERABLE_HEIGHT,
-        }
-    };
-
-    setNodes(nds => {
-        const newNodes = nds.map(n => {
-            if (n.id === parentId) {
-                const newHeight = STEP_HEADER_HEIGHT + DELIVERABLE_Y_PADDING + ((childDeliverables.length + 1) * (DELIVERABLE_HEIGHT + DELIVERABLE_Y_PADDING)) + DELIVERABLE_Y_PADDING;
-                return {
-                    ...n,
-                    data: { ...n.data, hasDeliverables: true },
-                    style: { ...n.style, height: newHeight, width: STEP_WIDTH },
-                };
-            }
-            return n;
-        });
-        return [...newNodes, newDeliverableNode];
-    });
-
-    updateNodeInternals(parentId);
-  }, [getNodes, getNode, setNodes, toast, updateNodeInternals]);
+  // Renamed to avoid Export confusion, but essentially this is the public addDeliverable
+  const addDeliverablePublic = useCallback((parentId: string) => {
+    handleAddDeliverable(parentId);
+  }, [handleAddDeliverable]);
 
   const updateStepLabel = useCallback((stepId: string, label: string) => {
-    setNodes((nds) =>
+    setNodesState((nds) =>
       nds.map((node) =>
         node.id === stepId ? { ...node, data: { ...node.data, label } } : node
       )
     );
-  }, [setNodes]);
+  }, [setNodesState]);
   
   const updateStepColor = useCallback((stepId: string, color: string) => {
-    setNodes((nds) =>
+    setNodesState((nds) =>
       nds.map((node) =>
         node.id === stepId ? { ...node, data: { ...node.data, color } } : node
       )
     );
-  }, [setNodes]);
+  }, [setNodesState]);
 
   const updateEdgeLabel = useCallback((edgeId: string, label: string) => {
     setEdges((eds) =>
@@ -133,6 +308,12 @@ export const useVectorFlow = (initialNodes: Node[], initialEdges: Edge[]) => {
   }, [setEdges]);
 
   const deleteSelection = useCallback(() => {
+    if (selectedDeliverableId && selectedNodes.length === 1) {
+        // Delete deliverable mode
+        handleDeleteDeliverable(selectedNodes[0].id, selectedDeliverableId);
+        return;
+    }
+
     const allNodes = getNodes();
     const currentSelectedNodes = allNodes.filter(n => n.selected);
     const currentSelectedEdges = getEdges().filter(e => e.selected);
@@ -151,63 +332,16 @@ export const useVectorFlow = (initialNodes: Node[], initialEdges: Edge[]) => {
       }
     });
 
-    const parentsOfDeletedDeliverables = new Set<string>();
-    allNodes.forEach(node => {
-      if (nodeIdsToDelete.has(node.id) && node.parentNode && node.data.isDeliverable) {
-        parentsOfDeletedDeliverables.add(node.parentNode);
-      }
-    });
-
     const edgeIdsToDelete = new Set(currentSelectedEdges.map(e => e.id));
 
-    setNodes(nds => {
-      const remainingNodesUnmodified = nds.filter(n => !nodeIdsToDelete.has(n.id));
-      const nodesToReturn = [...remainingNodesUnmodified];
-
-      parentsOfDeletedDeliverables.forEach(parentId => {
-        const parentIndex = nodesToReturn.findIndex(n => n.id === parentId);
-        if (parentIndex === -1) return;
-
-        const childDeliverables = nodesToReturn
-          .filter(n => n.parentNode === parentId && n.data.isDeliverable)
-          .sort((a,b) => a.position.y - b.position.y);
-        
-        const hasDeliverables = childDeliverables.length > 0;
-        const newHeight = hasDeliverables
-          ? STEP_HEADER_HEIGHT + DELIVERABLE_Y_PADDING + (childDeliverables.length * (DELIVERABLE_HEIGHT + DELIVERABLE_Y_PADDING)) + DELIVERABLE_Y_PADDING
-          : STEP_INITIAL_HEIGHT;
-
-        nodesToReturn[parentIndex] = {
-          ...nodesToReturn[parentIndex],
-          style: { ...nodesToReturn[parentIndex].style, height: newHeight },
-          data: { ...nodesToReturn[parentIndex].data, hasDeliverables }
-        };
-
-        let currentY = STEP_HEADER_HEIGHT + DELIVERABLE_Y_PADDING;
-        childDeliverables.forEach(deliverable => {
-            const deliverableIndex = nodesToReturn.findIndex(n => n.id === deliverable.id);
-            if (deliverableIndex !== -1) {
-                nodesToReturn[deliverableIndex] = {
-                    ...nodesToReturn[deliverableIndex],
-                    position: { ...nodesToReturn[deliverableIndex].position, y: currentY }
-                };
-                currentY += DELIVERABLE_HEIGHT + DELIVERABLE_Y_PADDING;
-            }
-        });
-      });
-      return nodesToReturn;
-    });
-
+    setNodesState(nds => nds.filter(n => !nodeIdsToDelete.has(n.id)));
     setEdges(eds => eds.filter(e => !edgeIdsToDelete.has(e.id) && !nodeIdsToDelete.has(e.source) && !nodeIdsToDelete.has(e.target)));
 
     setSelectedNodes([]);
     setSelectedEdges([]);
+    setSelectedDeliverableId(null);
 
-    parentsOfDeletedDeliverables.forEach(parentId => {
-      updateNodeInternals(parentId);
-    });
-
-  }, [getNodes, getEdges, setNodes, setEdges, updateNodeInternals]);
+  }, [getNodes, getEdges, setNodesState, setEdges, selectedDeliverableId, selectedNodes, handleDeleteDeliverable]);
   
   const groupSelection = useCallback(() => {
     const currentSelectedNodes = getNodes().filter(n => n.selected && !n.parentNode);
@@ -250,13 +384,13 @@ export const useVectorFlow = (initialNodes: Node[], initialEdges: Edge[]) => {
       zIndex: -1,
     };
 
-    setNodes(nds => {
+    setNodesState(nds => {
       const newNodes = nds.map(n => {
         if (currentSelectedNodes.some(sn => sn.id === n.id)) {
           return {
             ...n,
             parentNode: parentId,
-            extent: 'parent',
+            extent: 'parent' as const,
             position: {
               x: n.position.x - parentNode.position.x,
               y: n.position.y - parentNode.position.y,
@@ -269,13 +403,13 @@ export const useVectorFlow = (initialNodes: Node[], initialEdges: Edge[]) => {
       return [parentNode, ...newNodes];
     });
 
-  }, [getNodes, setNodes, toast]);
+  }, [getNodes, setNodesState, toast]);
 
   const ungroupSelection = useCallback(() => {
     const selectedGroup = getNodes().find(n => n.selected && n.data.isGroup);
     if (!selectedGroup) return;
 
-    setNodes(nds => {
+    setNodesState(nds => {
       const children = nds.filter(n => n.parentNode === selectedGroup.id);
       
       const updatedChildren = children.map(child => ({
@@ -291,9 +425,9 @@ export const useVectorFlow = (initialNodes: Node[], initialEdges: Edge[]) => {
       const childrenIds = new Set(children.map(c => c.id));
       const remainingNodes = nds.filter(n => n.id !== selectedGroup.id && !childrenIds.has(n.id));
 
-      return [...remainingNodes, ...updatedChildren];
+      return [...updatedChildren, ...remainingNodes];
     });
-  }, [getNodes, setNodes]);
+  }, [getNodes, setNodesState]);
 
   const handleAutoLayout = useCallback((options?: { silent: boolean }) => {
     const allNodes = getNodes();
@@ -414,7 +548,7 @@ export const useVectorFlow = (initialNodes: Node[], initialEdges: Edge[]) => {
         currentX += columnWidth + hSpacing;
     });
 
-    setNodes(newNodes);
+    setNodesState(newNodes);
     if (!options?.silent) {
       toast({
         title: "Layout Arranged",
@@ -423,20 +557,26 @@ export const useVectorFlow = (initialNodes: Node[], initialEdges: Edge[]) => {
     }
     setTimeout(() => fitView({ duration: 500 }), 100);
 
-  }, [getNodes, getEdges, setNodes, fitView, toast]);
+  }, [getNodes, getEdges, setNodesState, fitView, toast]);
 
   return {
+    flows,
+    activeFlowId,
+    switchFlow,
+    addFlow,
+    updateFlowTitle,
     nodes,
     edges,
     selectedNodes,
     selectedEdges,
-    setNodes,
+    selectedDeliverableId,
+    setNodes: setNodesState, // Export generic setter
     onNodesChange,
     onEdgesChange,
     onConnect,
     onSelectionChange,
     addStep,
-    addDeliverable,
+    addDeliverable: addDeliverablePublic,
     updateStepLabel,
     updateStepColor,
     updateEdgeLabel,
@@ -445,5 +585,7 @@ export const useVectorFlow = (initialNodes: Node[], initialEdges: Edge[]) => {
     groupSelection,
     ungroupSelection,
     handleAutoLayout,
+    handleUpdateDeliverable, // New export
+    selectDeliverable: handleSelectDeliverable, // New export
   };
 };

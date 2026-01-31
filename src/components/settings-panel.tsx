@@ -2,20 +2,22 @@
 
 import { useEffect, useState } from 'react';
 import type { Node, Edge } from 'reactflow';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
+import { Button } from '@/components/ui/forms/button';
+import { Input } from '@/components/ui/forms/input';
+import { Label } from '@/components/ui/forms/label';
 import { Trash2 } from 'lucide-react';
 
 interface SettingsPanelProps {
   selectedSteps: Node[];
   selectedEdge: Edge | null;
+  selectedDeliverableId?: string | null;
   onAddStep: () => void;
   onAddDeliverable: (stepId: string) => void;
   onUpdateStepLabel: (stepId: string, label: string) => void;
   onUpdateStepColor: (stepId: string, color: string) => void;
   onUpdateEdgeLabel: (edgeId: string, label: string) => void;
   onUpdateEdgeColor: (edgeId: string, color: string) => void;
+  onUpdateDeliverable: (stepId: string, deliverableId: string, updates: any) => void;
   onDeleteSelection: () => void;
   onGroupSelection: () => void;
   onUngroup: () => void;
@@ -25,13 +27,15 @@ interface SettingsPanelProps {
 export function SettingsPanel({
   selectedSteps,
   selectedEdge,
+  selectedDeliverableId, // New prop
   onAddStep,
   onAddDeliverable,
   onUpdateStepLabel,
   onUpdateStepColor,
   onUpdateEdgeLabel,
   onUpdateEdgeColor,
-  onDeleteSelection,
+  onUpdateDeliverable, // New prop
+  onDeleteSelection, // We'll rely on global deleteSelection which handles deliverable deletion now
   onGroupSelection,
   onUngroup,
   onTitleChange,
@@ -42,18 +46,26 @@ export function SettingsPanel({
   const singleSelectedStep = selectedSteps.length === 1 ? selectedSteps[0] : null;
   const isMultiStepSelection = selectedSteps.length > 1;
   const isGroupSelected = !!singleSelectedStep?.data.isGroup;
-  const isDeliverableSelected = !!singleSelectedStep?.data.isDeliverable;
-  const isStepSelected = singleSelectedStep && !isGroupSelected && !isDeliverableSelected;
+  
+  // Find selected deliverable
+  const selectedDeliverable = singleSelectedStep && selectedDeliverableId 
+    ? singleSelectedStep.data.deliverables?.find((d: any) => d.id === selectedDeliverableId) 
+    : null;
+
+  const isStepSelected = singleSelectedStep && !isGroupSelected && !selectedDeliverable;
 
   useEffect(() => {
-    if (singleSelectedStep) {
+    if (selectedDeliverable) {
+      setLabel(selectedDeliverable.label || '');
+      setColor(selectedDeliverable.color || '#E0E7FF');
+    } else if (singleSelectedStep) {
       setLabel(singleSelectedStep.data.label || '');
       setColor(singleSelectedStep.data.color || '#E5E7EB');
     } else if (selectedEdge) {
       setLabel(selectedEdge.label?.toString() || '');
       setColor((selectedEdge.style?.stroke as string) || '#6B7280');
     }
-  }, [singleSelectedStep, selectedEdge]);
+  }, [singleSelectedStep, selectedEdge, selectedDeliverable]);
   
   useEffect(() => {
     const getPanelInfo = () => {
@@ -62,7 +74,7 @@ export function SettingsPanel({
       }
       if (singleSelectedStep) {
         if (isGroupSelected) return { title: 'Edit Group', description: 'Editing a group container', deleteText: 'Delete Group' };
-        if (isDeliverableSelected) return { title: 'Edit Deliverable', description: 'Editing a deliverable', deleteText: 'Delete Deliverable' };
+        if (selectedDeliverable) return { title: 'Edit Deliverable', description: 'Editing a deliverable', deleteText: 'Delete Deliverable' };
         if (isStepSelected) return { title: 'Edit Step', description: 'Editing a workflow step', deleteText: 'Delete Step' };
       }
       if (selectedEdge) {
@@ -73,12 +85,14 @@ export function SettingsPanel({
     const { title, description, deleteText } = getPanelInfo();
     onTitleChange(title, description, deleteText);
 
-  }, [selectedSteps, selectedEdge, onTitleChange, isMultiStepSelection, singleSelectedStep, isGroupSelected, isDeliverableSelected, isStepSelected]);
+  }, [selectedSteps, selectedEdge, selectedDeliverable, onTitleChange, isMultiStepSelection, singleSelectedStep, isGroupSelected, isStepSelected]);
 
   const handleLabelChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const newLabel = e.target.value;
     setLabel(newLabel);
-    if (singleSelectedStep) {
+    if (selectedDeliverable) {
+        onUpdateDeliverable(singleSelectedStep!.id, selectedDeliverable.id, { label: newLabel });
+    } else if (singleSelectedStep) {
       onUpdateStepLabel(singleSelectedStep.id, newLabel);
     } else if (selectedEdge) {
       onUpdateEdgeLabel(selectedEdge.id, newLabel);
@@ -88,7 +102,9 @@ export function SettingsPanel({
   const handleColorChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const newColor = e.target.value;
     setColor(newColor);
-    if (singleSelectedStep) {
+    if (selectedDeliverable) {
+        onUpdateDeliverable(singleSelectedStep!.id, selectedDeliverable.id, { color: newColor });
+    } else if (singleSelectedStep) {
       onUpdateStepColor(singleSelectedStep.id, newColor);
     } else if (selectedEdge) {
       onUpdateEdgeColor(selectedEdge.id, newColor);
@@ -149,10 +165,10 @@ export function SettingsPanel({
               </Button>
               </>
             ) : (
-            <>
+              <>
               <p className="text-sm text-muted-foreground">Select an element to edit its properties, or add a new step to the canvas.</p>
               <Button onClick={onAddStep}>Add Step</Button>
-            </>
+              </>
             )}
         </div>
       )}

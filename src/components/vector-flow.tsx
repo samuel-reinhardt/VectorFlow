@@ -12,13 +12,14 @@ import ReactFlow, {
 import 'reactflow/dist/style.css';
 import { LayoutGrid } from 'lucide-react';
 
-import { Sidebar, SidebarHeader, SidebarContent } from '@/components/ui/sidebar';
+import { Sidebar, SidebarHeader, SidebarContent } from '@/components/ui/layout/sidebar';
 import { SettingsPanel } from '@/components/settings-panel';
 import CustomNode from '@/components/custom-node';
 import { useVectorFlow } from '@/hooks/use-vector-flow';
 import { Header } from '@/components/header';
 import { Toolbar } from '@/components/toolbar';
 import { Outline } from '@/components/outline';
+import { FlowTabs } from '@/components/flow-tabs';
 import { useMediaQuery } from '@/hooks/use-media-query';
 
 const initialNodes: Node[] = [
@@ -59,6 +60,14 @@ export function VectorFlow() {
         groupSelection,
         ungroupSelection,
         handleAutoLayout,
+        flows,
+        activeFlowId,
+        switchFlow,
+        addFlow,
+        updateFlowTitle,
+        selectedDeliverableId, // Destructure new state
+        handleUpdateDeliverable, // Destructure new handler
+        selectDeliverable, // Destructure new handler
     } = useVectorFlow(initialNodes, initialEdges);
 
     const { fitView, getNode, getNodes, setEdges } = useReactFlow();
@@ -122,23 +131,69 @@ export function VectorFlow() {
 
     const selectedStepId = useMemo(() => selectedNodes.length === 1 ? selectedNodes[0].id : null, [selectedNodes]);
 
+    // Inject handlers and state into node data
+    const nodesWithData = useMemo(() => {
+        return nodes.map(node => {
+            if (node.type === 'custom') {
+                return {
+                    ...node,
+                    data: {
+                        ...node.data,
+                        selectedDeliverableId,
+                        onSelectDeliverable: (nodeId: string, id: string | null) => {
+                            if (id) {
+                                // Explicitly select the node to ensure Sidebar updates
+                                setNodes((nds) => nds.map((n) => ({ ...n, selected: n.id === nodeId })));
+                            }
+                            selectDeliverable(id);
+                        },
+                        onReorderDeliverables: (nodeId: string, items: any[]) => {
+                            // We need a handler for this in useVectorFlow, or just update directly here?
+                            // Ideally useVectorFlow exposes a specific handler. 
+                            // For now, let's assume updateStep (or similar) or create a new one.
+                            // Actually, I should probably reuse handleUpdateDeliverable, but that's for properties.
+                            // I need to update the WHOLE deliverables list.
+                            // Let's use setNodes for reordering for now or call a new handler effectively.
+                             setNodes((nds) => nds.map((n) => {
+                                if (n.id === nodeId) {
+                                    return { ...n, data: { ...n.data, deliverables: items } };
+                                }
+                                return n;
+                            }));
+                        }
+                    }
+                };
+            }
+            return node;
+        });
+    }, [nodes, selectedDeliverableId, selectDeliverable, setNodes]);
+
     return (
         <div className="flex flex-col h-screen w-screen bg-background text-foreground font-body">
-            <Header onAutoLayout={() => handleAutoLayout({ silent: false })} />
+            <Header />
             
             <Toolbar 
                 onLeftSidebarToggle={handleLeftSidebarToggle}
                 onRightSidebarToggle={handleRightSidebarToggle}
+                onAutoLayout={() => handleAutoLayout({ silent: false })}
             />
 
             <div className="flex flex-1 overflow-hidden">
                 <Sidebar side="left" open={leftSidebarOpen} onOpenChange={handleLeftSidebarChange} isDesktop={isDesktop}>
-                    <Outline nodes={nodes} selectedStepId={selectedStepId} onStepSelect={handleStepSelect} />
+                    <Outline 
+                        nodes={nodes} 
+                        selectedStepId={selectedStepId} 
+                        onStepSelect={handleStepSelect}
+                        onDeliverableSelect={(nodeId, deliverableId) => {
+                            handleStepSelect(nodeId);
+                            selectDeliverable(deliverableId);
+                        }} 
+                    />
                 </Sidebar>
 
                 <main className="relative flex-1 h-full">
                     <ReactFlow
-                        nodes={nodes}
+                        nodes={nodesWithData}
                         edges={edges}
                         onNodesChange={onNodesChange}
                         onEdgesChange={onEdgesChange}
@@ -166,12 +221,14 @@ export function VectorFlow() {
                         <SettingsPanel 
                             selectedSteps={selectedNodes}
                             selectedEdge={selectedEdges.length === 1 ? selectedEdges[0] : null}
+                            selectedDeliverableId={selectedDeliverableId}
                             onAddStep={addStep}
                             onAddDeliverable={addDeliverable}
                             onUpdateStepLabel={updateStepLabel}
                             onUpdateStepColor={updateStepColor}
                             onUpdateEdgeLabel={updateEdgeLabel}
                             onUpdateEdgeColor={updateEdgeColor}
+                            onUpdateDeliverable={handleUpdateDeliverable}
                             onDeleteSelection={deleteSelection}
                             onGroupSelection={groupSelection}
                             onUngroup={ungroupSelection}
@@ -180,6 +237,14 @@ export function VectorFlow() {
                     </SidebarContent>
                 </Sidebar>
             </div>
+            
+            <FlowTabs
+                flows={flows}
+                activeFlowId={activeFlowId}
+                onSwitchFlow={switchFlow}
+                onAddFlow={addFlow}
+                onUpdateFlowTitle={updateFlowTitle}
+            />
         </div>
     );
 }
