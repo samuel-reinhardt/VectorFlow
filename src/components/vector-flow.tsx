@@ -225,6 +225,7 @@ export function VectorFlow() {
                 const newHeight = STEP_HEADER_HEIGHT + DELIVERABLE_Y_PADDING + ((childDeliverables.length + 1) * (DELIVERABLE_HEIGHT + DELIVERABLE_Y_PADDING)) + DELIVERABLE_Y_PADDING;
                 return {
                     ...n,
+                    data: { ...n.data, hasDeliverables: true },
                     style: { ...n.style, height: newHeight, width: STEP_WIDTH },
                 };
             }
@@ -267,7 +268,8 @@ export function VectorFlow() {
   }, [setEdges]);
 
   const deleteSelection = useCallback(() => {
-    const currentSelectedNodes = getNodes().filter(n => n.selected);
+    const allNodes = getNodes();
+    const currentSelectedNodes = allNodes.filter(n => n.selected);
     const currentSelectedEdges = getEdges().filter(e => e.selected);
 
     if (currentSelectedNodes.length === 0 && currentSelectedEdges.length === 0) return;
@@ -275,8 +277,8 @@ export function VectorFlow() {
     let nodeIdsToDelete = new Set(currentSelectedNodes.map(n => n.id));
     
     currentSelectedNodes.forEach(node => {
-      if(node.data.isGroup || getNodes().some(n => n.parentNode === node.id)) {
-        getNodes().forEach(child => {
+      if(node.data.isGroup || allNodes.some(n => n.parentNode === node.id)) {
+        allNodes.forEach(child => {
           if (child.parentNode === node.id) {
             nodeIdsToDelete.add(child.id);
           }
@@ -284,14 +286,63 @@ export function VectorFlow() {
       }
     });
 
+    const parentsOfDeletedDeliverables = new Set<string>();
+    allNodes.forEach(node => {
+      if (nodeIdsToDelete.has(node.id) && node.parentNode && node.data.isDeliverable) {
+        parentsOfDeletedDeliverables.add(node.parentNode);
+      }
+    });
+
     const edgeIdsToDelete = new Set(currentSelectedEdges.map(e => e.id));
 
-    setNodes(nds => nds.filter(n => !nodeIdsToDelete.has(n.id)));
+    setNodes(nds => {
+      const remainingNodesUnmodified = nds.filter(n => !nodeIdsToDelete.has(n.id));
+      const nodesToReturn = [...remainingNodesUnmodified];
+
+      parentsOfDeletedDeliverables.forEach(parentId => {
+        const parentIndex = nodesToReturn.findIndex(n => n.id === parentId);
+        if (parentIndex === -1) return;
+
+        const childDeliverables = nodesToReturn
+          .filter(n => n.parentNode === parentId && n.data.isDeliverable)
+          .sort((a,b) => a.position.y - b.position.y);
+        
+        const hasDeliverables = childDeliverables.length > 0;
+        const newHeight = hasDeliverables
+          ? STEP_HEADER_HEIGHT + DELIVERABLE_Y_PADDING + (childDeliverables.length * (DELIVERABLE_HEIGHT + DELIVERABLE_Y_PADDING)) + DELIVERABLE_Y_PADDING
+          : STEP_INITIAL_HEIGHT;
+
+        nodesToReturn[parentIndex] = {
+          ...nodesToReturn[parentIndex],
+          style: { ...nodesToReturn[parentIndex].style, height: newHeight },
+          data: { ...nodesToReturn[parentIndex].data, hasDeliverables }
+        };
+
+        let currentY = STEP_HEADER_HEIGHT + DELIVERABLE_Y_PADDING;
+        childDeliverables.forEach(deliverable => {
+            const deliverableIndex = nodesToReturn.findIndex(n => n.id === deliverable.id);
+            if (deliverableIndex !== -1) {
+                nodesToReturn[deliverableIndex] = {
+                    ...nodesToReturn[deliverableIndex],
+                    position: { ...nodesToReturn[deliverableIndex].position, y: currentY }
+                };
+                currentY += DELIVERABLE_HEIGHT + DELIVERABLE_Y_PADDING;
+            }
+        });
+      });
+      return nodesToReturn;
+    });
+
     setEdges(eds => eds.filter(e => !edgeIdsToDelete.has(e.id) && !nodeIdsToDelete.has(e.source) && !nodeIdsToDelete.has(e.target)));
 
     setSelectedNodes([]);
     setSelectedEdges([]);
-  }, [getNodes, getEdges, setNodes, setEdges]);
+
+    parentsOfDeletedDeliverables.forEach(parentId => {
+      updateNodeInternals(parentId);
+    });
+
+  }, [getNodes, getEdges, setNodes, setEdges, updateNodeInternals]);
   
   const groupSelection = useCallback(() => {
     const currentSelectedNodes = getNodes().filter(n => n.selected && !n.parentNode);

@@ -5,7 +5,7 @@ import { Handle, Position, NodeProps } from 'reactflow';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import { cn, getTextColorForBackground } from '@/lib/utils';
 
-const CustomNode = ({ id, data, selected }: NodeProps<{ label: string; color: string; isGroup?: boolean; isDeliverable?: boolean }>) => {
+const CustomNode = ({ id, data, selected }: NodeProps<{ label: string; color: string; isGroup?: boolean; isDeliverable?: boolean; hasDeliverables?: boolean }>) => {
 
   // Render for Deliverable
   if (data.isDeliverable) {
@@ -62,7 +62,7 @@ const CustomNode = ({ id, data, selected }: NodeProps<{ label: string; color: st
             {data.label}
           </CardTitle>
         </CardHeader>
-        <CardContent className="p-0 flex-grow" />
+        {data.hasDeliverables && <CardContent className="p-0 flex-grow" />}
       </Card>
       <Handle type="source" position={Position.Right} className="!bg-border !w-3 !h-3 z-10" />
     </>
