@@ -11,24 +11,24 @@ const CustomNode = ({ data, selected }: NodeProps<{ label: string; color: string
     : getTextColorForBackground(data.color);
 
   return (
-    <>
+    <div className={cn(data.isGroup ? 'w-full h-full' : '')}>
       {!data.isGroup && <Handle type="target" position={Position.Left} className="!bg-border !w-3 !h-3" />}
       <Card
         className={cn(
           'shadow-lg',
           selected ? 'border-primary ring-2 ring-ring' : 'border-transparent',
-          data.isGroup ? 'border-dashed border-2 bg-card/50' : 'border-2'
+          data.isGroup ? 'border-dashed border-2 bg-card/50 h-full' : 'border-2'
         )}
         style={data.isGroup ? { borderColor: data.color } : { backgroundColor: data.color, borderColor: 'transparent' }}
       >
         <CardContent className="p-3 text-center">
-          <p className="font-medium" style={{ color: textColor }}>
+          <p className="font-medium break-words" style={{ color: textColor }}>
             {data.label}
           </p>
         </CardContent>
       </Card>
       {!data.isGroup && <Handle type="source" position={Position.Right} className="!bg-border !w-3 !h-3" />}
-    </>
+    </div>
   );
 };
 
