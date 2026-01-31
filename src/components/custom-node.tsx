@@ -1,39 +1,68 @@
 'use client';
 
-import { memo, useMemo } from 'react';
-import { Handle, Position, NodeProps, useReactFlow } from 'reactflow';
-import { Card, CardContent } from '@/components/ui/card';
+import { memo } from 'react';
+import { Handle, Position, NodeProps } from 'reactflow';
+import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import { cn, getTextColorForBackground } from '@/lib/utils';
 
-const CustomNode = ({ id, data, selected, type }: NodeProps<{ label: string; color: string; isGroup?: boolean; isDeliverable?: boolean }>) => {
-  const { getNodes } = useReactFlow();
+const CustomNode = ({ id, data, selected }: NodeProps<{ label: string; color: string; isGroup?: boolean; isDeliverable?: boolean }>) => {
 
-  const isParent = useMemo(() => getNodes().some(node => node.parentNode === id), [getNodes, id]);
-  
-  const textColor = data.isGroup
-    ? 'hsl(var(--foreground))'
-    : getTextColorForBackground(data.color);
-
-  return (
-    <div className={cn('w-full h-full', { 'relative': isParent && type === 'custom' })}>
-      {!data.isGroup && !data.isDeliverable && <Handle type="target" position={Position.Left} className="!bg-border !w-3 !h-3" />}
+  // Render for Deliverable
+  if (data.isDeliverable) {
+    const textColor = getTextColorForBackground(data.color);
+    return (
       <Card
         className={cn(
-          'shadow-lg',
-          selected ? 'border-primary ring-2 ring-ring' : 'border-transparent',
-          data.isGroup ? 'border-dashed border-2 bg-card/50 h-full' : 'border-2',
-          isParent && !data.isGroup ? 'absolute top-0 left-0 w-full' : ''
+          'shadow-sm w-full h-full flex items-center justify-center',
+          selected ? 'border-primary ring-2 ring-ring' : 'border-transparent'
         )}
-        style={data.isGroup ? { borderColor: data.color } : { backgroundColor: data.color, borderColor: 'transparent' }}
+        style={{ backgroundColor: data.color, borderColor: 'transparent' }}
       >
-        <CardContent className={cn("text-center", data.isDeliverable ? 'p-2' : 'p-3')}>
-          <p className={cn("font-medium break-words", data.isDeliverable ? 'text-sm' : '')}>
+        <CardContent className="p-2">
+          <p className="text-sm font-medium break-words text-center" style={{ color: textColor }}>
             {data.label}
           </p>
         </CardContent>
       </Card>
-      {!data.isGroup && !data.isDeliverable && <Handle type="source" position={Position.Right} className="!bg-border !w-3 !h-3" />}
-    </div>
+    );
+  }
+
+  // Render for Group
+  if (data.isGroup) {
+    return (
+      <Card
+        className={cn(
+          'shadow-lg w-full h-full border-dashed border-2 bg-card/50 p-3',
+          selected ? 'border-primary ring-2 ring-ring' : 'border-transparent'
+        )}
+        style={{ borderColor: data.color }}
+      >
+        <p className="font-medium break-words">{data.label}</p>
+      </Card>
+    );
+  }
+
+  // Render for Step
+  const textColor = getTextColorForBackground(data.color);
+  return (
+    <>
+      <Handle type="target" position={Position.Left} className="!bg-border !w-3 !h-3 z-10" />
+      <Card
+        className={cn(
+          'shadow-lg w-full h-full flex flex-col',
+          selected ? 'border-primary ring-2 ring-ring' : 'border-border'
+        )}
+        style={{ backgroundColor: data.color }}
+      >
+        <CardHeader className="p-3 flex-shrink-0">
+          <CardTitle className="text-base break-words" style={{ color: textColor }}>
+            {data.label}
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="p-0 flex-grow" />
+      </Card>
+      <Handle type="source" position={Position.Right} className="!bg-border !w-3 !h-3 z-10" />
+    </>
   );
 };
 

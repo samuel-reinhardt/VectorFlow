@@ -34,12 +34,19 @@ import CustomNode from '@/components/custom-node';
 import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
 
+const STEP_WIDTH = 220;
+const STEP_INITIAL_HEIGHT = 60;
+const STEP_HEADER_HEIGHT = 48;
+const DELIVERABLE_HEIGHT = 40;
+const DELIVERABLE_Y_PADDING = 8;
+const DELIVERABLE_X_PADDING = 12;
+const DELIVERABLE_WIDTH = STEP_WIDTH - (DELIVERABLE_X_PADDING * 2);
 
 const initialNodes: Node[] = [
-  { id: '1', position: { x: 250, y: 150 }, data: { label: 'Welcome to VectorFlow!', color: '#F3F4F6' }, type: 'custom' },
-  { id: '2', position: { x: 100, y: 250 }, data: { label: 'This is a step', color: '#E5E7EB' }, type: 'custom' },
-  { id: '3', position: { x: 400, y: 250 }, data: { label: 'Connect them!', color: '#E5E7EB' }, type: 'custom' },
-  { id: '4', position: { x: 250, y: 350 }, data: { label: 'Auto-Arrange', color: '#E5E7EB' }, type: 'custom' },
+  { id: '1', position: { x: 250, y: 150 }, data: { label: 'Welcome to VectorFlow!', color: '#F3F4F6' }, type: 'custom', style: { width: STEP_WIDTH, height: STEP_INITIAL_HEIGHT } },
+  { id: '2', position: { x: 100, y: 250 }, data: { label: 'This is a step', color: '#E5E7EB' }, type: 'custom', style: { width: STEP_WIDTH, height: STEP_INITIAL_HEIGHT } },
+  { id: '3', position: { x: 400, y: 250 }, data: { label: 'Connect them!', color: '#E5E7EB' }, type: 'custom', style: { width: STEP_WIDTH, height: STEP_INITIAL_HEIGHT } },
+  { id: '4', position: { x: 250, y: 350 }, data: { label: 'Auto-Arrange', color: '#E5E7EB' }, type: 'custom', style: { width: STEP_WIDTH, height: STEP_INITIAL_HEIGHT } },
 ];
 
 const initialEdges: Edge[] = [
@@ -178,51 +185,47 @@ export function VectorFlow() {
       position: { x, y },
       data: { label: 'New Step', color: '#E5E7EB' },
       type: 'custom',
+      style: { width: STEP_WIDTH, height: STEP_INITIAL_HEIGHT },
     };
     setNodes((nds) => nds.concat(newNode));
   }, [nodes.length, project, setNodes]);
 
   const addDeliverable = useCallback((parentId: string) => {
     const parentNode = getNode(parentId);
-    if (!parentNode || typeof parentNode.width === 'undefined' || typeof parentNode.height === 'undefined') {
+    if (!parentNode) {
         toast({
             variant: 'destructive',
             title: 'Cannot add deliverable',
-            description: 'Parent step size not yet available. Please try again in a moment.'
+            description: 'Parent step not found.'
         });
         return;
     }
     
     const childDeliverables = getNodes().filter(n => n.parentNode === parentId && n.data.isDeliverable);
 
-    const deliverableHeight = 44;
-    const deliverableYPadding = 10;
-    const deliverableXPadding = 20;
-
-    const baseHeight = 52; // Base height of a step card
-    const newDeliverableY = baseHeight + deliverableYPadding + (childDeliverables.length * (deliverableHeight + deliverableYPadding));
+    const newDeliverableY = STEP_HEADER_HEIGHT + DELIVERABLE_Y_PADDING + (childDeliverables.length * (DELIVERABLE_HEIGHT + DELIVERABLE_Y_PADDING));
 
     const newDeliverableId = `deliverable_${getNodes().length + 1}_${Date.now()}`;
     const newDeliverableNode: Node = {
         id: newDeliverableId,
         type: 'custom',
         data: { label: 'New Deliverable', color: '#E0E7FF', isDeliverable: true },
-        position: { x: deliverableXPadding, y: newDeliverableY },
+        position: { x: DELIVERABLE_X_PADDING, y: newDeliverableY },
         parentNode: parentId,
         extent: 'parent',
         style: {
-            width: parentNode.width - deliverableXPadding * 2,
-            height: deliverableHeight,
+            width: DELIVERABLE_WIDTH,
+            height: DELIVERABLE_HEIGHT,
         }
     };
 
     setNodes(nds => {
         const newNodes = nds.map(n => {
             if (n.id === parentId) {
-                const currentHeight = n.style?.height || parentNode.height;
+                const newHeight = STEP_HEADER_HEIGHT + DELIVERABLE_Y_PADDING + ((childDeliverables.length + 1) * (DELIVERABLE_HEIGHT + DELIVERABLE_Y_PADDING)) + DELIVERABLE_Y_PADDING;
                 return {
                     ...n,
-                    style: { ...n.style, height: currentHeight + deliverableHeight + deliverableYPadding },
+                    style: { ...n.style, height: newHeight, width: STEP_WIDTH },
                 };
             }
             return n;
@@ -393,8 +396,7 @@ export function VectorFlow() {
     const topLevelEdges = allEdges.filter(e => topLevelNodeIds.has(e.source) && topLevelNodeIds.has(e.target));
 
 
-    const nodeWidth = 176;
-    const nodeHeight = 52;
+    const nodeWidth = STEP_WIDTH;
     const hSpacing = 100;
     const vSpacing = 50;
 
@@ -444,19 +446,25 @@ export function VectorFlow() {
         columns.push(remainingNodes.map(node => node.id));
     }
 
-
     const newNodes = getNodes().map(n => ({ ...n }));
 
     columns.forEach((column, colIndex) => {
         const x = colIndex * (nodeWidth + hSpacing);
-        const colHeight = column.length * (nodeHeight + vSpacing);
-        const startY = (-(colHeight / 2)) + (nodeHeight / 2) ;
+        
+        const colHeight = column.reduce((sum, nodeId) => {
+            const node = allNodes.find(n => n.id === nodeId);
+            const height = node?.height || STEP_INITIAL_HEIGHT;
+            return sum + height + vSpacing;
+        }, -vSpacing);
 
-        column.forEach((nodeId, nodeIndex) => {
-            const y = startY + nodeIndex * (nodeHeight + vSpacing);
+        let currentY = -colHeight / 2;
+
+        column.forEach((nodeId) => {
             const node = newNodes.find(n => n.id === nodeId);
             if (node) {
-                node.position = { x, y };
+                const height = node.height || STEP_INITIAL_HEIGHT;
+                node.position = { x, y: currentY };
+                currentY += height + vSpacing;
             }
         });
     });
