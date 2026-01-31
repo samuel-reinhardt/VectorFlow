@@ -49,12 +49,15 @@ const CustomNode = ({ id, data, selected }: NodeProps<{ label: string; color: st
       <Handle type="target" position={Position.Left} className="!bg-border !w-3 !h-3 z-10" />
       <Card
         className={cn(
-          'shadow-lg w-full h-full flex flex-col',
-          selected ? 'border-primary ring-2 ring-ring' : 'border-border'
+          'shadow-lg w-full h-full flex flex-col overflow-hidden bg-card',
+          selected ? 'ring-2 ring-ring' : ''
         )}
-        style={{ backgroundColor: data.color }}
+        style={{ borderColor: data.color }}
       >
-        <CardHeader className="p-3 flex-shrink-0">
+        <CardHeader
+          className="p-3 flex-shrink-0"
+          style={{ backgroundColor: data.color }}
+        >
           <CardTitle className="text-base break-words" style={{ color: textColor }}>
             {data.label}
           </CardTitle>
