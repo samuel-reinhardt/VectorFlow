@@ -331,6 +331,7 @@ export function VectorFlow() {
         width: maxX - minX + padding * 2,
         height: maxY - minY + padding * 2,
       },
+      zIndex: -1,
     };
 
     setNodes(nds => {
@@ -396,7 +397,6 @@ export function VectorFlow() {
     const topLevelEdges = allEdges.filter(e => topLevelNodeIds.has(e.source) && topLevelNodeIds.has(e.target));
 
 
-    const nodeWidth = STEP_WIDTH;
     const hSpacing = 100;
     const vSpacing = 50;
 
@@ -448,25 +448,33 @@ export function VectorFlow() {
 
     const newNodes = getNodes().map(n => ({ ...n }));
 
-    columns.forEach((column, colIndex) => {
-        const x = colIndex * (nodeWidth + hSpacing);
-        
-        const colHeight = column.reduce((sum, nodeId) => {
+    let currentX = 0;
+    columns.forEach((column) => {
+        const columnWidth = Math.max(...column.map(nodeId => {
+            const node = allNodes.find(n => n.id === nodeId);
+            return node?.width || STEP_WIDTH;
+        }));
+
+        const columnHeight = column.reduce((sum, nodeId) => {
             const node = allNodes.find(n => n.id === nodeId);
             const height = node?.height || STEP_INITIAL_HEIGHT;
             return sum + height + vSpacing;
         }, -vSpacing);
 
-        let currentY = -colHeight / 2;
+        let currentY = -columnHeight / 2;
 
         column.forEach((nodeId) => {
             const node = newNodes.find(n => n.id === nodeId);
             if (node) {
+                const nodeWidth = node.width || STEP_WIDTH;
                 const height = node.height || STEP_INITIAL_HEIGHT;
-                node.position = { x, y: currentY };
+                // Center node in the column
+                node.position = { x: currentX + (columnWidth - nodeWidth) / 2, y: currentY };
                 currentY += height + vSpacing;
             }
         });
+
+        currentX += columnWidth + hSpacing;
     });
 
     setNodes(newNodes);
