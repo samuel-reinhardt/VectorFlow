@@ -2,13 +2,10 @@
 
 import { useEffect, useState } from 'react';
 import type { Node, Edge } from 'reactflow';
-import { Button } from '@/components/ui/forms/button';
-import { Input } from '@/components/ui/forms/input';
-import { Label } from '@/components/ui/forms/label';
-import { Trash2, Plus, Square, FileText, Layers, Boxes, Share2, ExternalLink, Tags } from 'lucide-react';
-import { IconPicker } from './icon-picker';
-import { MetaValueEditor } from './meta-value-editor';
-import { Separator } from '@/components/ui/layout/separator';
+import { CommonFields } from './panels/settings/common-fields';
+import { MetadataSection } from './panels/settings/metadata-section';
+import { ActionButtons } from './panels/settings/action-buttons';
+import { EmptyStatePanel } from './panels/settings/empty-state-panel';
 
 interface SettingsPanelProps {
   selectedSteps: Node[];
@@ -35,7 +32,7 @@ interface SettingsPanelProps {
 export function SettingsPanel({
   selectedSteps,
   selectedEdge,
-  selectedDeliverableId, // New prop
+  selectedDeliverableId,
   onAddStep,
   onAddDeliverable,
   onUpdateStepLabel,
@@ -44,8 +41,8 @@ export function SettingsPanel({
   onUpdateEdgeLabel,
   onUpdateEdgeColor,
   onUpdateEdgeIcon,
-  onUpdateDeliverable, // New prop
-  onDeleteSelection, // We'll rely on global deleteSelection which handles deliverable deletion now
+  onUpdateDeliverable,
+  onDeleteSelection,
   onGroupSelection,
   onUngroup,
   onTitleChange,
@@ -70,6 +67,7 @@ export function SettingsPanel({
 
   const isStepSelected = singleSelectedStep && !isGroupSelected && !selectedDeliverable;
 
+  // Sync local state with selected entity
   useEffect(() => {
     if (selectedDeliverable) {
       setLabel(selectedDeliverable.label || '');
@@ -86,6 +84,7 @@ export function SettingsPanel({
     }
   }, [singleSelectedStep, selectedEdge, selectedDeliverable]);
   
+  // Update panel title based on selection
   useEffect(() => {
     const getPanelInfo = () => {
       if (isMultiStepSelection) {
@@ -143,133 +142,79 @@ export function SettingsPanel({
 
   const editingElement = singleSelectedStep || selectedEdge;
 
+  // Determine entity type for CommonFields
+  const getEntityType = (): 'step' | 'deliverable' | 'group' | 'edge' => {
+    if (selectedDeliverable) return 'deliverable';
+    if (isGroupSelected) return 'group';
+    if (selectedEdge) return 'edge';
+    return 'step';
+  };
+
+  // Get metadata fields and values based on selection
+  const getMetadataProps = () => {
+    if (selectedDeliverable) {
+      return {
+        fields: metaConfig.deliverable,
+        values: selectedDeliverable.meta || {},
+        onChange: (fieldId: string, value: any) => 
+          onUpdateDeliverableMetaData(singleSelectedStep!.id, selectedDeliverable.id, fieldId, value)
+      };
+    }
+    if (isGroupSelected) {
+      return {
+        fields: metaConfig.group,
+        values: singleSelectedStep?.data.meta || {},
+        onChange: (fieldId: string, value: any) => 
+          onUpdateMetaData(singleSelectedStep!.id, fieldId, value)
+      };
+    }
+    if (isStepSelected) {
+      return {
+        fields: metaConfig.step,
+        values: singleSelectedStep?.data.meta || {},
+        onChange: (fieldId: string, value: any) => 
+          onUpdateMetaData(singleSelectedStep!.id, fieldId, value)
+      };
+    }
+    return null;
+  };
+
+  const metadataProps = getMetadataProps();
+
   return (
     <div className="flex-1 overflow-y-auto p-4 pt-0">
       {editingElement && !isMultiStepSelection ? (
         <div className="space-y-4">
-          <div className="space-y-2">
-            <Label htmlFor="label-input" className="font-semibold">Label</Label>
-            <Input
-              id="label-input"
-              value={label}
-              onChange={handleLabelChange}
-              placeholder="Enter label"
-            />
-          </div>
-          <div className="space-y-2">
-            <Label htmlFor="color-input" className="font-semibold">Color</Label>
-            <div className="flex items-center gap-2">
-              <Input
-                id="color-input"
-                type="color"
-                value={color}
-                onChange={handleColorChange}
-                className="p-1 h-10 w-14 cursor-pointer"
-              />
-                <Input value={color} onChange={handleColorChange} placeholder="#RRGGBB" />
-            </div>
-          </div>
-
-          <div className="space-y-2">
-            <div className="flex items-center justify-between">
-              <Label className="font-semibold text-sm">Icon</Label>
-              <a 
-                href="https://lucide.dev/icons" 
-                target="_blank" 
-                rel="noopener noreferrer"
-                className="text-[10px] text-primary hover:underline flex items-center gap-0.5"
-              >
-                Browse all icons
-                <ExternalLink className="w-2.5 h-2.5" />
-              </a>
-            </div>
-            <IconPicker
-              value={icon}
-              onChange={handleIconChange}
-              fallbackIcon={
-                selectedDeliverable ? FileText : 
-                isGroupSelected ? Layers : 
-                selectedEdge ? Share2 : 
-                Square
-              }
-            />
-          </div>
+          <CommonFields
+            label={label}
+            color={color}
+            icon={icon}
+            onLabelChange={handleLabelChange}
+            onColorChange={handleColorChange}
+            onIconChange={handleIconChange}
+            entityType={getEntityType()}
+          />
           
-          {!selectedEdge && (
-            <div className="pt-4 border-t space-y-4">
-              <div className="flex items-center gap-2 text-sm font-semibold text-muted-foreground uppercase tracking-wider">
-                  <Tags className="w-4 h-4" />
-                  Custom Metadata
-              </div>
-              {selectedDeliverable ? (
-                  <MetaValueEditor 
-                      fields={metaConfig.deliverable} 
-                      values={selectedDeliverable.meta || {}} 
-                      onChange={(fieldId, value) => onUpdateDeliverableMetaData(singleSelectedStep!.id, selectedDeliverable.id, fieldId, value)}
-                  />
-              ) : isGroupSelected ? (
-                  <MetaValueEditor 
-                      fields={metaConfig.group} 
-                      values={singleSelectedStep?.data.meta || {}} 
-                      onChange={(fieldId, value) => onUpdateMetaData(singleSelectedStep!.id, fieldId, value)}
-                  />
-              ) : isStepSelected ? (
-                  <MetaValueEditor 
-                      fields={metaConfig.step} 
-                      values={singleSelectedStep?.data.meta || {}} 
-                      onChange={(fieldId, value) => onUpdateMetaData(singleSelectedStep!.id, fieldId, value)}
-                  />
-              ) : null}
-            </div>
+          {!selectedEdge && metadataProps && (
+            <MetadataSection {...metadataProps} />
           )}
 
-          <div className="pt-6 border-t flex flex-col gap-2">
-            <div className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest mb-1">Actions</div>
-            
-            {isStepSelected && (
-              <Button onClick={() => onAddDeliverable(singleSelectedStep.id)} className="w-full" variant="outline" size="sm">
-                  <Plus className="mr-2 h-3.5 w-3.5" />
-                  Add Deliverable
-              </Button>
-            )}
-
-            {isGroupSelected && (
-              <Button onClick={onUngroup} className="w-full" variant="outline" size="sm">
-                  <Boxes className="mr-2 h-3.5 w-3.5" />
-                  Ungroup
-              </Button>
-            )}
-            
-            <Button variant="destructive" onClick={onDeleteSelection} className="w-full" size="sm">
-              <Trash2 className="mr-2 h-3.5 w-3.5" />
-              Delete Selection
-            </Button>
-          </div>
+          <ActionButtons
+            isStepSelected={!!isStepSelected}
+            isGroupSelected={!!isGroupSelected}
+            onAddDeliverable={isStepSelected ? () => onAddDeliverable(singleSelectedStep!.id) : undefined}
+            onUngroup={isGroupSelected ? onUngroup : undefined}
+            onDeleteSelection={onDeleteSelection}
+          />
         </div>
       ) : (
-        <div className="flex flex-col gap-4">
-            {isMultiStepSelection ? (
-              <>
-              <p className="text-sm text-muted-foreground">You can group these steps into a single container.</p>
-              <Button onClick={onGroupSelection}>
-                <Layers className="mr-2 h-4 w-4" />
-                Group Selection
-              </Button>
-              <Button variant="destructive" onClick={onDeleteSelection} className="w-full">
-                <Trash2 className="mr-2 h-4 w-4" />
-                Delete Selection
-              </Button>
-              </>
-            ) : (
-              <>
-              <p className="text-sm text-muted-foreground">Select an element to edit its properties, or add a new step to the canvas.</p>
-              <Button onClick={onAddStep}>
-                <Plus className="mr-2 h-4 w-4" />
-                Add Step
-              </Button>
-              </>
-            )}
-        </div>
+        <EmptyStatePanel
+          isMultiStepSelection={isMultiStepSelection}
+          selectedStepsCount={selectedSteps.length}
+          onGroupSelection={isMultiStepSelection ? onGroupSelection : undefined}
+          onDeleteSelection={isMultiStepSelection ? onDeleteSelection : undefined}
+          onAddStep={!isMultiStepSelection ? onAddStep : undefined}
+        />
       )}
     </div>
   );
