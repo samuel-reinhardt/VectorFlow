@@ -25,6 +25,7 @@ import { Toolbar } from '@/components/toolbar';
 import { Outline } from '@/components/outline';
 import { FlowTabs } from '@/components/flow-tabs';
 import { useMediaQuery } from '@/hooks/use-media-query';
+import { ExportDialog } from '@/components/export-import/export-dialog';
 
 import { demoNodes } from './flow/data/demo-nodes';
 import { demoEdges } from './flow/data/demo-edges';
@@ -80,6 +81,8 @@ export function VectorFlow() {
         updateMetaData,
         updateDeliverableMetaData,
         hasLoadedFromStorage,
+        loadProject,
+        saveCurrentFlowState,
     } = useVectorFlow(initialNodes, initialEdges);
 
     const { fitView, getNode, getNodes, setEdges } = useReactFlow();
@@ -167,7 +170,14 @@ export function VectorFlow() {
 
     return (
         <div className="flex flex-col h-screen w-screen bg-background text-foreground font-body">
-            <Header />
+            <Header>
+                <ExportDialog 
+                    flows={flows} 
+                    activeFlowId={activeFlowId} 
+                    onImport={loadProject} 
+                    onSaveState={saveCurrentFlowState}
+                />
+            </Header>
             
             <Toolbar 
                 onLeftSidebarToggle={handleLeftSidebarToggle}

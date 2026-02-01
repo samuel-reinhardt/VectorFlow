@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useMemo, useCallback } from 'react';
+import { useState, useMemo, useCallback, useEffect } from 'react';
 import type { Node, Edge } from 'reactflow';
 import { useReactFlow } from 'reactflow';
 import { EMPTY_META_CONFIG } from '@/types';
@@ -108,6 +108,12 @@ export const useVectorFlow = (initialNodes: Node[], initialEdges: Edge[]) => {
     selectedNodes,
     selectedDeliverableId
   );
+  
+  // Sync interactive canvas state back to the flows array
+  // This ensures both persistence and export use the absolute latest state.
+  useEffect(() => {
+    saveCurrentFlowState();
+  }, [nodes, edges, saveCurrentFlowState]);
 
   // 9. Persistence Hook
   const handleOnLoad = useCallback((loadedFlows: any[], loadedActiveId: string) => {
@@ -177,5 +183,7 @@ export const useVectorFlow = (initialNodes: Node[], initialEdges: Edge[]) => {
     updateMetaData: metadataOps.updateMetaData,
     updateDeliverableMetaData: metadataOps.updateDeliverableMetaData,
     hasLoadedFromStorage,
+    loadProject: handleOnLoad,
+    saveCurrentFlowState,
   };
 };
