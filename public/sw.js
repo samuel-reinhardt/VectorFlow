@@ -18,9 +18,22 @@ self.addEventListener("install", (event) => {
 });
 
 self.addEventListener("fetch", (event) => {
+  // Use Network-First strategy for the root page and main assets
   event.respondWith(
-    caches.match(event.request).then((response) => {
-      return response || fetch(event.request);
-    }),
+    fetch(event.request)
+      .then((response) => {
+        // If successful, update the cache
+        if (response && response.status === 200 && response.type === "basic") {
+          const responseToCache = response.clone();
+          caches.open(CACHE_NAME).then((cache) => {
+            cache.put(event.request, responseToCache);
+          });
+        }
+        return response;
+      })
+      .catch(() => {
+        // Fallback to cache if network fails
+        return caches.match(event.request);
+      }),
   );
 });

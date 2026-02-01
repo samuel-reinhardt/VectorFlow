@@ -3,10 +3,10 @@
 // To change the Firebase project, use the "Change Firebase Project" command
 // or edit this file and then call the "Update Firebase Project" command.
 export const firebaseConfig = {
-  apiKey: "REPLACE_WITH_YOUR_API_KEY",
-  authDomain: "REPLACE_WITH_YOUR_AUTH_DOMAIN",
-  projectId: "REPLACE_WITH_YOUR_PROJECT_ID",
-  storageBucket: "REPLACE_WITH_YOUR_STORAGE_BUCKET",
-  messagingSenderId: "REPLACE_WITH_YOUR_MESSAGING_SENDER_ID",
-  appId: "REPLACE_WITH_YOUR_APP_ID",
+  apiKey: "AIzaSyAsMH__pN912k0rlVu48apRykJXqPb9m88",
+  authDomain: "studio-6846243418-deb19.firebaseapp.com",
+  projectId: "studio-6846243418-deb19",
+  storageBucket: "studio-6846243418-deb19.firebasestorage.app",
+  messagingSenderId: "371779115722",
+  appId: "1:371779115722:web:4d241a892a277c59c8f233"
 };

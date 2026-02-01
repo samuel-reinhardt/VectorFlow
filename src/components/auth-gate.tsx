@@ -2,17 +2,10 @@
 
 import { useEffect, ReactNode } from 'react';
 import { useUser } from '@/firebase/auth/use-user';
-import { signInAnonymously } from '@/firebase/auth/auth';
 import { Orbit } from 'lucide-react';
 
 export function AuthGate({ children }: { children: ReactNode }) {
   const { user, isLoading } = useUser();
-
-  useEffect(() => {
-    if (!isLoading && !user) {
-      signInAnonymously();
-    }
-  }, [user, isLoading]);
 
   if (isLoading) {
     return (

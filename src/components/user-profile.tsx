@@ -1,7 +1,7 @@
 'use client';
 
 import { useUser } from '@/firebase/auth/use-user';
-import { signOut } from '@/firebase/auth/auth';
+import { signOut, signInWithGoogle } from '@/firebase/auth/auth';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/data-display/avatar';
 import {
   DropdownMenu,
@@ -12,40 +12,26 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/overlay/dropdown-menu';
 import { LogIn, LogOut, User as UserIcon } from 'lucide-react';
-import { linkWithPopup, GoogleAuthProvider } from 'firebase/auth';
-import { useAuth } from '@/firebase';
 import { useToast } from '@/hooks/use-toast';
 
 export function UserProfile() {
   const { user, isLoading } = useUser();
-  const auth = useAuth();
   const { toast } = useToast();
 
-  const handleUpgradeAccount = async () => {
-    if (auth && user && user.isAnonymous) {
-      const provider = new GoogleAuthProvider();
-      try {
-        await linkWithPopup(user, provider);
-        toast({
-          title: 'Account Linked',
-          description: 'Your anonymous account has been linked to your Google account.',
-        });
-      } catch (error: any) {
-        console.error("Error upgrading account:", error);
-        if (error.code === 'auth/credential-already-in-use') {
-             toast({
-                variant: 'destructive',
-                title: 'Account Exists',
-                description: "This Google account is already in use. Please sign out and sign in with Google directly.",
-             });
-        } else {
-            toast({
-                variant: 'destructive',
-                title: 'Error',
-                description: "Could not link account. Please try again.",
-             });
-        }
-      }
+  const handleSignOut = async () => {
+    try {
+      await signOut();
+      toast({
+        title: "Logged out",
+        description: "You have been signed out of your account.",
+      });
+    } catch (error) {
+      console.error("Error signing out:", error);
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: "Failed to sign out. Please try again.",
+      });
     }
   };
 
@@ -54,9 +40,26 @@ export function UserProfile() {
   }
 
   if (!user) {
-    // This path should not be hit if AuthGate is working correctly.
-    // It can be a loading spinner or null.
-    return null;
+    return (
+      <DropdownMenu>
+        <DropdownMenuTrigger className="rounded-full focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2">
+          <Avatar className="h-8 w-8 hover:opacity-80 transition-opacity animate-in fade-in zoom-in duration-300">
+            <AvatarFallback className="bg-muted text-muted-foreground"><UserIcon className="w-5 h-5" /></AvatarFallback>
+          </Avatar>
+        </DropdownMenuTrigger>
+        <DropdownMenuContent align="end" className="w-64 p-2 shadow-xl border-border/50">
+          <DropdownMenuLabel className="p-3 mb-1 bg-muted/30 rounded-md">
+              <div className="font-semibold text-sm">Guest User</div>
+              <div className="text-[10px] text-muted-foreground font-medium mt-0.5">Sign in to sync your work</div>
+          </DropdownMenuLabel>
+          <DropdownMenuSeparator />
+          <DropdownMenuItem className="cursor-pointer" onClick={signInWithGoogle}>
+              <LogIn className="mr-2 h-4 w-4" />
+              <span className="font-medium">Login with Google</span>
+          </DropdownMenuItem>
+        </DropdownMenuContent>
+      </DropdownMenu>
+    );
   }
   
   const getInitials = (name?: string | null) => {
@@ -68,30 +71,37 @@ export function UserProfile() {
     return names[0]?.[0] || 'A';
   }
 
+  const displayName = user.displayName || user.providerData?.[0]?.displayName || (user.isAnonymous ? 'Anonymous Guest' : 'Google Account');
+  const photoURL = user.photoURL || user.providerData?.[0]?.photoURL;
+
   return (
     <DropdownMenu>
       <DropdownMenuTrigger className="rounded-full focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2">
-        <Avatar className="h-8 w-8">
-          <AvatarImage src={user.photoURL ?? undefined} alt={user.displayName ?? 'User'} />
-          <AvatarFallback>{user.isAnonymous ? <UserIcon className="w-5 h-5" /> : getInitials(user.displayName)}</AvatarFallback>
+        <Avatar key={user.uid + (photoURL || '')} className="h-8 w-8 hover:opacity-80 transition-opacity animate-in fade-in zoom-in duration-300">
+          <AvatarImage src={photoURL ?? undefined} alt={displayName} />
+          <AvatarFallback className="bg-primary/10 text-primary font-semibold">
+            {user.isAnonymous ? <UserIcon className="w-5 h-5" /> : getInitials(displayName)}
+          </AvatarFallback>
         </Avatar>
       </DropdownMenuTrigger>
-      <DropdownMenuContent align="end" className="w-56">
-        <DropdownMenuLabel>
-            <div className="font-medium truncate">{user.isAnonymous ? 'Anonymous User' : user.displayName || 'My Account'}</div>
-            {!user.isAnonymous && user.email && <div className="text-xs text-muted-foreground font-normal truncate">{user.email}</div>}
+      <DropdownMenuContent align="end" className="w-64 p-2 shadow-xl border-border/50">
+        <DropdownMenuLabel className="p-3 mb-1 bg-muted/30 rounded-md">
+            <div className="font-semibold text-sm truncate">{displayName}</div>
+            {!user.isAnonymous && user.email && <div className="text-[10px] text-muted-foreground font-medium truncate mt-0.5">{user.email}</div>}
         </DropdownMenuLabel>
         <DropdownMenuSeparator />
         {user.isAnonymous && (
-            <DropdownMenuItem onClick={handleUpgradeAccount}>
-                <LogIn className="mr-2" />
+            <DropdownMenuItem className="cursor-pointer" onClick={signInWithGoogle}>
+                <LogIn className="mr-2 h-4 w-4" />
                 <span>Login with Google</span>
             </DropdownMenuItem>
         )}
-        <DropdownMenuItem onClick={signOut}>
-          <LogOut className="mr-2" />
+        {!user.isAnonymous && (
+        <DropdownMenuItem className="cursor-pointer" onClick={handleSignOut}>
+          <LogOut className="mr-2 h-4 w-4" />
           <span>Log out</span>
         </DropdownMenuItem>
+        )}
       </DropdownMenuContent>
     </DropdownMenu>
   );
