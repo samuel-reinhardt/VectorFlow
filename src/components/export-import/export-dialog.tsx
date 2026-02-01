@@ -207,13 +207,21 @@ export function ExportDialog({
       return;
     }
 
+    // Close the dialog to avoid z-index conflicts with Picker
+    setIsOpen(false);
+
     try {
       await openPicker(
         (file: PickerFile) => handlePickerSelect(file),
-        () => console.log('Picker cancelled')
+        () => {
+          // Reopen dialog if user cancels
+          setIsOpen(true);
+        }
       );
     } catch (error: any) {
       console.error('Picker error:', error);
+      // Reopen dialog on error
+      setIsOpen(true);
       toast({
         variant: "destructive",
         title: "Drive Error",
@@ -232,7 +240,7 @@ export function ExportDialog({
         title: "Project Loaded",
         description: `Successfully imported "${file.name}" from Google Drive.`,
       });
-      setIsOpen(false);
+      // Dialog is already closed, no need to close again
     } catch (error: any) {
       console.error('Drive import failed:', error);
       toast({
@@ -240,6 +248,8 @@ export function ExportDialog({
         title: "Drive Error",
         description: "Failed to download project from Google Drive.",
       });
+      // Reopen dialog on error so user can try again
+      setIsOpen(true);
     } finally {
       setIsDriveLoading(false);
     }
