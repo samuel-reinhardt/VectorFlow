@@ -1,6 +1,7 @@
 'use client';
 
 import { Orbit } from 'lucide-react';
+import { UserProfile } from './user-profile';
 
 export function Header() {
   return (
@@ -9,6 +10,7 @@ export function Header() {
         <Orbit className="text-primary h-8 w-8" />
         <h1 className="text-2xl font-headline font-bold">VectorFlow</h1>
       </div>
+      <UserProfile />
     </header>
   );
 }

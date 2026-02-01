@@ -2,6 +2,8 @@ import type {Metadata} from 'next';
 import './globals.css';
 import 'react-day-picker/style.css';
 import { Toaster } from '@/components/ui/feedback/toaster';
+import { FirebaseClientProvider } from '@/firebase/client-provider';
+import { AuthGate } from '@/components/auth-gate';
 
 export const metadata: Metadata = {
   title: 'VectorFlow',
@@ -36,7 +38,11 @@ export default function RootLayout({
         />
       </head>
       <body className="font-body antialiased">
-        {children}
+        <FirebaseClientProvider>
+          <AuthGate>
+            {children}
+          </AuthGate>
+        </FirebaseClientProvider>
         <Toaster />
       </body>
     </html>
