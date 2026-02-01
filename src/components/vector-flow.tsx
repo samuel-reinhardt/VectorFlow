@@ -83,6 +83,12 @@ export function VectorFlow() {
         hasLoadedFromStorage,
         loadProject,
         saveCurrentFlowState,
+        googleDriveFileId,
+        setGoogleDriveFileId,
+        projectId,
+        setProjectId,
+        projectName,
+        setProjectName,
     } = useVectorFlow(initialNodes, initialEdges);
 
     const { fitView, getNode, getNodes, setEdges } = useReactFlow();
@@ -170,10 +176,17 @@ export function VectorFlow() {
 
     return (
         <div className="flex flex-col h-screen w-screen bg-background text-foreground font-body">
-            <Header>
+            <Header 
+                projectName={projectName} 
+                onNameChange={setProjectName}
+            >
                 <ExportDialog 
                     flows={flows} 
                     activeFlowId={activeFlowId} 
+                    projectId={projectId}
+                    projectName={projectName}
+                    googleDriveFileId={googleDriveFileId}
+                    setGoogleDriveFileId={setGoogleDriveFileId}
                     onImport={loadProject} 
                     onSaveState={saveCurrentFlowState}
                 />

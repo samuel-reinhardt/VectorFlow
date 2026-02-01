@@ -3,8 +3,11 @@ import { Flow } from '@/types';
 export interface ExportData {
   version: string;
   timestamp: string;
+  projectName?: string;
+  projectId: string;
   flows: Flow[];
   activeFlowId: string;
+  googleDriveFileId?: string;
   metadata?: Record<string, any>;
 }
 

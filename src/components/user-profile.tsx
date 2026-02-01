@@ -13,10 +13,36 @@ import {
 } from '@/components/ui/overlay/dropdown-menu';
 import { LogIn, LogOut, User as UserIcon } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
+import { GoogleDriveService } from '@/lib/google-drive/service';
+import { GoogleAuthProvider } from 'firebase/auth';
 
 export function UserProfile() {
   const { user, isLoading } = useUser();
   const { toast } = useToast();
+
+  const handleSignIn = async () => {
+    try {
+      const result = await signInWithGoogle();
+      if (result) {
+        const credential = GoogleAuthProvider.credentialFromResult(result);
+        const token = credential?.accessToken;
+        if (token) {
+          GoogleDriveService.setAccessToken(token);
+        }
+      }
+      toast({
+        title: "Welcome!",
+        description: "Successfully signed in with Google.",
+      });
+    } catch (error) {
+      console.error("Error signing in:", error);
+      toast({
+        variant: "destructive",
+        title: "Login Failed",
+        description: "Could not authenticate with Google.",
+      });
+    }
+  };
 
   const handleSignOut = async () => {
     try {
@@ -53,7 +79,7 @@ export function UserProfile() {
               <div className="text-[10px] text-muted-foreground font-medium mt-0.5">Sign in to sync your work</div>
           </DropdownMenuLabel>
           <DropdownMenuSeparator />
-          <DropdownMenuItem className="cursor-pointer" onClick={signInWithGoogle}>
+          <DropdownMenuItem className="cursor-pointer" onClick={handleSignIn}>
               <LogIn className="mr-2 h-4 w-4" />
               <span className="font-medium">Login with Google</span>
           </DropdownMenuItem>
@@ -91,7 +117,7 @@ export function UserProfile() {
         </DropdownMenuLabel>
         <DropdownMenuSeparator />
         {user.isAnonymous && (
-            <DropdownMenuItem className="cursor-pointer" onClick={signInWithGoogle}>
+            <DropdownMenuItem className="cursor-pointer" onClick={handleSignIn}>
                 <LogIn className="mr-2 h-4 w-4" />
                 <span>Login with Google</span>
             </DropdownMenuItem>

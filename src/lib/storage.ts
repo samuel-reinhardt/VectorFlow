@@ -10,22 +10,28 @@ const STORAGE_VERSION = STORAGE.VERSION;
 
 interface PersistedState {
   version: string;
+  projectId: string;
+  projectName?: string;
   flows: Flow[];
   activeFlowId: string;
+  googleDriveFileId?: string;
 }
 
 export const StorageManager = {
   /**
    * Saves the current application state to local storage.
    */
-  save: (flows: Flow[], activeFlowId: string) => {
+  save: (flows: Flow[], activeFlowId: string, projectId: string, projectName?: string, googleDriveFileId?: string) => {
     if (typeof window === 'undefined') return;
     
     try {
       const state: PersistedState = {
         version: STORAGE_VERSION,
+        projectId,
+        projectName,
         flows,
         activeFlowId,
+        googleDriveFileId,
       };
       localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
     } catch (error) {
@@ -36,7 +42,7 @@ export const StorageManager = {
   /**
    * Loads the application state from local storage.
    */
-  load: (): { flows: Flow[]; activeFlowId: string } | null => {
+  load: (): { flows: Flow[]; activeFlowId: string; projectId: string; projectName?: string; googleDriveFileId?: string } | null => {
     if (typeof window === 'undefined') return null;
 
     try {
@@ -54,6 +60,9 @@ export const StorageManager = {
       return {
         flows: state.flows,
         activeFlowId: state.activeFlowId,
+        projectId: state.projectId,
+        projectName: state.projectName,
+        googleDriveFileId: state.googleDriveFileId,
       };
     } catch (error) {
       console.error('Failed to load state from localStorage:', error);

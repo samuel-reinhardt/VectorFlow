@@ -21,6 +21,8 @@ import { useSelectionManagement } from './use-selection-management';
 export const useVectorFlow = (initialNodes: Node[], initialEdges: Edge[]) => {
   // --- Core State ---
   const [activeFlowId, setActiveFlowId] = useState<string>('1');
+  const [projectId, setProjectId] = useState<string>(() => `project_${Date.now()}`);
+  const [projectName, setProjectName] = useState<string>('Untitled Project');
   const [nodes, setNodesState] = useState<Node[]>(initialNodes);
   const [edges, setEdges] = useState<Edge[]>(initialEdges);
   const [selectedDeliverableId, setSelectedDeliverableId] = useState<string | null>(null);
@@ -67,10 +69,13 @@ export const useVectorFlow = (initialNodes: Node[], initialEdges: Edge[]) => {
     duplicateFlow,
     reorderFlow,
     updateMetaConfig,
-    saveCurrentFlowState
+    saveCurrentFlowState,
+    googleDriveFileId,
+    setGoogleDriveFileId
   } = useFlowState(
     initialFlows,
     activeFlowId,
+    undefined, // initialGoogleDriveFileId (will be updated by persistence)
     setActiveFlowId,
     setNodesState,
     setEdges,
@@ -116,20 +121,26 @@ export const useVectorFlow = (initialNodes: Node[], initialEdges: Edge[]) => {
   }, [nodes, edges, saveCurrentFlowState]);
 
   // 9. Persistence Hook
-  const handleOnLoad = useCallback((loadedFlows: any[], loadedActiveId: string) => {
+  const handleOnLoad = useCallback((loadedFlows: any[], loadedActiveId: string, loadedProjectId?: string, loadedProjectName?: string, loadedDriveId?: string) => {
     setFlows(loadedFlows);
     setActiveFlowId(loadedActiveId);
+    if (loadedProjectId) setProjectId(loadedProjectId);
+    if (loadedProjectName) setProjectName(loadedProjectName);
+    if (loadedDriveId) setGoogleDriveFileId(loadedDriveId);
     
     const activeFlow = loadedFlows.find(f => f.id === loadedActiveId);
     if (activeFlow) {
       setNodesState(activeFlow.nodes);
       setEdges(activeFlow.edges);
     }
-  }, [setFlows, setActiveFlowId, setNodesState, setEdges]);
+  }, [setFlows, setActiveFlowId, setGoogleDriveFileId, setNodesState, setEdges]);
 
   const { hasLoadedFromStorage } = useFlowPersistence(
     flows,
     activeFlowId,
+    projectId,
+    projectName,
+    googleDriveFileId,
     handleOnLoad
   );
 
@@ -185,5 +196,11 @@ export const useVectorFlow = (initialNodes: Node[], initialEdges: Edge[]) => {
     hasLoadedFromStorage,
     loadProject: handleOnLoad,
     saveCurrentFlowState,
+    googleDriveFileId,
+    setGoogleDriveFileId,
+    projectId,
+    setProjectId,
+    projectName,
+    setProjectName,
   };
 };

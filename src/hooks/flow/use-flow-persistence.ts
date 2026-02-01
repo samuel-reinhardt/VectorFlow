@@ -10,7 +10,10 @@ import type { Node } from 'reactflow';
 export function useFlowPersistence(
   flows: Flow[],
   activeFlowId: string,
-  onLoad: (flows: Flow[], activeFlowId: string) => void
+  projectId: string,
+  projectName: string | undefined,
+  googleDriveFileId: string | undefined,
+  onLoad: (flows: Flow[], activeFlowId: string, projectId: string, projectName?: string, googleDriveFileId?: string) => void
 ) {
   const [isInitialized, setIsInitialized] = useState(false);
   const [hasLoadedFromStorage, setHasLoadedFromStorage] = useState(false);
@@ -34,7 +37,7 @@ export function useFlowPersistence(
         }))
       }));
 
-      onLoad(normalizedFlows, saved.activeFlowId);
+      onLoad(normalizedFlows, saved.activeFlowId, saved.projectId, saved.projectName, saved.googleDriveFileId);
       setHasLoadedFromStorage(true);
     } else {
       // Nothing in storage, mark as loaded anyway to allow saves
@@ -47,9 +50,9 @@ export function useFlowPersistence(
   // Save to storage whenever flows or activeFlowId changes
   useEffect(() => {
     if (isInitialized && hasLoadedFromStorage) {
-      StorageManager.save(flows, activeFlowId);
+      StorageManager.save(flows, activeFlowId, projectId, projectName, googleDriveFileId);
     }
-  }, [flows, activeFlowId, isInitialized, hasLoadedFromStorage]);
+  }, [flows, activeFlowId, projectId, projectName, googleDriveFileId, isInitialized, hasLoadedFromStorage]);
 
   return {
     isInitialized,

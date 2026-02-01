@@ -10,6 +10,7 @@ import { EMPTY_META_CONFIG } from '@/types';
 export function useFlowState(
   initialFlows: Flow[],
   activeFlowId: string,
+  initialGoogleDriveFileId: string | undefined, // Added
   setActiveFlowId: (id: string) => void,
   setNodes: (nodes: Node[]) => void,
   setEdges: (edges: Edge[]) => void,
@@ -18,6 +19,7 @@ export function useFlowState(
   getEdges: () => Edge[]
 ) {
   const [flows, setFlows] = useState<Flow[]>(initialFlows);
+  const [googleDriveFileId, setGoogleDriveFileId] = useState<string | undefined>(initialGoogleDriveFileId); // Added
 
   const saveCurrentFlowState = useCallback(() => {
     const currentNodes = getNodes();
@@ -140,6 +142,8 @@ export function useFlowState(
     duplicateFlow,
     reorderFlow,
     updateMetaConfig,
-    saveCurrentFlowState
+    saveCurrentFlowState,
+    googleDriveFileId,
+    setGoogleDriveFileId
   };
 }

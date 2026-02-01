@@ -10,11 +10,13 @@ export const signInWithGoogle = async () => {
   const auth = getAuth();
   const provider = new GoogleAuthProvider();
   provider.addScope('https://www.googleapis.com/auth/spreadsheets.readonly');
-  provider.addScope('https://www.googleapis.com/auth/drive.readonly');
+  provider.addScope('https://www.googleapis.com/auth/drive');
   try {
-    await signInWithPopup(auth, provider);
+    const result = await signInWithPopup(auth, provider);
+    return result;
   } catch (error) {
     console.error("Error signing in with Google: ", error);
+    throw error;
   }
 };
 
