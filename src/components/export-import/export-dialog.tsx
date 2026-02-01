@@ -36,6 +36,8 @@ import { useToast } from '@/hooks/use-toast';
 import { useUser } from '@/firebase/auth/use-user';
 import { GoogleDriveService, DriveFile } from '@/lib/google-drive/service';
 import { useDrivePicker, PickerFile } from '@/lib/google-drive/picker';
+import { useDriveSync } from '@/hooks/use-drive-sync';
+import { ConflictDialog } from './conflict-dialog';
 
 interface ExportDialogProps {
   flows: Flow[];
@@ -68,6 +70,15 @@ export function ExportDialog({
   const { toast } = useToast();
   const accessToken = GoogleDriveService.getAccessToken();
   const { openPicker } = useDrivePicker(accessToken);
+
+  const { syncState, toggleSync, resolveConflictKeepLocal, resolveConflictKeepRemote, manualSync } = useDriveSync({
+    fileId: googleDriveFileId,
+    projectId,
+    projectName,
+    flows,
+    activeFlowId,
+    onImport,
+  });
 
   const handleExport = async () => {
     setIsExporting(true);
@@ -297,19 +308,55 @@ export function ExportDialog({
               </div>
             ) : (
               <div className="space-y-3">
+                {googleDriveFileId && (
+                  <div className="flex items-center justify-between p-3 rounded-lg border bg-muted/30">
+                    <div className="flex items-center gap-3">
+                      <div className={`w-2 h-2 rounded-full ${
+                        syncState.syncStatus === 'syncing' ? 'bg-blue-500 animate-pulse' :
+                        syncState.syncStatus === 'synced' ? 'bg-green-500' :
+                        syncState.syncStatus === 'conflict' ? 'bg-yellow-500' :
+                        syncState.syncStatus === 'error' ? 'bg-red-500' :
+                        'bg-gray-400'
+                      }`} />
+                      <div className="text-xs">
+                        <div className="font-medium">
+                          {syncState.syncStatus === 'syncing' ? 'Syncing...' :
+                           syncState.syncStatus === 'synced' ? 'Synced' :
+                           syncState.syncStatus === 'conflict' ? 'Conflict Detected' :
+                           syncState.syncStatus === 'error' ? 'Sync Error' :
+                           'Sync Off'}
+                        </div>
+                        {syncState.lastSyncTime && (
+                          <div className="text-[10px] text-muted-foreground">
+                            Last synced: {syncState.lastSyncTime.toLocaleTimeString()}
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                    <Button
+                      variant={syncState.isSyncEnabled ? "default" : "outline"}
+                      size="sm"
+                      onClick={toggleSync}
+                      className="h-7 text-xs"
+                    >
+                      {syncState.isSyncEnabled ? 'Disable Sync' : 'Enable Sync'}
+                    </Button>
+                  </div>
+                )}
+                
                 <div className="flex gap-2">
                   <Button 
                     variant={googleDriveFileId ? "default" : "outline"} 
                     className="flex-1 h-9 gap-2 shadow-sm"
                     onClick={() => handleDriveSave(!!googleDriveFileId)}
-                    disabled={isDriveLoading}
+                    disabled={isDriveLoading || syncState.isSyncEnabled}
                   >
                     {isDriveLoading ? (
                       <RefreshCw className="w-4 h-4 animate-spin" />
                     ) : googleDriveFileId ? (
                       <>
                         <RefreshCw className="w-4 h-4" />
-                        Sync Changes
+                        Manual Sync
                       </>
                     ) : (
                       <>
@@ -407,6 +454,31 @@ export function ExportDialog({
           </p>
         </div>
       </DialogContent>
+      
+      <ConflictDialog
+        isOpen={syncState.hasConflict}
+        onKeepLocal={() => {
+          resolveConflictKeepLocal();
+          toast({
+            title: "Conflict Resolved",
+            description: "Kept local version and synced to Drive.",
+          });
+        }}
+        onKeepRemote={() => {
+          resolveConflictKeepRemote();
+          toast({
+            title: "Conflict Resolved",
+            description: "Loaded Drive version and discarded local changes.",
+          });
+        }}
+        onCancel={() => {
+          toggleSync(); // Disable sync
+          toast({
+            title: "Sync Disabled",
+            description: "You can manually sync when ready.",
+          });
+        }}
+      />
     </Dialog>
   );
 }

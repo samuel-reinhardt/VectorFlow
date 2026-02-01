@@ -127,6 +127,27 @@ export class GoogleDriveService {
   }
 
   /**
+   * Gets lightweight file metadata for sync polling (doesn't download content).
+   */
+  static async getFileMetadata(fileId: string): Promise<{ modifiedTime: string; id: string; name: string }> {
+    const token = this.getAccessToken();
+    if (!token) throw new Error('Not authenticated with Google Drive');
+
+    const response = await fetch(`${DRIVE_API_URL}/files/${fileId}?fields=id,name,modifiedTime`, {
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+    });
+
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(`Failed to get file metadata: ${error.error?.message || response.statusText}`);
+    }
+
+    return await response.json();
+  }
+
+  /**
    * Downloads the content of a file from Google Drive.
    */
   static async getFileContent(fileId: string): Promise<ExportData> {
