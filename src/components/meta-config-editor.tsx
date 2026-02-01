@@ -61,8 +61,14 @@ export function MetaConfigEditor({ config, onUpdate }: MetaConfigEditorProps) {
   return (
     <Dialog>
       <DialogTrigger asChild>
-        <Button variant="ghost" size="icon" title="Metadata Settings">
+        <Button 
+          variant="ghost" 
+          title="Metadata Settings" 
+          size="sm" 
+          className="h-8 px-3 gap-2"
+          >
           <Settings2 className="h-4 w-4" />
+          <span className="text-xs font-medium">Metadata</span>
         </Button>
       </DialogTrigger>
       <DialogContent className="sm:max-w-[600px] h-[80vh] flex flex-col p-0">

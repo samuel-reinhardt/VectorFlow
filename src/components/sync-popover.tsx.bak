@@ -1,0 +1,185 @@
+import { Cloud, FileJson, Users, Shield, LogIn } from 'lucide-react';
+import { Button } from '@/components/ui/forms/button';
+import { SyncState } from '@/hooks/use-drive-sync';
+
+interface SyncPopoverProps {
+  user: any;
+  syncState: SyncState;
+  googleDriveFileId?: string;
+  projectId: string;
+  projectName: string;
+  onToggleSync: () => void;
+  onBrowseDrive: () => void;
+  onUnlink: () => void;
+}
+
+export function SyncPopover({
+  user,
+  syncState,
+  googleDriveFileId,
+  projectId,
+  projectName,
+  onToggleSync,
+  onBrowseDrive,
+  onUnlink,
+}: SyncPopoverProps) {
+  // Not signed in - show benefits
+  if (!user) {
+    return (
+      <div className="space-y-4">
+        <div>
+          <h3 className="font-semibold text-sm mb-1">Google Drive Sync</h3>
+          <p className="text-xs text-muted-foreground">Sign in to unlock cloud features</p>
+        </div>
+
+        <div className="space-y-3">
+          <div className="flex items-start gap-3">
+            <div className="p-2 rounded-lg bg-blue-50 text-blue-600">
+              <Cloud className="w-4 h-4" />
+            </div>
+            <div className="flex-1">
+              <div className="font-medium text-xs">Auto-save to cloud</div>
+              <div className="text-[10px] text-muted-foreground">Never lose your work</div>
+            </div>
+          </div>
+
+          <div className="flex items-start gap-3">
+            <div className="p-2 rounded-lg bg-green-50 text-green-600">
+              <FileJson className="w-4 h-4" />
+            </div>
+            <div className="flex-1">
+              <div className="font-medium text-xs">Access from anywhere</div>
+              <div className="text-[10px] text-muted-foreground">Work on any device</div>
+            </div>
+          </div>
+
+          <div className="flex items-start gap-3">
+            <div className="p-2 rounded-lg bg-purple-50 text-purple-600">
+              <Users className="w-4 h-4" />
+            </div>
+            <div className="flex-1">
+              <div className="font-medium text-xs">Share with team</div>
+              <div className="text-[10px] text-muted-foreground">Collaborate in real-time</div>
+            </div>
+          </div>
+
+          <div className="flex items-start gap-3">
+            <div className="p-2 rounded-lg bg-amber-50 text-amber-600">
+              <Shield className="w-4 h-4" />
+            </div>
+            <div className="flex-1">
+              <div className="font-medium text-xs">Secure & private</div>
+              <div className="text-[10px] text-muted-foreground">Your data stays in your Drive</div>
+            </div>
+          </div>
+        </div>
+
+        <Button className="w-full gap-2" size="sm">
+          <LogIn className="w-4 h-4" />
+          Sign In with Google
+        </Button>
+      </div>
+    );
+  }
+
+  // Signed in but no file linked
+  if (!googleDriveFileId) {
+    return (
+      <div className="space-y-4">
+        <div>
+          <h3 className="font-semibold text-sm mb-1">Google Drive Sync</h3>
+          <p className="text-xs text-muted-foreground">Connect this project to Drive</p>
+        </div>
+
+        <div className="flex items-center justify-center py-6 text-muted-foreground">
+          <Cloud className="w-12 h-12 opacity-20" />
+        </div>
+
+        <div className="space-y-2">
+          <Button className="w-full gap-2" size="sm" onClick={onBrowseDrive}>
+            <FileJson className="w-4 h-4" />
+            Browse Drive
+          </Button>
+          <Button variant="outline" className="w-full gap-2" size="sm" onClick={onBrowseDrive}>
+            <Cloud className="w-4 h-4" />
+            Create New File
+          </Button>
+        </div>
+
+        <div className="p-3 rounded-lg bg-muted/50 space-y-2">
+          <div className="text-xs font-medium">Benefits:</div>
+          <ul className="text-[10px] text-muted-foreground space-y-1">
+            <li>• Auto-save your work every 3 seconds</li>
+            <li>• Access from any device</li>
+            <li>• Collaborate with teammates</li>
+          </ul>
+        </div>
+      </div>
+    );
+  }
+
+  // Signed in with file linked
+  return (
+    <div className="space-y-4">
+      <div>
+        <h3 className="font-semibold text-sm mb-1">Google Drive Sync</h3>
+        <p className="text-xs text-muted-foreground truncate" title={`${projectName}.json`}>
+          📄 {projectName}.json
+        </p>
+      </div>
+
+      <div className="flex items-center justify-between p-3 rounded-lg border bg-muted/30">
+        <div className="flex items-center gap-3">
+          <div className={`w-2 h-2 rounded-full ${
+            syncState.syncStatus === 'syncing' ? 'bg-blue-500 animate-pulse' :
+            syncState.syncStatus === 'synced' ? 'bg-green-500' :
+            syncState.syncStatus === 'conflict' ? 'bg-yellow-500' :
+            syncState.syncStatus === 'error' ? 'bg-red-500' :
+            'bg-gray-400'
+          }`} />
+          <div className="text-xs">
+            <div className="font-medium">
+              {syncState.syncStatus === 'syncing' ? 'Syncing...' :
+               syncState.syncStatus === 'synced' ? 'Synced' :
+               syncState.syncStatus === 'conflict' ? 'Conflict' :
+               syncState.syncStatus === 'error' ? 'Error' :
+               'Sync Off'}
+            </div>
+            {syncState.lastSyncTime && (
+              <div className="text-[10px] text-muted-foreground">
+                {syncState.lastSyncTime.toLocaleTimeString()}
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
+
+      <div className="flex items-center justify-between">
+        <span className="text-xs font-medium">Auto-sync</span>
+        <Button
+          variant={syncState.isSyncEnabled ? "default" : "outline"}
+          size="sm"
+          onClick={onToggleSync}
+          className="h-7 text-xs"
+        >
+          {syncState.isSyncEnabled ? 'Enabled' : 'Disabled'}
+        </Button>
+      </div>
+
+      <div className="flex gap-2">
+        <Button variant="outline" size="sm" className="flex-1" onClick={onBrowseDrive}>
+          Browse
+        </Button>
+        <Button variant="outline" size="sm" className="flex-1" onClick={onUnlink}>
+          Unlink
+        </Button>
+      </div>
+
+      {syncState.errorMessage && (
+        <div className="p-2 rounded bg-red-50 text-red-600 text-[10px]">
+          {syncState.errorMessage}
+        </div>
+      )}
+    </div>
+  );
+}

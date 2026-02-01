@@ -343,7 +343,6 @@ export function ExportDialog({
                     </Button>
                   </div>
                 )}
-                
                 <div className="flex gap-2">
                   <Button 
                     variant={googleDriveFileId ? "default" : "outline"} 
@@ -370,7 +369,7 @@ export function ExportDialog({
                     className="h-9 w-9 p-0"
                     onClick={handleOpenPicker}
                     disabled={isDriveLoading}
-                    title="Browse Drive"
+                    title="Sync to Existing"
                   >
                     <Search className="w-4 h-4" />
                   </Button>

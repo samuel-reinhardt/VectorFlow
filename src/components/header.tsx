@@ -6,10 +6,12 @@ import { UserProfile } from './user-profile';
 export function Header({ 
   projectName, 
   onNameChange,
+  syncIndicator,
   children 
 }: { 
   projectName?: string;
   onNameChange?: (name: string) => void;
+  syncIndicator?: React.ReactNode;
   children?: React.ReactNode 
 }) {
   return (
@@ -34,8 +36,9 @@ export function Header({
           <span className="text-lg font-semibold px-2">{projectName || 'VectorFlow Workspace'}</span>
         )}
       </div>
-      <div className="flex items-center gap-4">
+      <div className="flex items-center gap-2">
         {children}
+        {syncIndicator}
         <UserProfile />
       </div>
     </header>

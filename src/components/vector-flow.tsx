@@ -25,7 +25,14 @@ import { Toolbar } from '@/components/toolbar';
 import { Outline } from '@/components/outline';
 import { FlowTabs } from '@/components/flow-tabs';
 import { useMediaQuery } from '@/hooks/use-media-query';
-import { ExportDialog } from '@/components/export-import/export-dialog';
+import { SyncIndicator } from '@/components/sync-indicator';
+import { ConflictDialog } from '@/components/export-import/conflict-dialog';
+import { useDriveSync } from '@/hooks/use-drive-sync';
+import { GoogleDriveService } from '@/lib/google-drive/service';
+import { useDrivePicker } from '@/lib/google-drive/picker';
+import { useUser } from '@/firebase/auth/use-user';
+import { useToast } from '@/hooks/use-toast';
+import { ExportImportService } from '@/lib/export-import';
 
 import { demoNodes } from './flow/data/demo-nodes';
 import { demoEdges } from './flow/data/demo-edges';
@@ -90,6 +97,20 @@ export function VectorFlow() {
         projectName,
         setProjectName,
     } = useVectorFlow(initialNodes, initialEdges);
+
+    const { user } = useUser();
+    const { toast } = useToast();
+    const accessToken = GoogleDriveService.getAccessToken();
+    const { openPicker } = useDrivePicker(accessToken);
+
+    const { syncState, toggleSync, resolveConflictKeepLocal, resolveConflictKeepRemote } = useDriveSync({
+        fileId: googleDriveFileId,
+        projectId,
+        projectName,
+        flows,
+        activeFlowId,
+        onImport: loadProject,
+    });
 
     const { fitView, getNode, getNodes, setEdges } = useReactFlow();
 
@@ -174,23 +195,130 @@ export function VectorFlow() {
 
     const selectedStepId = useMemo(() => selectedNodes.length === 1 ? selectedNodes[0].id : null, [selectedNodes]);
 
+    const handleBrowseDrive = async () => {
+        if (!user || !accessToken) {
+            toast({
+                title: "Login Required",
+                description: "Please sign in with Google to browse Drive.",
+            });
+            return;
+        }
+
+        try {
+            await openPicker(
+                async (file) => {
+                    const data = await GoogleDriveService.getFileContent(file.id);
+                    loadProject(data.flows, data.activeFlowId, data.projectId, data.projectName, file.id);
+                    toast({
+                        title: "Project Loaded",
+                        description: `Successfully imported "${file.name}" from Google Drive.`,
+                    });
+                },
+                () => console.log('Picker cancelled')
+            );
+        } catch (error: any) {
+            console.error('Picker error:', error);
+            toast({
+                variant: "destructive",
+                title: "Drive Error",
+                description: "Failed to open Drive picker.",
+            });
+        }
+    };
+
+    const handleUnlinkDrive = () => {
+        setGoogleDriveFileId(undefined);
+        toast({
+            title: "Unlinked",
+            description: "Project disconnected from Google Drive.",
+        });
+    };
+
+    const handleExport = async () => {
+        try {
+            const data = {
+                version: '1.0.0',
+                timestamp: new Date().toISOString(),
+                projectId,
+                projectName,
+                flows,
+                activeFlowId,
+            };
+
+            const exportResult = await ExportImportService.export('json', data);
+            const blob = new Blob([exportResult.content], { type: exportResult.mimeType });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            const safeName = (projectName || 'project').replace(/[^a-z0-9]/gi, '-').toLowerCase();
+            a.download = `vectorflow-${safeName}-${new Date().toISOString().split('T')[0]}.json`;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+
+            toast({
+                title: "Project Exported",
+                description: "Downloaded to your computer.",
+            });
+        } catch (error: any) {
+            console.error('Export failed:', error);
+            toast({
+                variant: "destructive",
+                title: "Export Failed",
+                description: error.message || "Failed to export project.",
+            });
+        }
+    };
+
+    const handleImport = () => {
+        const input = document.createElement('input');
+        input.type = 'file';
+        input.accept = '.json';
+        input.onchange = async (e: Event) => {
+            const file = (e.target as HTMLInputElement).files?.[0];
+            if (!file) return;
+
+            try {
+                const extension = file.name.split('.').pop() || 'json';
+                const data = await ExportImportService.import(extension, file);
+                
+                loadProject(data.flows, data.activeFlowId, data.projectId, data.projectName);
+
+                toast({
+                    title: "Project Imported",
+                    description: `Loaded ${data.flows.length} flow(s) from file.`,
+                });
+            } catch (error: any) {
+                console.error('Import failed:', error);
+                toast({
+                    variant: "destructive",
+                    title: "Import Failed",
+                    description: error.message || "Failed to import project.",
+                });
+            }
+        };
+        input.click();
+    };
+
     return (
         <div className="flex flex-col h-screen w-screen bg-background text-foreground font-body">
             <Header 
                 projectName={projectName} 
                 onNameChange={setProjectName}
-            >
-                <ExportDialog 
-                    flows={flows} 
-                    activeFlowId={activeFlowId} 
-                    projectId={projectId}
-                    projectName={projectName}
-                    googleDriveFileId={googleDriveFileId}
-                    setGoogleDriveFileId={setGoogleDriveFileId}
-                    onImport={loadProject} 
-                    onSaveState={saveCurrentFlowState}
-                />
-            </Header>
+                syncIndicator={
+                    <SyncIndicator
+                        user={user}
+                        syncState={syncState}
+                        googleDriveFileId={googleDriveFileId}
+                        projectId={projectId}
+                        projectName={projectName}
+                        onToggleSync={toggleSync}
+                        onBrowseDrive={handleBrowseDrive}
+                        onUnlink={handleUnlinkDrive}
+                    />
+                }
+            />
             
             <Toolbar 
                 onLeftSidebarToggle={handleLeftSidebarToggle}
@@ -198,6 +326,10 @@ export function VectorFlow() {
                 onAutoLayout={() => handleAutoLayout({ silent: false })}
                 metaConfig={metaConfig}
                 onUpdateMetaConfig={updateMetaConfig}
+                leftSidebarOpen={leftSidebarOpen}
+                rightSidebarOpen={rightSidebarOpen}
+                onExport={handleExport}
+                onImport={handleImport}
             />
 
             <div className="flex flex-1 overflow-hidden">
@@ -285,6 +417,31 @@ export function VectorFlow() {
                 onDeleteFlow={deleteFlow}
                 onDuplicateFlow={duplicateFlow}
                 onReorderFlow={reorderFlow}
+            />
+            
+            <ConflictDialog
+                isOpen={syncState.hasConflict}
+                onKeepLocal={() => {
+                    resolveConflictKeepLocal();
+                    toast({
+                        title: "Conflict Resolved",
+                        description: "Kept local version and synced to Drive.",
+                    });
+                }}
+                onKeepRemote={() => {
+                    resolveConflictKeepRemote();
+                    toast({
+                        title: "Conflict Resolved",
+                        description: "Loaded Drive version and discarded local changes.",
+                    });
+                }}
+                onCancel={() => {
+                    toggleSync();
+                    toast({
+                        title: "Sync Disabled",
+                        description: "You can manually sync when ready.",
+                    });
+                }}
             />
         </div>
     );

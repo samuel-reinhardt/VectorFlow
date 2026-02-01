@@ -148,13 +148,34 @@ export function useDriveSync({
       return;
     }
 
+    // Check if we have a valid access token
+    const token = GoogleDriveService.getAccessToken();
+    if (!token) {
+      console.error('No access token available for sync');
+      setSyncState(prev => ({
+        ...prev,
+        syncStatus: 'error',
+        errorMessage: 'Not authenticated. Please sign in again.',
+        isSyncEnabled: false,
+      }));
+      return;
+    }
+
     // Initial metadata fetch
     if (!lastRemoteModifiedTime.current) {
       GoogleDriveService.getFileMetadata(fileId)
         .then(metadata => {
           lastRemoteModifiedTime.current = metadata.modifiedTime;
         })
-        .catch(console.error);
+        .catch(error => {
+          console.error('Initial metadata fetch failed:', error);
+          setSyncState(prev => ({
+            ...prev,
+            syncStatus: 'error',
+            errorMessage: 'Failed to connect to Drive. Please check your authentication.',
+            isSyncEnabled: false,
+          }));
+        });
     }
 
     // Poll for changes
@@ -179,8 +200,21 @@ export function useDriveSync({
             await pullRemoteChanges();
           }
         }
-      } catch (error) {
+      } catch (error: any) {
         console.error('Polling error:', error);
+        // If auth error, disable sync
+        if (error.message?.includes('authentication') || error.message?.includes('OAuth')) {
+          setSyncState(prev => ({
+            ...prev,
+            syncStatus: 'error',
+            errorMessage: 'Authentication expired. Please sign in again.',
+            isSyncEnabled: false,
+          }));
+          if (pollInterval.current) {
+            clearInterval(pollInterval.current);
+            pollInterval.current = null;
+          }
+        }
       }
     }, POLL_INTERVAL);
 
