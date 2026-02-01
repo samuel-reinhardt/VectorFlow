@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useMemo } from 'react';
 import type { Node, Edge } from 'reactflow';
 import { CommonFields } from './panels/settings/common-fields';
 import { MetadataSection } from './panels/settings/metadata-section';
@@ -29,6 +29,8 @@ interface SettingsPanelProps {
   onUpdateDeliverableMetaData: (stepId: string, deliverableId: string, fieldId: string, value: any) => void;
 }
 
+const EMPTY_OBJECT = {};
+
 export function SettingsPanel({
   selectedSteps,
   selectedEdge,
@@ -54,18 +56,26 @@ export function SettingsPanel({
   const [color, setColor] = useState('#E5E7EB');
   const [icon, setIcon] = useState('');
 
-  const singleSelectedStep = selectedSteps.length === 1 ? selectedSteps[0] : null;
-  const isMultiStepSelection = selectedSteps.length > 1;
-  const isGroupSelected = singleSelectedStep?.type === 'group';
-  
-  // Find selected deliverable
-  const selectedDeliverable = singleSelectedStep && selectedDeliverableId 
-    ? (Array.isArray(singleSelectedStep.data.deliverables) 
-        ? singleSelectedStep.data.deliverables.find((d: any) => d.id === selectedDeliverableId) 
-        : null)
-    : null;
+  const singleSelectedStep = useMemo(() => 
+    selectedSteps.length === 1 ? selectedSteps[0] : null
+  , [selectedSteps]);
 
-  const isStepSelected = singleSelectedStep && !isGroupSelected && !selectedDeliverable;
+  const isMultiStepSelection = selectedSteps.length > 1;
+
+  const isGroupSelected = useMemo(() => 
+    singleSelectedStep?.type === 'group'
+  , [singleSelectedStep]);
+  
+  const selectedDeliverable = useMemo(() => {
+    if (!singleSelectedStep || !selectedDeliverableId) return null;
+    const deliverables = singleSelectedStep.data.deliverables;
+    if (!Array.isArray(deliverables)) return null;
+    return deliverables.find((d: any) => d.id === selectedDeliverableId) || null;
+  }, [singleSelectedStep, selectedDeliverableId]);
+
+  const isStepSelected = useMemo(() => 
+    !!(singleSelectedStep && !isGroupSelected && !selectedDeliverable)
+  , [singleSelectedStep, isGroupSelected, selectedDeliverable]);
 
   // Sync local state with selected entity
   useEffect(() => {
@@ -103,7 +113,7 @@ export function SettingsPanel({
     const { title, description, deleteText, type } = getPanelInfo();
     onTitleChange(title, description, deleteText, type, icon);
 
-  }, [selectedSteps, selectedEdge, selectedDeliverable, onTitleChange, isMultiStepSelection, singleSelectedStep, isGroupSelected, isStepSelected, icon]);
+  }, [selectedSteps.length, selectedEdge, selectedDeliverable, onTitleChange, isMultiStepSelection, singleSelectedStep, isGroupSelected, isStepSelected, icon]);
 
   const handleLabelChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const newLabel = e.target.value;
@@ -143,19 +153,19 @@ export function SettingsPanel({
   const editingElement = singleSelectedStep || selectedEdge;
 
   // Determine entity type for CommonFields
-  const getEntityType = (): 'step' | 'deliverable' | 'group' | 'edge' => {
+  const entityType = useMemo((): 'step' | 'deliverable' | 'group' | 'edge' => {
     if (selectedDeliverable) return 'deliverable';
     if (isGroupSelected) return 'group';
     if (selectedEdge) return 'edge';
     return 'step';
-  };
+  }, [selectedDeliverable, isGroupSelected, selectedEdge]);
 
   // Get metadata fields and values based on selection
-  const getMetadataProps = () => {
+  const metadataProps = useMemo(() => {
     if (selectedDeliverable) {
       return {
         fields: metaConfig.deliverable,
-        values: selectedDeliverable.meta || {},
+        values: selectedDeliverable.meta || EMPTY_OBJECT,
         onChange: (fieldId: string, value: any) => 
           onUpdateDeliverableMetaData(singleSelectedStep!.id, selectedDeliverable.id, fieldId, value)
       };
@@ -163,7 +173,7 @@ export function SettingsPanel({
     if (isGroupSelected) {
       return {
         fields: metaConfig.group,
-        values: singleSelectedStep?.data.meta || {},
+        values: singleSelectedStep?.data.meta || EMPTY_OBJECT,
         onChange: (fieldId: string, value: any) => 
           onUpdateMetaData(singleSelectedStep!.id, fieldId, value)
       };
@@ -171,15 +181,13 @@ export function SettingsPanel({
     if (isStepSelected) {
       return {
         fields: metaConfig.step,
-        values: singleSelectedStep?.data.meta || {},
+        values: singleSelectedStep?.data.meta || EMPTY_OBJECT,
         onChange: (fieldId: string, value: any) => 
           onUpdateMetaData(singleSelectedStep!.id, fieldId, value)
       };
     }
     return null;
-  };
-
-  const metadataProps = getMetadataProps();
+  }, [selectedDeliverable, isGroupSelected, isStepSelected, singleSelectedStep, metaConfig, onUpdateDeliverableMetaData, onUpdateMetaData]);
 
   return (
     <div className="flex-1 overflow-y-auto p-4 pt-0">
@@ -192,7 +200,7 @@ export function SettingsPanel({
             onLabelChange={handleLabelChange}
             onColorChange={handleColorChange}
             onIconChange={handleIconChange}
-            entityType={getEntityType()}
+            entityType={entityType}
           />
           
           {!selectedEdge && metadataProps && (

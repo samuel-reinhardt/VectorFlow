@@ -1,7 +1,7 @@
 'use client';
 
 import * as React from 'react';
-import { format } from 'date-fns';
+import { format, isValid } from 'date-fns';
 import { Calendar as CalendarIcon, X } from 'lucide-react';
 import { Node } from 'reactflow';
 import { cn } from '@/lib/utils';
@@ -84,6 +84,9 @@ function RenderField({
         />
       );
     case 'date':
+      const dateValue = value ? new Date(value) : null;
+      const isValidDate = dateValue && isValid(dateValue);
+      
       return (
         <Popover>
           <PopoverTrigger asChild>
@@ -91,17 +94,17 @@ function RenderField({
               variant={"outline"}
               className={cn(
                 "w-full justify-start text-left font-normal",
-                !value && "text-muted-foreground"
+                !isValidDate && "text-muted-foreground"
               )}
             >
               <CalendarIcon className="mr-2 h-4 w-4" />
-              {value ? format(new Date(value), "PPP") : <span>Pick a date</span>}
+              {isValidDate ? format(dateValue, "PPP") : <span>Pick a date</span>}
             </Button>
           </PopoverTrigger>
           <PopoverContent className="w-auto p-0" align="start">
             <Calendar
               mode="single"
-              selected={value ? new Date(value) : undefined}
+              selected={isValidDate ? dateValue : undefined}
               onSelect={(date) => onChange(date ? date.toISOString() : null)}
               initialFocus
             />
