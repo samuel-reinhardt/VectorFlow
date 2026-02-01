@@ -10,7 +10,7 @@ import {
   DropdownMenuSeparator,
 } from '@/components/ui/overlay/dropdown-menu';
 import { cn } from '@/lib/utils';
-import type { Flow } from '@/hooks/use-vector-flow';
+import type { Flow } from '@/types';
 
 interface FlowTabsProps {
   flows: Flow[];

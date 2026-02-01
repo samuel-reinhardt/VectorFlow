@@ -23,7 +23,7 @@ import {
 } from '@/components/ui/overlay/popover';
 import { Calendar } from '@/components/ui/data-display/calendar';
 import { Badge } from '@/components/ui/data-display/badge';
-import type { FieldDefinition, FieldType } from '@/hooks/use-vector-flow';
+import type { FieldDefinition, FieldType } from '@/types';
 
 interface MetaValueEditorProps {
   fields: FieldDefinition[];

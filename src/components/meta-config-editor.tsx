@@ -28,7 +28,7 @@ import {
   TabsTrigger,
 } from '@/components/ui/layout/tabs';
 import { Separator } from '@/components/ui/layout/separator';
-import type { FieldDefinition, MetaConfig, FieldType } from '@/hooks/use-vector-flow';
+import type { FieldDefinition, MetaConfig, FieldType } from '@/types';
 
 interface MetaConfigEditorProps {
   config: MetaConfig;

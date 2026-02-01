@@ -2,10 +2,11 @@
  * Manages local storage persistence for project flows and application state.
  */
 
-import { Flow } from '@/hooks/use-vector-flow';
+import { Flow } from '@/types';
+import { STORAGE } from '@/lib/constants';
 
-const STORAGE_KEY = 'vector-flow-state';
-const STORAGE_VERSION = '1.0';
+const STORAGE_KEY = STORAGE.KEY;
+const STORAGE_VERSION = STORAGE.VERSION;
 
 interface PersistedState {
   version: string;

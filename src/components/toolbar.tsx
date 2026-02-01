@@ -3,7 +3,7 @@
 import { PanelLeft, LayoutGrid, Workflow, Settings2 } from 'lucide-react';
 import { Button } from '@/components/ui/forms/button';
 import { MetaConfigEditor } from './meta-config-editor';
-import type { MetaConfig, FieldDefinition } from '@/hooks/use-vector-flow';
+import type { MetaConfig, FieldDefinition } from '@/types';
 
 interface ToolbarProps {
   onLeftSidebarToggle: () => void;

@@ -15,51 +15,18 @@ import {
 } from 'reactflow';
 import { useToast } from '@/hooks/use-toast';
 import { StorageManager } from '@/lib/storage';
+import { Deliverable, Flow, MetaConfig, FieldDefinition, EMPTY_META_CONFIG } from '@/types';
+import { DIMENSIONS, DEFAULT_COLORS } from '@/lib/constants';
 
-const STEP_WIDTH = 220;
-const STEP_INITIAL_HEIGHT = 60;
-const STEP_HEADER_HEIGHT = 48;
-const DELIVERABLE_HEIGHT = 40;
-const DELIVERABLE_Y_PADDING = 8;
-const DELIVERABLE_X_PADDING = 12;
-const DELIVERABLE_WIDTH = STEP_WIDTH - (DELIVERABLE_X_PADDING * 2);
-
-export type Deliverable = {
-  id: string;
-  label: string;
-  color: string;
-  icon?: string;
-  meta?: Record<string, any>;
-};
-
-export type FieldType = 'text' | 'long-text' | 'date' | 'select' | 'multi-select';
-
-export type FieldDefinition = {
-  id: string;
-  label: string;
-  type: FieldType;
-  options?: string[];
-};
-
-export type MetaConfig = {
-  step: FieldDefinition[];
-  deliverable: FieldDefinition[];
-  group: FieldDefinition[];
-};
-
-export type Flow = {
-  id: string;
-  title: string;
-  nodes: Node[];
-  edges: Edge[];
-  metaConfig: MetaConfig;
-};
-
-const EMPTY_META_CONFIG: MetaConfig = {
-  step: [],
-  deliverable: [],
-  group: []
-};
+const { 
+  STEP_WIDTH, 
+  STEP_INITIAL_HEIGHT, 
+  STEP_HEADER_HEIGHT, 
+  DELIVERABLE_HEIGHT, 
+  DELIVERABLE_Y_PADDING, 
+  DELIVERABLE_X_PADDING, 
+  DELIVERABLE_WIDTH 
+} = DIMENSIONS;
 
 export const useVectorFlow = (initialNodes: Node[], initialEdges: Edge[]) => {
   const [flows, setFlows] = useState<Flow[]>([
