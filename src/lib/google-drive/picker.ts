@@ -42,32 +42,51 @@ function loadPickerApi(): Promise<void> {
 export async function showDrivePicker(
   accessToken: string,
   onSelect: (file: PickerFile) => void,
-  onCancel?: () => void
+  onCancel?: () => void,
+  mode: 'file' | 'folder' = 'file'
 ): Promise<void> {
   try {
     await loadPickerApi();
 
+    const view = new google.picker.DocsView(google.picker.ViewId.DOCS);
+    const sharedView = new google.picker.DocsView(google.picker.ViewId.DOCS);
+    const sharedDrivesView = new google.picker.DocsView(); // No ViewId for Shared Drives root
+
+    if (mode === 'folder') {
+        view.setIncludeFolders(true)
+            .setSelectFolderEnabled(true)
+            .setMimeTypes('application/vnd.google-apps.folder');
+        
+        sharedView.setIncludeFolders(true)
+            .setSelectFolderEnabled(true)
+            .setMimeTypes('application/vnd.google-apps.folder')
+            .setOwnedByMe(false);
+
+        sharedDrivesView.setEnableDrives(true)
+            .setIncludeFolders(true)
+            .setSelectFolderEnabled(true)
+            .setMimeTypes('application/vnd.google-apps.folder');
+
+    } else {
+        view.setMimeTypes('application/json')
+            .setIncludeFolders(true);
+        
+        sharedView.setMimeTypes('application/json')
+            .setIncludeFolders(true)
+            .setOwnedByMe(false);
+            
+        sharedDrivesView.setMimeTypes('application/json')
+            .setEnableDrives(true)
+            .setIncludeFolders(true);
+    }
+
     const picker = new google.picker.PickerBuilder()
       // Add view for user's Drive files
-      .addView(
-        new google.picker.DocsView(google.picker.ViewId.DOCS)
-          .setMimeTypes('application/json')
-          .setIncludeFolders(true)
-      )
+      .addView(view)
       // Add view for "Shared with me"
-      .addView(
-        new google.picker.DocsView(google.picker.ViewId.DOCS)
-          .setMimeTypes('application/json')
-          .setIncludeFolders(true)
-          .setOwnedByMe(false)
-      )
+      .addView(sharedView)
       // Add view for Shared Drives
-      .addView(
-        new google.picker.DocsView()
-          .setMimeTypes('application/json')
-          .setEnableDrives(true)
-          .setIncludeFolders(true)
-      )
+      .addView(sharedDrivesView)
       .setOAuthToken(accessToken)
       .setDeveloperKey(PICKER_API_KEY) // Empty string is fine with OAuth
       .setCallback((data: google.picker.ResponseObject) => {
@@ -83,7 +102,7 @@ export async function showDrivePicker(
           onCancel?.();
         }
       })
-      .setTitle('Select VectorFlow Project')
+      .setTitle(mode === 'folder' ? 'Select Destination Folder' : 'Select VectorFlow Project')
       .setSize(1051, 650)
       .build();
 
@@ -100,13 +119,14 @@ export async function showDrivePicker(
 export function useDrivePicker(accessToken: string | null) {
   const openPicker = async (
     onSelect: (file: PickerFile) => void,
-    onCancel?: () => void
+    onCancel?: () => void,
+    mode: 'file' | 'folder' = 'file'
   ) => {
     if (!accessToken) {
       throw new Error('No access token available. Please sign in with Google.');
     }
 
-    await showDrivePicker(accessToken, onSelect, onCancel);
+    await showDrivePicker(accessToken, onSelect, onCancel, mode);
   };
 
   return { openPicker };

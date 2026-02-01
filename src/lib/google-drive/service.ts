@@ -37,11 +37,11 @@ export class GoogleDriveService {
   /**
    * Creates a new file on Google Drive.
    */
-  static async createFile(name: string, data: ExportData): Promise<string> {
+  static async createFile(name: string, data: ExportData, folderId?: string): Promise<string> {
     const token = this.getAccessToken();
     if (!token) throw new Error('Not authenticated with Google Drive');
 
-    const metadata = {
+    const metadata: any = {
       name,
       mimeType: 'application/json',
       description: 'VectorFlow Project Export',
@@ -51,6 +51,10 @@ export class GoogleDriveService {
           projectId: data.projectId
       }
     };
+
+    if (folderId) {
+        metadata.parents = [folderId];
+    }
 
     const form = new FormData();
     form.append('metadata', new Blob([JSON.stringify(metadata)], { type: 'application/json' }));

@@ -240,6 +240,62 @@ export function VectorFlow() {
         }
     };
 
+    const handleCreateDriveFile = async () => {
+        if (!user || !accessToken) {
+            toast({
+                title: "Login Required",
+                description: "Please sign in with Google to create a file.",
+            });
+            return;
+        }
+
+        try {
+            await openPicker(
+                async (folder) => {
+                    const data = {
+                        version: '1.0.0',
+                        timestamp: new Date().toISOString(),
+                        projectId,
+                        projectName,
+                        flows,
+                        activeFlowId,
+                    };
+
+                    try {
+                        const fileId = await GoogleDriveService.createFile(
+                            `${projectName || 'vectorflow-project'}.json`,
+                            data,
+                            folder.id
+                        );
+                        
+                        setGoogleDriveFileId(fileId);
+                        
+                        toast({
+                            title: "File Created",
+                            description: `Successfully created project file in Google Drive.`,
+                        });
+                    } catch (err: any) {
+                         console.error('File creation error:', err);
+                         toast({
+                            variant: "destructive",
+                            title: "Creation Failed",
+                            description: err.message || "Failed to create file.",
+                        });
+                    }
+                },
+                () => console.log('Picker cancelled'),
+                'folder'
+            );
+        } catch (error: any) {
+            console.error('Picker error:', error);
+            toast({
+                variant: "destructive",
+                title: "Drive Error",
+                description: "Failed to open Drive picker.",
+            });
+        }
+    };
+
     const handleUnlinkDrive = () => {
         setGoogleDriveFileId(undefined);
         toast({
@@ -330,6 +386,7 @@ export function VectorFlow() {
                         projectName={projectName}
                         onToggleSync={toggleSync}
                         onBrowseDrive={handleBrowseDrive}
+                        onCreateFile={handleCreateDriveFile}
                         onUnlink={handleUnlinkDrive}
                     />
                 }

@@ -10,6 +10,7 @@ interface SyncPopoverProps {
   projectName: string;
   onToggleSync: () => void;
   onBrowseDrive: () => void;
+  onCreateFile?: () => void;
   onUnlink: () => void;
 }
 
@@ -21,6 +22,7 @@ export function SyncPopover({
   projectName,
   onToggleSync,
   onBrowseDrive,
+  onCreateFile,
   onUnlink,
 }: SyncPopoverProps) {
   // Not signed in - show benefits
@@ -100,7 +102,7 @@ export function SyncPopover({
             <FileJson className="w-4 h-4" />
             Select New Sync File
           </Button>
-          <Button variant="outline" className="w-full gap-2" size="sm" onClick={onBrowseDrive}>
+          <Button variant="outline" className="w-full gap-2" size="sm" onClick={onCreateFile || onBrowseDrive}>
             <Cloud className="w-4 h-4" />
             Create New File
           </Button>

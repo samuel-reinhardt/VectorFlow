@@ -12,6 +12,7 @@ interface SyncIndicatorProps {
   projectName: string;
   onToggleSync: () => void;
   onBrowseDrive: () => void;
+  onCreateFile?: () => void;
   onUnlink: () => void;
 }
 
@@ -23,6 +24,7 @@ export function SyncIndicator({
   projectName,
   onToggleSync,
   onBrowseDrive,
+  onCreateFile,
   onUnlink,
 }: SyncIndicatorProps) {
   const getSyncIcon = () => {
@@ -105,6 +107,7 @@ export function SyncIndicator({
           projectName={projectName}
           onToggleSync={onToggleSync}
           onBrowseDrive={onBrowseDrive}
+          onCreateFile={onCreateFile}
           onUnlink={onUnlink}
         />
       </PopoverContent>
