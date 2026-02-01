@@ -3,7 +3,8 @@
 import { useState, useMemo } from 'react';
 import type { Node } from 'reactflow';
 import { useReactFlow } from 'reactflow';
-import { ListTree, Search, ChevronRight } from 'lucide-react';
+import { ListTree, Search, ChevronRight, Square, FileText, Layers } from 'lucide-react';
+import { DynamicIcon } from './dynamic-icon';
 
 import { Button } from '@/components/ui/forms/button';
 import { Input } from '@/components/ui/forms/input';
@@ -21,14 +22,11 @@ interface OutlineProps {
 
 export function Outline({ nodes, selectedStepId, onStepSelect, onDeliverableSelect }: OutlineProps) {
   const [searchTerm, setSearchTerm] = useState('');
-  const { getNodes } = useReactFlow();
-
   const nodeTree = useMemo(() => {
-    const allNodes = getNodes();
     // Build initial map, associating nodes with potential children
     // Nodes can have children (other nodes) AND deliverables (internal items)
     const nodesById = new Map(
-      allNodes.map((node) => [node.id, { ...node, children: [] as TreeNode[], deliverables: node.data.deliverables || [] }])
+      nodes.map((node) => [node.id, { ...node, children: [] as TreeNode[], deliverables: node.data.deliverables || [] }])
     );
 
     // Link graph children
@@ -38,7 +36,7 @@ export function Outline({ nodes, selectedStepId, onStepSelect, onDeliverableSele
       }
     }
 
-    const roots = allNodes.filter((n) => !n.parentNode);
+    const roots = nodes.filter((n) => !n.parentNode);
     const flatList: (TreeNode | { type: 'deliverable', id: string, label: string, parentId: string, level: number })[] = [];
 
     function traverse(nodes: Node[], level: number) {
@@ -51,12 +49,13 @@ export function Outline({ nodes, selectedStepId, onStepSelect, onDeliverableSele
         flatList.push({ ...fullNode, level } as TreeNode);
         
         // Add deliverables immediately after the node
-        if (fullNode.data.deliverables && fullNode.data.deliverables.length > 0) {
+        if (fullNode.data.deliverables && Array.isArray(fullNode.data.deliverables) && fullNode.data.deliverables.length > 0) {
             fullNode.data.deliverables.forEach((d: any) => {
                 flatList.push({
                     type: 'deliverable',
                     id: d.id,
                     label: d.label,
+                    icon: d.icon,
                     parentId: node.id,
                     level: level + 1
                 } as any);
@@ -80,7 +79,7 @@ export function Outline({ nodes, selectedStepId, onStepSelect, onDeliverableSele
     });
     traverse(roots, 0);
     return flatList;
-  }, [getNodes, nodes]);
+  }, [nodes]);
 
   const filteredNodes = nodeTree.filter((item: any) => {
       const label = item.type === 'deliverable' ? item.label : item.data.label;
@@ -130,9 +129,20 @@ export function Outline({ nodes, selectedStepId, onStepSelect, onDeliverableSele
                       }
                   }}
                 >
-                  {item.type !== 'deliverable' && (item.children?.length > 0 || item.data?.deliverables?.length > 0) && (
-                    <ChevronRight className="h-4 w-4 mr-1 shrink-0" />
+                  {item.type !== 'deliverable' && (item.children?.length > 0 || item.data?.deliverables?.length > 0) ? (
+                    <ChevronRight className="h-3.5 w-3.5 mr-1 shrink-0 text-muted-foreground/50" />
+                  ) : (
+                    <div className="w-[18px]" /> // Spacer to align items without children
                   )}
+                  
+                  {item.type === 'deliverable' ? (
+                    <DynamicIcon name={item.icon} fallback={FileText} className="h-3.5 w-3.5 mr-2 shrink-0 opacity-70" />
+                  ) : item.type === 'group' ? (
+                    <DynamicIcon name={item.data?.icon} fallback={Layers} className="h-3.5 w-3.5 mr-2 shrink-0 opacity-70" />
+                  ) : (
+                    <DynamicIcon name={item.data?.icon} fallback={Square} className="h-3.5 w-3.5 mr-2 shrink-0 opacity-70" />
+                  )}
+                  
                   <span className="truncate">{item.type === 'deliverable' ? item.label : item.data.label}</span>
                 </Button>
               </li>

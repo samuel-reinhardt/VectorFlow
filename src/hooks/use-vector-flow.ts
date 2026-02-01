@@ -14,6 +14,7 @@ import {
   useUpdateNodeInternals,
 } from 'reactflow';
 import { useToast } from '@/hooks/use-toast';
+import { StorageManager } from '@/lib/storage';
 
 const STEP_WIDTH = 220;
 const STEP_INITIAL_HEIGHT = 60;
@@ -27,6 +28,23 @@ export type Deliverable = {
   id: string;
   label: string;
   color: string;
+  icon?: string;
+  meta?: Record<string, any>;
+};
+
+export type FieldType = 'text' | 'long-text' | 'date' | 'select' | 'multi-select';
+
+export type FieldDefinition = {
+  id: string;
+  label: string;
+  type: FieldType;
+  options?: string[];
+};
+
+export type MetaConfig = {
+  step: FieldDefinition[];
+  deliverable: FieldDefinition[];
+  group: FieldDefinition[];
 };
 
 export type Flow = {
@@ -34,11 +52,45 @@ export type Flow = {
   title: string;
   nodes: Node[];
   edges: Edge[];
+  metaConfig: MetaConfig;
+};
+
+const EMPTY_META_CONFIG: MetaConfig = {
+  step: [],
+  deliverable: [],
+  group: []
 };
 
 export const useVectorFlow = (initialNodes: Node[], initialEdges: Edge[]) => {
   const [flows, setFlows] = useState<Flow[]>([
-    { id: '1', title: 'Flow 1', nodes: initialNodes, edges: initialEdges }
+    { 
+      id: '1', 
+      title: 'Main Project', 
+      nodes: initialNodes, 
+      edges: initialEdges,
+      metaConfig: {
+        ...EMPTY_META_CONFIG,
+        step: [
+          { id: 'status', label: 'Status', type: 'select', options: ['To Do', 'In Progress', 'Done'] },
+          { id: 'due_date', label: 'Due Date', type: 'date' }
+        ]
+      }
+    },
+    { 
+      id: '2', 
+      title: 'Legacy Flow', 
+      nodes: [
+        { 
+          id: 'legacy-1', 
+          type: 'custom', 
+          position: { x: 100, y: 100 }, 
+          data: { label: 'Legacy Core', color: '#94A3B8', icon: 'History', deliverables: [] },
+          style: { width: 220, height: 'auto' }
+        }
+      ], 
+      edges: [],
+      metaConfig: EMPTY_META_CONFIG
+    }
   ]);
   const [activeFlowId, setActiveFlowId] = useState<string>('1');
 
@@ -47,6 +99,55 @@ export const useVectorFlow = (initialNodes: Node[], initialEdges: Edge[]) => {
   const [selectedNodes, setSelectedNodes] = useState<Node[]>([]);
   const [selectedEdges, setSelectedEdges] = useState<Edge[]>([]);
   const [selectedDeliverableId, setSelectedDeliverableId] = useState<string | null>(null);
+  const [isInitialized, setIsInitialized] = useState(false);
+  const [hasLoadedFromStorage, setHasLoadedFromStorage] = useState(false);
+
+  // Persistence: Load on mount
+  useEffect(() => {
+    const saved = StorageManager.load();
+    if (saved) {
+        // Normalize flows to ensure deliverables is always an array
+        const normalizedFlows = saved.flows.map(flow => ({
+          ...flow,
+          nodes: flow.nodes.map(node => ({
+            ...node,
+            data: {
+              ...node.data,
+              deliverables: Array.isArray(node.data.deliverables) ? node.data.deliverables : []
+            }
+          }))
+        }));
+        
+        setFlows(normalizedFlows);
+        setActiveFlowId(saved.activeFlowId);
+        setHasLoadedFromStorage(true);
+        
+        const activeFlow = normalizedFlows.find(f => f.id === saved.activeFlowId);
+        if (activeFlow) {
+            setNodesState(activeFlow.nodes);
+            setEdges(activeFlow.edges);
+        }
+    }
+    setIsInitialized(true);
+  }, []);
+
+  useEffect(() => {
+    // Only save if we have finished checking the initial storage state
+    if (isInitialized && flows.length > 0) {
+      StorageManager.save(flows, activeFlowId);
+    }
+  }, [flows, activeFlowId, isInitialized]);
+
+  // Persistence: Sync canvas changes back to the flows array
+  useEffect(() => {
+    if (!isInitialized) return;
+    
+    // We update the flows array so it contains the current nodes and edges
+    // This way, the save effect (which watches 'flows') will persist the latest state.
+    setFlows(prev => prev.map(f => 
+      f.id === activeFlowId ? { ...f, nodes, edges } : f
+    ));
+  }, [nodes, edges, activeFlowId, isInitialized]);
   
   const { toast } = useToast();
   const { fitView, getNodes, getEdges, project } = useReactFlow();
@@ -88,74 +189,188 @@ export const useVectorFlow = (initialNodes: Node[], initialEdges: Edge[]) => {
 
   // Let's define handlers first.
   
-  const handleAddDeliverable = useCallback((stepId: string) => {
-    setNodesState(nds => nds.map(n => {
-      if (n.id === stepId) {
-        const newDeliverable: Deliverable = {
-          id: `del_${Date.now()}`,
-          label: 'New Deliverable',
-          color: '#E0E7FF'
-        };
-        const currentDeliverables = n.data.deliverables || [];
-        return {
-          ...n,
-          data: {
-            ...n.data,
-            deliverables: [...currentDeliverables, newDeliverable]
-          }
-        };
-      }
-      return n;
-    }));
+  const getNodeSize = useCallback((node: Node) => {
+    const width = node.width || (node.style?.width as number) || STEP_WIDTH;
+    let height = node.height || (node.style?.height as number);
+    
+    if (!height || typeof height === 'string') {
+        const deliverablesCount = node.data?.deliverables?.length || 0;
+        if (deliverablesCount === 0) {
+            height = STEP_INITIAL_HEIGHT;
+        } else {
+            // Header (48) + padding (16) + deliverables (N * 40) + gaps ((N-1) * 8)
+            height = 48 + 16 + (deliverablesCount * 40) + (Math.max(0, deliverablesCount - 1) * 8);
+        }
+    }
+    return { width, height: height as number };
   }, []);
+
+  const autoResizeGroups = useCallback((currentNodes: Node[]): Node[] => {
+    const groups = currentNodes.filter(n => n.type === 'group');
+    if (groups.length === 0) return currentNodes;
+
+    const nextNodes = [...currentNodes];
+    let iterations = 0;
+    let hasChangedPass = true;
+    
+    while (hasChangedPass && iterations < 2) {
+      hasChangedPass = false;
+      
+      groups.forEach(group => {
+        const children = nextNodes.filter(c => c.parentNode === group.id);
+        if (children.length === 0) return;
+
+        let minX = Infinity;
+        let minY = Infinity;
+        let maxX = -Infinity;
+        let maxY = -Infinity;
+
+        children.forEach(child => {
+          const { width: w, height: h } = getNodeSize(child);
+          minX = Math.min(minX, child.position.x);
+          minY = Math.min(minY, child.position.y);
+          maxX = Math.max(maxX, child.position.x + w);
+          maxY = Math.max(maxY, child.position.y + h);
+        });
+
+        const padding = 60;
+        const dx = minX - padding;
+        const dy = minY - padding;
+        const nextWidth = maxX - minX + padding * 2;
+        const nextHeight = maxY - minY + padding * 2;
+
+        const gIdx = nextNodes.findIndex(n => n.id === group.id);
+        const currentGroup = nextNodes[gIdx];
+        const currentWidth = (currentGroup.style?.width as number) || 0;
+        const currentHeight = (currentGroup.style?.height as number) || 0;
+
+        if (Math.abs(dx) > 1 || Math.abs(dy) > 1 || 
+            Math.abs(nextWidth - currentWidth) > 1 || 
+            Math.abs(nextHeight - currentHeight) > 1) {
+          
+          hasChangedPass = true;
+          
+          nextNodes[gIdx] = {
+            ...currentGroup,
+            position: {
+              x: currentGroup.position.x + dx,
+              y: currentGroup.position.y + dy
+            },
+            style: {
+              ...currentGroup.style,
+              width: nextWidth,
+              height: nextHeight
+            }
+          };
+
+          // Compensate children
+          nextNodes.forEach((node, idx) => {
+            if (node.parentNode === group.id) {
+              nextNodes[idx] = {
+                ...node,
+                position: {
+                  x: node.position.x - dx,
+                  y: node.position.y - dy
+                }
+              };
+            }
+          });
+        }
+      });
+      iterations++;
+    }
+
+    return nextNodes;
+  }, [getNodeSize]);
+
+  const handleAddDeliverable = useCallback((stepId: string) => {
+    setNodesState(nds => {
+      const next = nds.map(n => {
+        if (n.id === stepId) {
+          const newDeliverable: Deliverable = {
+            id: `del_${Date.now()}`,
+            label: 'New Deliverable',
+            color: '#edf2f7'
+          };
+          return {
+            ...n,
+            data: {
+              ...n.data,
+              deliverables: [...(n.data.deliverables || []), newDeliverable]
+            }
+          };
+        }
+        return n;
+      });
+      return autoResizeGroups(next);
+    });
+  }, [autoResizeGroups]);
 
   const handleSelectDeliverable = useCallback((deliverableId: string | null) => {
     setSelectedDeliverableId(deliverableId);
   }, []);
 
   const handleReorderDeliverables = useCallback((stepId: string, newDeliverables: Deliverable[]) => {
-    setNodesState(nds => nds.map(n => {
-      if (n.id === stepId) {
-        return { ...n, data: { ...n.data, deliverables: newDeliverables } };
-      }
-      return n;
-    }));
-  }, []);
+    setNodesState(nds => {
+      const next = nds.map(n => {
+        if (n.id === stepId) {
+          return { ...n, data: { ...n.data, deliverables: newDeliverables } };
+        }
+        return n;
+      });
+      return autoResizeGroups(next);
+    });
+  }, [autoResizeGroups]);
 
   const handleDeleteDeliverable = useCallback((stepId: string, deliverableId: string) => {
-    setNodesState(nds => nds.map(n => {
-      if (n.id === stepId) {
-        return {
-          ...n,
-          data: {
-            ...n.data,
-            deliverables: (n.data.deliverables || []).filter((d: Deliverable) => d.id !== deliverableId)
-          }
-        };
-      }
-      return n;
-    }));
+    setNodesState(nds => {
+      const next = nds.map(n => {
+        if (n.id === stepId) {
+          return {
+            ...n,
+            data: {
+              ...n.data,
+              deliverables: (n.data.deliverables || []).filter((d: Deliverable) => d.id !== deliverableId)
+            }
+          };
+        }
+        return n;
+      });
+      return autoResizeGroups(next);
+    });
     if (selectedDeliverableId === deliverableId) {
       setSelectedDeliverableId(null);
     }
-  }, [selectedDeliverableId]);
+  }, [selectedDeliverableId, autoResizeGroups]);
 
   const handleUpdateDeliverable = useCallback((stepId: string, deliverableId: string, updates: Partial<Deliverable>) => {
-    setNodesState(nds => nds.map(n => {
-      if (n.id === stepId) {
-        return {
+    setNodesState(nds => {
+      const next = nds.map(n => {
+        if (n.id === stepId) {
+          return {
             ...n,
             data: {
-                ...n.data,
-                deliverables: (n.data.deliverables || []).map((d: Deliverable) => 
-                    d.id === deliverableId ? { ...d, ...updates } : d
-                )
+              ...n.data,
+              deliverables: (n.data.deliverables || []).map((d: Deliverable) => 
+                d.id === deliverableId ? { ...d, ...updates } : d
+              )
             }
-        };
-      }
-      return n;
-    }));
+          };
+        }
+        return n;
+      });
+      return autoResizeGroups(next);
+    });
+  }, [autoResizeGroups]);
+
+  // Combined select handler
+  const handleSelectDeliverableMain = useCallback((nodeId: string, deliverableId: string | null) => {
+    if (deliverableId) {
+        setNodesState(nds => nds.map(n => ({ ...n, selected: n.id === nodeId })));
+    }
+    setSelectedDeliverableId(deliverableId);
   }, []);
+
 
   // Now the main setNodes wrapper that injects these handlers
   // We use a useEffect to keep data sync'd with current handlers?
@@ -178,12 +393,17 @@ export const useVectorFlow = (initialNodes: Node[], initialEdges: Edge[]) => {
       data: {
         ...n.data,
         onAddDeliverable: handleAddDeliverable,
-        onSelectDeliverable: handleSelectDeliverable,
-        onReorderDeliverables: handleReorderDeliverables,
+        onSelectDeliverable: handleSelectDeliverableMain,
+        onReorderDeliverables: (items: Deliverable[]) => handleReorderDeliverables(n.id, items),
         selectedDeliverableId // Dynamic prop
       }
     })));
-  }, [selectedDeliverableId, handleAddDeliverable, handleSelectDeliverable, handleReorderDeliverables]);
+  }, [selectedDeliverableId, handleAddDeliverable, handleSelectDeliverableMain, handleReorderDeliverables]);
+
+  // Auto-resize groups on mount to handle initialNodes
+  useEffect(() => {
+    setNodesState(nds => autoResizeGroups(nds));
+  }, [autoResizeGroups]);
 
 
   const saveCurrentFlow = useCallback(() => {
@@ -225,7 +445,8 @@ export const useVectorFlow = (initialNodes: Node[], initialEdges: Edge[]) => {
         id: newId,
         title: `Flow ${flows.length + 1}`,
         nodes: [],
-        edges: []
+        edges: [],
+        metaConfig: EMPTY_META_CONFIG
     };
 
     setFlows(prev => {
@@ -246,7 +467,112 @@ export const useVectorFlow = (initialNodes: Node[], initialEdges: Edge[]) => {
     setFlows(prev => prev.map(f => f.id === flowId ? { ...f, title: newTitle } : f));
   }, []);
 
-  const onNodesChange = useCallback((changes: NodeChange[]) => setNodesState((nds) => applyNodeChanges(changes, nds)), [setNodesState]);
+  const deleteFlow = useCallback((flowId: string) => {
+    setFlows(prev => {
+        if (prev.length <= 1) return prev; // Don't delete last flow
+        
+        const next = prev.filter(f => f.id !== flowId);
+        if (activeFlowId === flowId) {
+            // Find another flow to switch to
+            const deletedIndex = prev.findIndex(f => f.id === flowId);
+            const targetFlow = next[deletedIndex] || next[deletedIndex - 1] || next[0];
+            
+            if (targetFlow) {
+                setActiveFlowId(targetFlow.id);
+                // We MUST update the current nodes/edges state with the target flow's data
+                setNodesState(targetFlow.nodes);
+                setEdges(targetFlow.edges);
+            }
+        }
+        return next;
+    });
+  }, [activeFlowId, setNodesState, setEdges]);
+
+  const duplicateFlow = useCallback((flowId: string) => {
+    const flowToDuplicate = flows.find(f => f.id === flowId);
+    if (!flowToDuplicate) return;
+
+    const newId = `flow_${Date.now()}`;
+    const newFlow: Flow = {
+        ...flowToDuplicate,
+        id: newId,
+        title: `${flowToDuplicate.title} (Copy)`,
+        // We reuse nodes and edges. Since IDs are string, they are stable in the flow.
+        // However, if we want them to be TRULY independent across flows (e.g. if we had global node registry),
+        // we might need to deep clone. But here Flow.nodes is just a state snapshot.
+        nodes: [...flowToDuplicate.nodes],
+        edges: [...flowToDuplicate.edges],
+    };
+
+    setFlows(prev => [...prev, newFlow]);
+    setActiveFlowId(newId);
+  }, [flows]);
+
+  const reorderFlow = useCallback((flowId: string, direction: 'left' | 'right') => {
+    setFlows(prev => {
+        const index = prev.findIndex(f => f.id === flowId);
+        if (index === -1) return prev;
+        
+        const newIndex = direction === 'left' ? index - 1 : index + 1;
+        if (newIndex < 0 || newIndex >= prev.length) return prev;
+
+        const next = [...prev];
+        const [removed] = next.splice(index, 1);
+        next.splice(newIndex, 0, removed);
+        return next;
+    });
+  }, []);
+
+  const updateMetaConfig = useCallback((type: keyof MetaConfig, config: FieldDefinition[]) => {
+    setFlows(prev => prev.map(f => 
+        f.id === activeFlowId ? { ...f, metaConfig: { ...f.metaConfig, [type]: config } } : f
+    ));
+  }, [activeFlowId]);
+
+  const updateMetaData = useCallback((itemId: string, fieldId: string, value: any) => {
+    setNodesState(nds => nds.map(n => {
+        if (n.id === itemId) {
+            return {
+                ...n,
+                data: {
+                    ...n.data,
+                    meta: { ...(n.data.meta || {}), [fieldId]: value }
+                }
+            };
+        }
+        return n;
+    }));
+  }, []);
+
+  const updateDeliverableMetaData = useCallback((stepId: string, deliverableId: string, fieldId: string, value: any) => {
+    setNodesState(nds => nds.map(n => {
+        if (n.id === stepId) {
+            return {
+                ...n,
+                data: {
+                    ...n.data,
+                    deliverables: (n.data.deliverables || []).map((d: Deliverable) => 
+                        d.id === deliverableId ? { ...d, meta: { ...(d.meta || {}), [fieldId]: value } } : d
+                    )
+                }
+            };
+        }
+        return n;
+    }));
+  }, []);
+
+
+  const onNodesChange = useCallback((changes: NodeChange[]) => {
+    setNodesState((nds) => {
+      const nextNodes = applyNodeChanges(changes, nds);
+      // Only auto-resize if there's a position change
+      if (changes.some(c => c.type === 'position')) {
+        return autoResizeGroups(nextNodes);
+      }
+      return nextNodes;
+    });
+  }, [autoResizeGroups]);
+
   const onEdgesChange = useCallback((changes: EdgeChange[]) => setEdges((eds) => applyEdgeChanges(changes, eds)), [setEdges]);
   const onConnect: OnConnect = useCallback((connection) => setEdges((eds) => addEdge({ ...connection, animated: true, label: '', style: { stroke: '#6B7280' } }, eds)), [setEdges]);
 
@@ -268,6 +594,7 @@ export const useVectorFlow = (initialNodes: Node[], initialEdges: Edge[]) => {
       data: { label: 'New Step', color: '#E5E7EB', deliverables: [] }, // Init deliverables
       type: 'custom',
       style: { width: STEP_WIDTH, height: 'auto' }, // Use auto height
+      zIndex: 30,
     };
     setNodesState((nds) => nds.concat(newNode));
   }, [nodes.length, project, setNodesState]);
@@ -307,6 +634,22 @@ export const useVectorFlow = (initialNodes: Node[], initialEdges: Edge[]) => {
     );
   }, [setEdges]);
 
+  const updateStepIcon = useCallback((stepId: string, icon: string) => {
+    setNodesState((nds) =>
+      nds.map((node) =>
+        node.id === stepId ? { ...node, data: { ...node.data, icon } } : node
+      )
+    );
+  }, [setNodesState]);
+
+  const updateEdgeIcon = useCallback((edgeId: string, icon: string) => {
+    setEdges((eds) =>
+      eds.map((edge) =>
+        edge.id === edgeId ? { ...edge, data: { ...edge.data, icon } } : edge
+      )
+    );
+  }, [setEdges]);
+
   const deleteSelection = useCallback(() => {
     if (selectedDeliverableId && selectedNodes.length === 1) {
         // Delete deliverable mode
@@ -334,7 +677,10 @@ export const useVectorFlow = (initialNodes: Node[], initialEdges: Edge[]) => {
 
     const edgeIdsToDelete = new Set(currentSelectedEdges.map(e => e.id));
 
-    setNodesState(nds => nds.filter(n => !nodeIdsToDelete.has(n.id)));
+    setNodesState(nds => {
+      const next = nds.filter(n => !nodeIdsToDelete.has(n.id));
+      return autoResizeGroups(next);
+    });
     setEdges(eds => eds.filter(e => !edgeIdsToDelete.has(e.id) && !nodeIdsToDelete.has(e.source) && !nodeIdsToDelete.has(e.target)));
 
     setSelectedNodes([]);
@@ -387,7 +733,7 @@ export const useVectorFlow = (initialNodes: Node[], initialEdges: Edge[]) => {
         padding: 0,
       },
       className: '!border-0 !bg-transparent !p-0 !shadow-none !outline-none !ring-0',
-      zIndex: -1,
+      zIndex: 0,
     };
 
     setNodesState(nds => {
@@ -396,7 +742,7 @@ export const useVectorFlow = (initialNodes: Node[], initialEdges: Edge[]) => {
           return {
             ...n,
             parentNode: parentId,
-            extent: 'parent' as const,
+            // extent: 'parent' removed to allow dynamic resizing
             position: {
               x: n.position.x - parentNode.position.x,
               y: n.position.y - parentNode.position.y,
@@ -406,7 +752,7 @@ export const useVectorFlow = (initialNodes: Node[], initialEdges: Edge[]) => {
         }
         return n;
       });
-      return [parentNode, ...newNodes];
+      return autoResizeGroups([parentNode, ...newNodes]);
     });
 
   }, [getNodes, setNodesState, toast]);
@@ -521,34 +867,19 @@ export const useVectorFlow = (initialNodes: Node[], initialEdges: Edge[]) => {
         }
     }
 
-    const hSpacing = 100;
     const vSpacing = 50;
     const newNodes = getNodes().map(n => ({ ...n }));
 
-    // Helper to get or estimate node dimensions
-    const getNodeDimensions = (nodeId: string) => {
-        const node = allNodes.find(n => n.id === nodeId);
-        const width = node?.width || (node?.style?.width as number) || STEP_WIDTH;
-        
-        let height = node?.height || (node?.style?.height as number);
-        if (!height || typeof height === 'string') {
-            const deliverablesCount = node?.data?.deliverables?.length || 0;
-            if (deliverablesCount === 0) {
-                height = STEP_INITIAL_HEIGHT;
-            } else {
-                // Header (48) + padding (16) + deliverables (N * 40) + gaps ((N-1) * 8)
-                height = 48 + 16 + (deliverablesCount * 40) + (Math.max(0, deliverablesCount - 1) * 8);
-            }
-        }
-        return { width, height };
-    };
-
     let currentX = 0;
-    columns.forEach((column) => {
-        const columnWidth = Math.max(...column.map(nodeId => getNodeDimensions(nodeId).width));
+    columns.forEach((column, index) => {
+        const columnWidth = Math.max(...column.map(nodeId => {
+            const node = allNodes.find(n => n.id === nodeId);
+            return node ? getNodeSize(node).width : STEP_WIDTH;
+        }));
 
         const columnHeight = column.reduce((sum, nodeId) => {
-            return sum + getNodeDimensions(nodeId).height + vSpacing;
+            const node = allNodes.find(n => n.id === nodeId);
+            return sum + (node ? getNodeSize(node).height : STEP_INITIAL_HEIGHT) + vSpacing;
         }, -vSpacing);
 
         let currentY = -columnHeight / 2;
@@ -556,14 +887,34 @@ export const useVectorFlow = (initialNodes: Node[], initialEdges: Edge[]) => {
         column.forEach((nodeId) => {
             const node = newNodes.find(n => n.id === nodeId);
             if (node) {
-                const { width: nodeWidth, height: nodeHeight } = getNodeDimensions(nodeId);
+                const { width: nodeWidth, height: nodeHeight } = getNodeSize(node);
                 
                 node.position = { x: currentX + (columnWidth - nodeWidth) / 2, y: currentY };
                 currentY += nodeHeight + vSpacing;
             }
         });
 
-        currentX += columnWidth + hSpacing;
+        // Calculate spacing for the next column
+        let nextHSpacing = 100; // Default
+        if (index < columns.length - 1) {
+            const currentColumnNodes = new Set(column);
+            const nextColumnNodes = new Set(columns[index + 1]);
+            
+            // Check if any edge between these two columns has a label or icon
+            const hasEdgeContent = allEdges.some(edge => {
+                const sourceLayoutId = getLayoutNodeId(edge.source);
+                const targetLayoutId = getLayoutNodeId(edge.target);
+                return currentColumnNodes.has(sourceLayoutId) && 
+                       nextColumnNodes.has(targetLayoutId) && 
+                       (edge.label || edge.data?.icon);
+            });
+
+            if (hasEdgeContent) {
+                nextHSpacing = 200; // Double the spacing if content is present
+            }
+        }
+
+        currentX += columnWidth + nextHSpacing;
     });
 
     setNodesState(newNodes);
@@ -585,6 +936,9 @@ export const useVectorFlow = (initialNodes: Node[], initialEdges: Edge[]) => {
     switchFlow,
     addFlow,
     updateFlowTitle,
+    deleteFlow,
+    duplicateFlow,
+    reorderFlow,
     nodes,
     edges,
     selectedNodes,
@@ -599,13 +953,20 @@ export const useVectorFlow = (initialNodes: Node[], initialEdges: Edge[]) => {
     addDeliverable: addDeliverablePublic,
     updateStepLabel,
     updateStepColor,
+    updateStepIcon,
     updateEdgeLabel,
     updateEdgeColor,
+    updateEdgeIcon,
+    updateDeliverable: handleUpdateDeliverable,
     deleteSelection,
     groupSelection,
     ungroupSelection,
     handleAutoLayout,
-    handleUpdateDeliverable, // New export
-    selectDeliverable: handleSelectDeliverable, // New export
+    selectDeliverable: (nodeId: string, deliverableId: string | null) => handleSelectDeliverableMain(nodeId, deliverableId),
+    metaConfig: flows.find(f => f.id === activeFlowId)?.metaConfig || EMPTY_META_CONFIG,
+    updateMetaConfig,
+    updateMetaData,
+    updateDeliverableMetaData,
+    hasLoadedFromStorage,
   };
 };

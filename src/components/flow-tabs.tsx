@@ -1,7 +1,14 @@
 import { useState, useRef, useEffect } from 'react';
-import { Plus, X } from 'lucide-react';
+import { Plus, X, ChevronDown, Copy, ArrowLeft, ArrowRight, Trash2 } from 'lucide-react';
 import { Button } from '@/components/ui/forms/button';
 import { Input } from '@/components/ui/forms/input';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+  DropdownMenuSeparator,
+} from '@/components/ui/overlay/dropdown-menu';
 import { cn } from '@/lib/utils';
 import type { Flow } from '@/hooks/use-vector-flow';
 
@@ -11,6 +18,9 @@ interface FlowTabsProps {
   onSwitchFlow: (id: string) => void;
   onAddFlow: () => void;
   onUpdateFlowTitle: (id: string, title: string) => void;
+  onDeleteFlow: (id: string) => void;
+  onDuplicateFlow: (id: string) => void;
+  onReorderFlow: (id: string, direction: 'left' | 'right') => void;
 }
 
 export function FlowTabs({
@@ -19,6 +29,9 @@ export function FlowTabs({
   onSwitchFlow,
   onAddFlow,
   onUpdateFlowTitle,
+  onDeleteFlow,
+  onDuplicateFlow,
+  onReorderFlow,
 }: FlowTabsProps) {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editValue, setEditValue] = useState('');
@@ -56,9 +69,10 @@ export function FlowTabs({
         <div
           key={flow.id}
           className={cn(
-            "group relative flex items-center h-8 px-3 mr-1 rounded-t-md cursor-pointer border-t border-x border-transparent select-none transition-colors max-w-[200px]",
+            "group relative flex items-center h-8 px-3 mr-1 rounded-t-md cursor-pointer border-t border-x border-transparent select-none transition-all duration-200 ease-in-out max-w-[200px]",
+            "hover:brightness-105 active:scale-[0.98]",
             activeFlowId === flow.id
-              ? "bg-background border-border text-foreground hover:bg-background"
+              ? "bg-background border-border text-foreground hover:bg-background shadow-[0_-2px_8px_rgba(0,0,0,0.05)]"
               : "hover:bg-muted-foreground/10 text-muted-foreground hover:text-foreground"
           )}
           onClick={() => onSwitchFlow(flow.id)}
@@ -82,13 +96,62 @@ export function FlowTabs({
               {flow.title}
             </span>
           )}
+
+          {editingId !== flow.id && (
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <button
+                  onClick={(e) => e.stopPropagation()}
+                  className={cn(
+                    "ml-1.5 p-0.5 rounded-sm opacity-0 group-hover:opacity-100 transition-opacity hover:bg-muted-foreground/20 flex items-center justify-center",
+                    activeFlowId === flow.id && "opacity-60"
+                  )}
+                >
+                  <ChevronDown className="h-3 w-3" />
+                </button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="w-40">
+                <DropdownMenuItem onClick={() => onDuplicateFlow(flow.id)}>
+                  <Copy className="mr-2 h-3.5 w-3.5" />
+                  Duplicate
+                </DropdownMenuItem>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem 
+                    disabled={flows.indexOf(flow) === 0}
+                    onClick={() => onReorderFlow(flow.id, 'left')}
+                >
+                  <ArrowLeft className="mr-2 h-3.5 w-3.5" />
+                  Move Left
+                </DropdownMenuItem>
+                <DropdownMenuItem 
+                    disabled={flows.indexOf(flow) === flows.length - 1}
+                    onClick={() => onReorderFlow(flow.id, 'right')}
+                >
+                  <ArrowRight className="mr-2 h-3.5 w-3.5" />
+                  Move Right
+                </DropdownMenuItem>
+                {flows.length > 1 && (
+                  <>
+                    <DropdownMenuSeparator />
+                    <DropdownMenuItem 
+                      onClick={() => onDeleteFlow(flow.id)}
+                      className="text-destructive focus:text-destructive"
+                    >
+                      <Trash2 className="mr-2 h-3.5 w-3.5" />
+                      Delete
+                    </DropdownMenuItem>
+                  </>
+                )}
+              </DropdownMenuContent>
+            </DropdownMenu>
+          )}
         </div>
       ))}
       
       <Button
         variant="ghost"
         size="icon"
-        className="h-8 w-8 ml-1 shrink-0"
+        className="h-8 w-8 ml-1 shrink-0 transition-all duration-200 active:scale-90 hover:bg-muted-foreground/20"
         onClick={onAddFlow}
         title="Add new flow"
       >

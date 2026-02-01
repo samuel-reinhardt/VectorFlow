@@ -5,19 +5,24 @@ import { Handle, Position, NodeProps } from 'reactflow';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/layout/card';
 import { cn, getTextColorForBackground } from '@/lib/utils';
 
+import { Square } from 'lucide-react';
+import { DynamicIcon } from './dynamic-icon';
+import { DeliverableItem } from './deliverable-item';
+
 const CustomNode = ({ id, data, selected }: NodeProps<{ 
   label: string; 
   color: string; 
+  icon?: string;
   isGroup?: boolean; 
   deliverables?: any[]; 
   onSelectDeliverable?: (nodeId: string, id: string | null) => void;
-  onReorderDeliverables?: (id: string, items: any[]) => void;
+  onReorderDeliverables?: (items: any[]) => void;
   selectedDeliverableId?: string | null;
 }>) => {
 
   // Render for Step
   const textColor = getTextColorForBackground(data.color);
-  const deliverables = data.deliverables || [];
+  const deliverables = Array.isArray(data.deliverables) ? data.deliverables : [];
 
   const handleDragStart = (e: React.DragEvent, index: number) => {
     e.dataTransfer.setData('text/plain', index.toString());
@@ -39,7 +44,7 @@ const CustomNode = ({ id, data, selected }: NodeProps<{
         const newDeliverables = [...deliverables];
         const [movedItem] = newDeliverables.splice(sourceIndex, 1);
         newDeliverables.splice(targetIndex, 0, movedItem);
-        data.onReorderDeliverables(id, newDeliverables);
+        data.onReorderDeliverables(newDeliverables);
     }
   };
 
@@ -52,8 +57,9 @@ const CustomNode = ({ id, data, selected }: NodeProps<{
       <Handle type="target" position={Position.Left} className="!bg-border !w-3 !h-3 z-10" />
       <Card
         className={cn(
-          'shadow-lg w-full flex flex-col overflow-hidden bg-card transition-all duration-200',
-          selected ? 'ring-2 ring-ring' : ''
+          'shadow-lg w-full flex flex-col overflow-hidden bg-card ease-in-out',
+          "outline outline-none hover:outline transition-[outline] duration-200 outline-offset-1",
+          selected ? "outline outline-ring hover:outline-ring/60" : "hover:outline-ring/30"
         )}
         style={{ borderColor: data.color, height: 'auto', minHeight: '60px' }}
       >
@@ -69,7 +75,8 @@ const CustomNode = ({ id, data, selected }: NodeProps<{
                }
           }}
         >
-          <CardTitle className="text-base break-words" style={{ color: textColor }}>
+          <CardTitle className="text-base break-words flex items-center gap-2" style={{ color: textColor }}>
+            <DynamicIcon name={data.icon} fallback={Square} className="w-4 h-4 shrink-0" />
             {data.label}
           </CardTitle>
         </CardHeader>
@@ -77,27 +84,18 @@ const CustomNode = ({ id, data, selected }: NodeProps<{
         {/* Deliverables List */}
         <CardContent className="p-2 flex flex-col gap-2 bg-background flex-grow">
             {deliverables.length > 0 ? (
-                deliverables.map((item: any, index: number) => {
-                     const isSelected = data.selectedDeliverableId === item.id;
-                     const itemTextColor = getTextColorForBackground(item.color);
-                     return (
-                        <div
-                            key={item.id}
-                            draggable
-                            onDragStart={(e) => handleDragStart(e, index)}
-                            onDragOver={handleDragOver}
-                            onDrop={(e) => handleDrop(e, index)}
-                            onClick={(e) => handleDeliverableClick(e, item.id)}
-                            className={cn(
-                                "nodrag p-2 rounded-md text-sm font-medium cursor-grab active:cursor-grabbing border hover:brightness-95 transition-all",
-                                isSelected ? "ring-2 ring-primary border-transparent" : "border-border"
-                            )}
-                            style={{ backgroundColor: item.color, color: itemTextColor }}
-                        >
-                            {item.label}
-                        </div>
-                     );
-                })
+                deliverables.map((item: any, index: number) => (
+                  <DeliverableItem
+                    key={item.id}
+                    item={item}
+                    index={index}
+                    isSelected={data.selectedDeliverableId === item.id}
+                    onDragStart={handleDragStart}
+                    onDragOver={handleDragOver}
+                    onDrop={handleDrop}
+                    onClick={handleDeliverableClick}
+                  />
+                ))
             ) : (
                 <div className="text-xs text-muted-foreground text-center py-2 italic opacity-50">
                     No deliverables

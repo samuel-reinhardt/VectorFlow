@@ -11,12 +11,14 @@ import ReactFlow, {
   BackgroundVariant,
 } from 'reactflow';
 import 'reactflow/dist/style.css';
-import { LayoutGrid } from 'lucide-react';
+import { Plus, Trash2, Settings2, X, Grip, LayoutGrid, Square, FileText, Layers, Boxes, Share2 } from 'lucide-react';
 
 import { Sidebar, SidebarHeader, SidebarContent } from '@/components/ui/layout/sidebar';
 import { SettingsPanel } from '@/components/settings-panel';
 import CustomNode from '@/components/custom-node';
 import GroupNode from '@/components/group-node';
+import { CustomEdge } from '@/components/custom-edge';
+import { DynamicIcon } from '@/components/dynamic-icon';
 import { useVectorFlow } from '@/hooks/use-vector-flow';
 import { Header } from '@/components/header';
 import { Toolbar } from '@/components/toolbar';
@@ -25,21 +27,104 @@ import { FlowTabs } from '@/components/flow-tabs';
 import { useMediaQuery } from '@/hooks/use-media-query';
 
 const initialNodes: Node[] = [
-  { id: '1', position: { x: 250, y: 150 }, data: { label: 'Welcome to VectorFlow!', color: '#F3F4F6' }, type: 'custom', style: { width: 220, height: 'auto' } },
-  { id: '2', position: { x: 100, y: 250 }, data: { label: 'This is a step', color: '#E5E7EB' }, type: 'custom', style: { width: 220, height: 'auto' } },
-  { id: '3', position: { x: 400, y: 250 }, data: { label: 'Connect them!', color: '#E5E7EB' }, type: 'custom', style: { width: 220, height: 'auto' } },
-  { id: '4', position: { x: 250, y: 350 }, data: { label: 'Auto-Arrange', color: '#E5E7EB' }, type: 'custom', style: { width: 220, height: 'auto' } },
+  { 
+    id: 'group-1', 
+    type: 'group', 
+    position: { x: 50, y: 50 }, 
+    data: { label: 'Strategic Planning', icon: 'Target', color: '#3B82F6' }, 
+    style: { 
+      width: 720, 
+      height: 420,
+      border: 'none',
+      background: 'transparent',
+      boxShadow: 'none',
+      borderRadius: '12px',
+      padding: 0,
+    },
+    className: '!border-0 !bg-transparent !p-0 !shadow-none !outline-none !ring-0',
+    zIndex: 0,
+  },
+  { 
+    id: 'node-1', 
+    type: 'custom', 
+    parentNode: 'group-1', 
+    position: { x: 40, y: 80 }, 
+    data: { 
+      label: 'Market Research', 
+      icon: 'Search', 
+      color: '#60A5FA', 
+      deliverables: [
+        { id: 'd1', label: 'Survey Results', icon: 'BarChart', color: '#edf2f7' },
+        { id: 'd2', label: 'Competitor PDF', icon: 'FileText', color: '#edf2f7' }
+      ] 
+    }, 
+    style: { width: 220, height: 'auto' },
+    zIndex: 30,
+  },
+  { 
+    id: 'node-2', 
+    type: 'custom', 
+    parentNode: 'group-1', 
+    position: { x: 460, y: 180 }, 
+    data: { 
+      label: 'Product Roadmap', 
+      icon: 'Map', 
+      color: '#60A5FA', 
+      deliverables: [
+        { id: 'd3', label: 'Feature Backlog', icon: 'ListTodo', color: '#edf2f7' }
+      ] 
+    }, 
+    style: { width: 220, height: 'auto' },
+    zIndex: 30,
+  },
+  { 
+    id: 'node-3', 
+    type: 'custom', 
+    position: { x: 970, y: 150 }, 
+    data: { 
+      label: 'System Architecture', 
+      icon: 'Cpu', 
+      color: '#10B981', 
+      deliverables: [
+        { id: 'd4', label: 'Database Schema', icon: 'Database', color: '#edf2f7' },
+        { id: 'd5', label: 'API Endpoints', icon: 'Cloud', color: '#edf2f7' }
+      ] 
+    }, 
+    style: { width: 220, height: 'auto' },
+    zIndex: 30,
+  },
 ];
 
 const initialEdges: Edge[] = [
-  { id: 'e1-2', source: '1', target: '2', animated: true, label: '', style: { stroke: '#6B7280' } },
-  { id: 'e1-3', source: '1', target: '3', animated: true, label: '', style: { stroke: '#6B7280' } },
-  { id: 'e3-4', source: '3', target: '4', animated: true, label: '', style: { stroke: '#6B7280' } },
+  { 
+    id: 'e1-2', 
+    source: 'node-1', 
+    target: 'node-2', 
+    animated: true, 
+    label: 'Insights', 
+    data: { icon: 'Lightbulb' }, 
+    type: 'custom',
+    style: { stroke: '#6B7280' } 
+  },
+  { 
+    id: 'e2-3', 
+    source: 'node-2', 
+    target: 'node-3', 
+    animated: true, 
+    label: 'Implementation', 
+    data: { icon: 'Zap' }, 
+    type: 'custom',
+    style: { stroke: '#6B7280' } 
+  },
 ];
 
 const nodeTypes = {
   custom: CustomNode,
   group: GroupNode,
+};
+
+const edgeTypes = {
+  custom: CustomEdge,
 };
 
 export function VectorFlow() {
@@ -57,8 +142,10 @@ export function VectorFlow() {
         addDeliverable,
         updateStepLabel,
         updateStepColor,
+        updateStepIcon,
         updateEdgeLabel,
         updateEdgeColor,
+        updateEdgeIcon,
         deleteSelection,
         groupSelection,
         ungroupSelection,
@@ -68,9 +155,17 @@ export function VectorFlow() {
         switchFlow,
         addFlow,
         updateFlowTitle,
-        selectedDeliverableId, // Destructure new state
-        handleUpdateDeliverable, // Destructure new handler
-        selectDeliverable, // Destructure new handler
+        deleteFlow,
+        duplicateFlow,
+        reorderFlow,
+        selectedDeliverableId,
+        updateDeliverable,
+        selectDeliverable,
+        metaConfig,
+        updateMetaConfig,
+        updateMetaData,
+        updateDeliverableMetaData,
+        hasLoadedFromStorage,
     } = useVectorFlow(initialNodes, initialEdges);
 
     const { fitView, getNode, getNodes, setEdges } = useReactFlow();
@@ -78,7 +173,16 @@ export function VectorFlow() {
     const isDesktop = useMediaQuery('(min-width: 768px)');
     const [leftSidebarOpen, setLeftSidebarOpen] = useState(false);
     const [rightSidebarOpen, setRightSidebarOpen] = useState(false);
-    const [rightSidebarInfo, setRightSidebarInfo] = useState({ title: 'Controls', description: 'Manage your graph.' });
+    const [rightSidebarInfo, setRightSidebarInfo] = useState<{
+        title: string;
+        description: string;
+        type: 'step' | 'deliverable' | 'group' | 'edge' | 'multi' | 'none';
+        icon?: string;
+    }>({
+        title: 'Controls',
+        description: 'Manage your graph.',
+        type: 'none'
+    });
 
     useEffect(() => {
         // Set initial state based on viewport, once isDesktop is determined.
@@ -93,7 +197,7 @@ export function VectorFlow() {
 
     const handleLeftSidebarToggle = useCallback(() => setLeftSidebarOpen(p => !p), []);
     const handleRightSidebarToggle = useCallback(() => setRightSidebarOpen(p => !p), []);
-    
+
     const handleLeftSidebarChange = useCallback((open: boolean) => {
         // The Sheet component is for mobile only. It calls onOpenChange on outside clicks.
         // We only want this behavior on mobile.
@@ -108,8 +212,8 @@ export function VectorFlow() {
         }
     }, [isDesktop]);
 
-    const handleSettingsPanelTitleChange = useCallback((title: string, description: string) => {
-        setRightSidebarInfo({ title, description });
+    const handleSettingsPanelTitleChange = useCallback((title: string, description: string, _deleteText: string, type?: any, icon?: string) => {
+        setRightSidebarInfo({ title, description, type: type || 'none', icon });
     }, []);
 
     const handleStepSelect = useCallback((nodeId: string) => {
@@ -125,12 +229,14 @@ export function VectorFlow() {
     const [initialFitDone, setInitialFitDone] = useState(false);
 
     useEffect(() => {
-        // Initial auto-layout ONLY once on mount after desktop state is known
+        // Initial auto-layout ONLY once on mount if we haven't recovered from storage
         if (isDesktop !== null && !initialFitDone && getNodes().length > 0) {
-            handleAutoLayout({ silent: true });
+            if (!hasLoadedFromStorage) {
+                handleAutoLayout({ silent: true });
+            }
         }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [isDesktop]);
+    }, [isDesktop, hasLoadedFromStorage]);
 
     // Reliable fitView once nodes are MEASURED by the DOM
     useEffect(() => {
@@ -145,43 +251,6 @@ export function VectorFlow() {
 
     const selectedStepId = useMemo(() => selectedNodes.length === 1 ? selectedNodes[0].id : null, [selectedNodes]);
 
-    // Inject handlers and state into node data
-    const nodesWithData = useMemo(() => {
-        return nodes.map(node => {
-            if (node.type === 'custom') {
-                return {
-                    ...node,
-                    data: {
-                        ...node.data,
-                        selectedDeliverableId,
-                        onSelectDeliverable: (nodeId: string, id: string | null) => {
-                            if (id) {
-                                // Explicitly select the node to ensure Sidebar updates
-                                setNodes((nds) => nds.map((n) => ({ ...n, selected: n.id === nodeId })));
-                            }
-                            selectDeliverable(id);
-                        },
-                        onReorderDeliverables: (nodeId: string, items: any[]) => {
-                            // We need a handler for this in useVectorFlow, or just update directly here?
-                            // Ideally useVectorFlow exposes a specific handler. 
-                            // For now, let's assume updateStep (or similar) or create a new one.
-                            // Actually, I should probably reuse handleUpdateDeliverable, but that's for properties.
-                            // I need to update the WHOLE deliverables list.
-                            // Let's use setNodes for reordering for now or call a new handler effectively.
-                             setNodes((nds) => nds.map((n) => {
-                                if (n.id === nodeId) {
-                                    return { ...n, data: { ...n.data, deliverables: items } };
-                                }
-                                return n;
-                            }));
-                        }
-                    }
-                };
-            }
-            return node;
-        });
-    }, [nodes, selectedDeliverableId, selectDeliverable, setNodes]);
-
     return (
         <div className="flex flex-col h-screen w-screen bg-background text-foreground font-body">
             <Header />
@@ -190,6 +259,8 @@ export function VectorFlow() {
                 onLeftSidebarToggle={handleLeftSidebarToggle}
                 onRightSidebarToggle={handleRightSidebarToggle}
                 onAutoLayout={() => handleAutoLayout({ silent: false })}
+                metaConfig={metaConfig}
+                onUpdateMetaConfig={updateMetaConfig}
             />
 
             <div className="flex flex-1 overflow-hidden">
@@ -200,20 +271,22 @@ export function VectorFlow() {
                         onStepSelect={handleStepSelect}
                         onDeliverableSelect={(nodeId, deliverableId) => {
                             handleStepSelect(nodeId);
-                            selectDeliverable(deliverableId);
+                            selectDeliverable(nodeId, deliverableId); // Both arguments needed
                         }} 
                     />
                 </Sidebar>
 
                 <main className="relative flex-1 h-full">
                     <ReactFlow
-                        nodes={nodesWithData}
+                        nodes={nodes}
                         edges={edges}
                         onNodesChange={onNodesChange}
                         onEdgesChange={onEdgesChange}
                         onConnect={onConnect}
                         onSelectionChange={onSelectionChange}
                         nodeTypes={nodeTypes}
+                        edgeTypes={edgeTypes}
+                        defaultEdgeOptions={{ type: 'custom', zIndex: 10 }}
                         fitView
                         className="bg-background"
                         deleteKeyCode={['Delete', 'Backspace']}
@@ -225,11 +298,20 @@ export function VectorFlow() {
                 
                 <Sidebar side="right" open={rightSidebarOpen} onOpenChange={handleRightSidebarChange} isDesktop={isDesktop}>
                     <SidebarHeader>
-                    <div className="flex items-center gap-2">
-                        <LayoutGrid className="w-5 h-5" />
-                        <h2 className="text-lg font-semibold">{rightSidebarInfo.title}</h2>
+                    <div className="flex items-center gap-3">
+                        <div className="p-2 rounded-md bg-muted shrink-0">
+                            {rightSidebarInfo.type === 'step' && <DynamicIcon name={rightSidebarInfo.icon} fallback={Square} className="w-5 h-5" />}
+                            {rightSidebarInfo.type === 'deliverable' && <DynamicIcon name={rightSidebarInfo.icon} fallback={FileText} className="w-5 h-5" />}
+                            {rightSidebarInfo.type === 'group' && <DynamicIcon name={rightSidebarInfo.icon} fallback={Layers} className="w-5 h-5" />}
+                            {rightSidebarInfo.type === 'edge' && <DynamicIcon name={rightSidebarInfo.icon} fallback={Share2} className="w-5 h-5" />}
+                            {rightSidebarInfo.type === 'multi' && <Boxes className="w-5 h-5" />}
+                            {rightSidebarInfo.type === 'none' && <LayoutGrid className="w-5 h-5" />}
+                        </div>
+                        <div className="flex flex-col">
+                            <h2 className="text-lg font-semibold leading-none">{rightSidebarInfo.title}</h2>
+                            <p className="text-xs text-muted-foreground mt-1">{rightSidebarInfo.description}</p>
+                        </div>
                     </div>
-                    <p className="text-sm text-muted-foreground h-8">{rightSidebarInfo.description}</p>
                     </SidebarHeader>
                     <SidebarContent className="p-4">
                         <SettingsPanel 
@@ -240,13 +322,18 @@ export function VectorFlow() {
                             onAddDeliverable={addDeliverable}
                             onUpdateStepLabel={updateStepLabel}
                             onUpdateStepColor={updateStepColor}
+                            onUpdateStepIcon={updateStepIcon}
                             onUpdateEdgeLabel={updateEdgeLabel}
                             onUpdateEdgeColor={updateEdgeColor}
-                            onUpdateDeliverable={handleUpdateDeliverable}
+                            onUpdateEdgeIcon={updateEdgeIcon}
+                            onUpdateDeliverable={updateDeliverable}
                             onDeleteSelection={deleteSelection}
                             onGroupSelection={groupSelection}
                             onUngroup={ungroupSelection}
                             onTitleChange={handleSettingsPanelTitleChange}
+                            metaConfig={metaConfig}
+                            onUpdateMetaData={updateMetaData}
+                            onUpdateDeliverableMetaData={updateDeliverableMetaData}
                         />
                     </SidebarContent>
                 </Sidebar>
@@ -258,6 +345,9 @@ export function VectorFlow() {
                 onSwitchFlow={switchFlow}
                 onAddFlow={addFlow}
                 onUpdateFlowTitle={updateFlowTitle}
+                onDeleteFlow={deleteFlow}
+                onDuplicateFlow={duplicateFlow}
+                onReorderFlow={reorderFlow}
             />
         </div>
     );
