@@ -8,7 +8,7 @@
     "genkit:watch": "genkit start -- tsx --watch src/ai/dev.ts",
     "build": "NODE_ENV=production next build",
     "pages:build": "NPM_CONFIG_LEGACY_PEER_DEPS=true npx @cloudflare/next-on-pages",
-    "page:deploy": "NPM_CONFIG_LEGACY_PEER_DEPS=true npx @cloudflare/next-on-pages && npx wrangler pages deploy .vercel/output/static --project-name vector-flow",
+    "pages:deploy": "NPM_CONFIG_LEGACY_PEER_DEPS=true npx @cloudflare/next-on-pages && npx wrangler pages deploy .vercel/output/static --project-name vector-flow",
     "start": "next start",
     "lint": "next lint",
     "typecheck": "tsc --noEmit"

@@ -60,7 +60,7 @@ export class GoogleDriveService {
     form.append('metadata', new Blob([JSON.stringify(metadata)], { type: 'application/json' }));
     form.append('file', new Blob([JSON.stringify(data)], { type: 'application/json' }));
 
-    const response = await fetch(`${UPLOAD_API_URL}/files?uploadType=multipart`, {
+    const response = await fetch(`${UPLOAD_API_URL}/files?uploadType=multipart&supportsAllDrives=true`, {
       method: 'POST',
       headers: {
         Authorization: `Bearer ${token}`,
@@ -95,7 +95,7 @@ export class GoogleDriveService {
     form.append('metadata', new Blob([JSON.stringify(metadata)], { type: 'application/json' }));
     form.append('file', new Blob([JSON.stringify(data)], { type: 'application/json' }));
 
-    const response = await fetch(`${UPLOAD_API_URL}/files/${fileId}?uploadType=multipart`, {
+    const response = await fetch(`${UPLOAD_API_URL}/files/${fileId}?uploadType=multipart&supportsAllDrives=true`, {
       method: 'PATCH',
       headers: {
         Authorization: `Bearer ${token}`,
@@ -116,7 +116,7 @@ export class GoogleDriveService {
     const token = this.getAccessToken();
     if (!token) throw new Error('Not authenticated with Google Drive');
 
-    const response = await fetch(`${DRIVE_API_URL}/files/${fileId}?fields=id,name,mimeType,modifiedTime`, {
+    const response = await fetch(`${DRIVE_API_URL}/files/${fileId}?fields=id,name,mimeType,modifiedTime&supportsAllDrives=true`, {
       headers: {
         Authorization: `Bearer ${token}`,
       },
@@ -137,7 +137,7 @@ export class GoogleDriveService {
     const token = this.getAccessToken();
     if (!token) throw new Error('Not authenticated with Google Drive');
 
-    const response = await fetch(`${DRIVE_API_URL}/files/${fileId}?fields=id,name,modifiedTime`, {
+    const response = await fetch(`${DRIVE_API_URL}/files/${fileId}?fields=id,name,modifiedTime&supportsAllDrives=true`, {
       headers: {
         Authorization: `Bearer ${token}`,
       },
@@ -159,7 +159,7 @@ export class GoogleDriveService {
     const token = this.getAccessToken();
     if (!token) throw new Error('Not authenticated with Google Drive');
 
-    const response = await fetch(`${DRIVE_API_URL}/files/${fileId}?fields=capabilities`, {
+    const response = await fetch(`${DRIVE_API_URL}/files/${fileId}?fields=capabilities&supportsAllDrives=true`, {
       headers: {
         Authorization: `Bearer ${token}`,
       },
@@ -183,7 +183,7 @@ export class GoogleDriveService {
     const token = this.getAccessToken();
     if (!token) throw new Error('Not authenticated with Google Drive');
 
-    const response = await fetch(`${DRIVE_API_URL}/files/${fileId}?alt=media`, {
+    const response = await fetch(`${DRIVE_API_URL}/files/${fileId}?alt=media&supportsAllDrives=true`, {
       headers: {
         Authorization: `Bearer ${token}`,
       },
@@ -205,7 +205,7 @@ export class GoogleDriveService {
     if (!token) throw new Error('Not authenticated with Google Drive');
 
     const query = encodeURIComponent("mimeType = 'application/json' and trashed = false and fullText contains 'VectorFlow'");
-    const response = await fetch(`${DRIVE_API_URL}/files?q=${query}&fields=files(id, name, mimeType, modifiedTime)&orderBy=modifiedTime desc`, {
+    const response = await fetch(`${DRIVE_API_URL}/files?q=${query}&fields=files(id, name, mimeType, modifiedTime)&orderBy=modifiedTime desc&supportsAllDrives=true&includeItemsFromAllDrives=true`, {
       headers: {
         Authorization: `Bearer ${token}`,
       },
