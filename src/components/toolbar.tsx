@@ -1,6 +1,6 @@
 'use client';
 
-import { PanelLeft, LayoutGrid, Workflow, Settings2, Download, Upload } from 'lucide-react';
+import { PanelLeft, LayoutGrid, Workflow, Settings2, Download, Upload, Eye } from 'lucide-react';
 import { Button } from '@/components/ui/forms/button';
 import { MetaConfigEditor } from './meta-config-editor';
 import type { MetaConfig, FieldDefinition } from '@/types';
@@ -15,6 +15,9 @@ interface ToolbarProps {
   rightSidebarOpen: boolean;
   onExport?: () => void;
   onImport?: () => void;
+  isReadOnly: boolean;
+  onToggleReadOnly: () => void;
+  isReadOnlyForced?: boolean;
 }
 
 export function Toolbar({
@@ -27,6 +30,9 @@ export function Toolbar({
   rightSidebarOpen,
   onExport,
   onImport,
+  isReadOnly,
+  onToggleReadOnly,
+  isReadOnlyForced = false,
 }: ToolbarProps) {
   return (
     <div className="flex items-center justify-between px-4 py-2 border-b border-border bg-card shrink-0">
@@ -84,29 +90,46 @@ export function Toolbar({
           </Button>
         )}
 
-        <div className="h-4 w-px bg-border mx-1" />
+        {!isReadOnly && (
+          <>
+            <div className="h-4 w-px bg-border mx-1" />
 
-        <Button
-          variant="ghost"
-          size="sm" 
-          onClick={onAutoLayout}
-          className="h-8 px-3 gap-2"
-          aria-label="Auto-arrange nodes"
-        >
-          <Workflow className="h-4 w-4" />
-          <span className="text-xs font-medium">Auto-Arrange</span>
-        </Button>
+            <Button
+              variant="ghost"
+              size="sm" 
+              onClick={onAutoLayout}
+              className="h-8 px-3 gap-2"
+              aria-label="Auto-arrange nodes"
+            >
+              <Workflow className="h-4 w-4" />
+              <span className="text-xs font-medium">Auto-Arrange</span>
+            </Button>
 
-        <div className="h-4 w-px bg-border mx-1" />
+            <div className="h-4 w-px bg-border mx-1" />
 
-        <MetaConfigEditor 
-          config={metaConfig} 
-          onUpdate={onUpdateMetaConfig} 
-        />
+            <MetaConfigEditor 
+              config={metaConfig} 
+              onUpdate={onUpdateMetaConfig} 
+            />
+          </>
+        )}
       </div>
 
-      {/* Right Section - Spacer */}
-      <div className="w-[120px]" />
+      {/* Right Section - View Only Toggle */}
+      <div className="flex items-center">
+        <Button
+          variant={isReadOnly ? "default" : "ghost"}
+          size="sm"
+          onClick={onToggleReadOnly}
+          disabled={isReadOnlyForced}
+          className="h-8 px-3 gap-2"
+          title={isReadOnlyForced ? "Read-only mode enforced by file permissions" : "Toggle read-only mode"}
+          aria-label="Toggle read-only mode"
+        >
+          <Eye className="h-4 w-4" />
+          <span className="text-xs font-medium">View Only</span>
+        </Button>
+      </div>
     </div>
   );
 }

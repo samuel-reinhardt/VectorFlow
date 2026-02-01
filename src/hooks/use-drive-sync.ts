@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState, useCallback } from 'react';
 import { GoogleDriveService } from '@/lib/google-drive/service';
+import { useUser } from '@/firebase/auth/use-user';
 import { ExportData } from '@/lib/export-import';
 import { Flow } from '@/types';
 
@@ -12,6 +13,7 @@ export interface SyncState {
   lastSyncTime: Date | null;
   hasConflict: boolean;
   errorMessage?: string;
+  isReadOnlyDueToPermissions: boolean;
 }
 
 interface UseDriveSyncProps {
@@ -21,6 +23,7 @@ interface UseDriveSyncProps {
   flows: Flow[];
   activeFlowId: string;
   onImport: (flows: Flow[], activeFlowId: string, projectId: string, projectName?: string, driveId?: string) => void;
+  onPermissionsChange?: (canEdit: boolean) => void;
 }
 
 export function useDriveSync({
@@ -30,12 +33,14 @@ export function useDriveSync({
   flows,
   activeFlowId,
   onImport,
+  onPermissionsChange,
 }: UseDriveSyncProps) {
   const [syncState, setSyncState] = useState<SyncState>({
     isSyncEnabled: false,
     syncStatus: 'idle',
     lastSyncTime: null,
     hasConflict: false,
+    isReadOnlyDueToPermissions: false,
   });
 
   const lastRemoteModifiedTime = useRef<string | null>(null);
@@ -69,6 +74,57 @@ export function useDriveSync({
       }
     };
   }, [flows, activeFlowId, syncState.isSyncEnabled, syncState.hasConflict]);
+
+  const { user } = useUser();
+
+  // Check permissions when fileId changes
+  useEffect(() => {
+    if (!fileId) {
+      // Clear read-only state when no file is linked
+      setSyncState(prev => {
+        if (prev.isReadOnlyDueToPermissions) {
+          return { ...prev, isReadOnlyDueToPermissions: false };
+        }
+        return prev;
+      });
+      return;
+    }
+
+    // Don't check permissions if user is not authenticated
+    if (!user) {
+      return;
+    }
+
+    // Only check permissions if we have a valid fileId and authenticated user
+    let cancelled = false;
+    
+    GoogleDriveService.getFilePermissions(fileId)
+      .then(({ canEdit }) => {
+        if (cancelled) return;
+        
+        const isReadOnly = !canEdit;
+        setSyncState(prev => {
+          if (prev.isReadOnlyDueToPermissions !== isReadOnly) {
+            return { ...prev, isReadOnlyDueToPermissions: isReadOnly };
+          }
+          return prev;
+        });
+        
+        // Only call callback if changing to read-only
+        if (isReadOnly) {
+          onPermissionsChange?.(true);
+        }
+      })
+      .catch(error => {
+        if (cancelled) return;
+        console.error('Failed to check file permissions:', error);
+        // Don't force read-only on error, just log it
+      });
+      
+    return () => {
+      cancelled = true;
+    };
+  }, [fileId]); // Removed onPermissionsChange from dependencies to prevent infinite loop
 
   // Push local changes to Drive
   const pushLocalChanges = useCallback(async () => {

@@ -24,6 +24,9 @@ import {
 import { Calendar } from '@/components/ui/data-display/calendar';
 import { Badge } from '@/components/ui/data-display/badge';
 import type { FieldDefinition, FieldType } from '@/types';
+import { normalizeOptions } from '@/lib/metadata-utils';
+import { DynamicIcon } from '@/components/dynamic-icon';
+import { Tag } from 'lucide-react';
 
 interface MetaValueEditorProps {
   fields: FieldDefinition[];
@@ -74,6 +77,7 @@ function RenderField({
           placeholder={`Enter ${field.label.toLowerCase()}...`}
         />
       );
+      
     case 'long-text':
       return (
         <Textarea 
@@ -83,6 +87,84 @@ function RenderField({
           className="min-h-[80px]"
         />
       );
+      
+    case 'number':
+      return (
+        <Input 
+          type="number"
+          value={value ?? ''} 
+          onChange={(e) => onChange(e.target.value ? Number(e.target.value) : null)} 
+          placeholder="Enter number..."
+          min={field.numberConfig?.min}
+          max={field.numberConfig?.max}
+          step={field.numberConfig?.step ?? 1}
+        />
+      );
+      
+    case 'hours':
+      return (
+        <div className="relative">
+          <Input 
+            type="number"
+            value={value ?? ''} 
+            onChange={(e) => onChange(e.target.value ? Number(e.target.value) : null)} 
+            placeholder="Enter hours..."
+            min={field.numberConfig?.min ?? 0}
+            max={field.numberConfig?.max}
+            step={field.numberConfig?.step ?? 0.5}
+            className="pr-12"
+          />
+          <span className="absolute right-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">
+            hrs
+          </span>
+        </div>
+      );
+      
+    case 'currency':
+      return (
+        <div className="relative">
+          <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">
+            $
+          </span>
+          <Input 
+            type="number"
+            value={value ?? ''} 
+            onChange={(e) => onChange(e.target.value ? Number(e.target.value) : null)} 
+            placeholder="0.00"
+            min={field.numberConfig?.min ?? 0}
+            max={field.numberConfig?.max}
+            step={field.numberConfig?.step ?? 0.01}
+            className="pl-7"
+          />
+        </div>
+      );
+      
+    case 'slider': {
+      const min = field.numberConfig?.min ?? 0;
+      const max = field.numberConfig?.max ?? 100;
+      const step = field.numberConfig?.step ?? 1;
+      const numValue = value ?? min;
+      
+      return (
+        <div className="space-y-2">
+          <input
+            type="range"
+            value={numValue}
+            onChange={(e) => onChange(Number(e.target.value))}
+            min={min}
+            max={max}
+            step={step}
+            className="w-full h-2 bg-muted rounded-lg appearance-none cursor-pointer slider-thumb"
+          />
+          <div className="flex justify-between text-xs text-muted-foreground">
+            <span>{min}</span>
+            <span className="font-medium text-foreground">{numValue}</span>
+            <span>{max}</span>
+          </div>
+        </div>
+      );
+    }
+      
     case 'date':
       const dateValue = value ? new Date(value) : null;
       const isValidDate = dateValue && isValid(dateValue);
@@ -111,23 +193,38 @@ function RenderField({
           </PopoverContent>
         </Popover>
       );
-    case 'select':
+      
+    case 'select': {
+      const options = normalizeOptions(field.options);
       return (
         <Select value={value || ''} onValueChange={onChange}>
           <SelectTrigger className="w-full">
             <SelectValue placeholder="Select an option" />
           </SelectTrigger>
           <SelectContent>
-            {field.options?.map((opt) => (
-              <SelectItem key={opt} value={opt}>
-                {opt}
+            {options.map((opt) => (
+              <SelectItem key={opt.value} value={opt.value}>
+                <div className="flex items-center gap-2">
+                  {opt.icon && <DynamicIcon name={opt.icon} fallback={Tag} className="w-4 h-4" />}
+                  <span>{opt.label}</span>
+                  {opt.color && (
+                    <div 
+                      className="w-3 h-3 rounded-full border" 
+                      style={{backgroundColor: opt.color}}
+                    />
+                  )}
+                </div>
               </SelectItem>
             ))}
           </SelectContent>
         </Select>
       );
-    case 'multi-select':
+    }
+      
+    case 'multi-select': {
+      const options = normalizeOptions(field.options);
       const currentValues = Array.isArray(value) ? value : [];
+      
       return (
         <div className="space-y-2">
           <Select 
@@ -142,30 +239,56 @@ function RenderField({
               <SelectValue placeholder="Add option..." />
             </SelectTrigger>
             <SelectContent>
-              {field.options?.filter(opt => !currentValues.includes(opt)).map((opt) => (
-                <SelectItem key={opt} value={opt}>
-                  {opt}
-                </SelectItem>
-              ))}
+              {options
+                .filter(opt => !currentValues.includes(opt.value) && opt.value !== '')
+                .map((opt) => (
+                  <SelectItem key={opt.value} value={opt.value}>
+                    <div className="flex items-center gap-2">
+                      {opt.icon && <DynamicIcon name={opt.icon} fallback={Tag} className="w-4 h-4" />}
+                      <span>{opt.label}</span>
+                      {opt.color && (
+                        <div 
+                          className="w-3 h-3 rounded-full border" 
+                          style={{backgroundColor: opt.color}}
+                        />
+                      )}
+                    </div>
+                  </SelectItem>
+                ))}
             </SelectContent>
           </Select>
           {currentValues.length > 0 && (
             <div className="flex flex-wrap gap-1 mt-2">
-              {currentValues.map((val) => (
-                <Badge key={val} variant="secondary" className="gap-1 px-1.5 py-0.5 h-6">
-                  {val}
-                  <button 
-                    onClick={() => onChange(currentValues.filter(v => v !== val))}
-                    className="hover:text-destructive transition-colors"
+              {currentValues.map((val) => {
+                const opt = options.find(o => o.value === val);
+                return (
+                  <Badge 
+                    key={val} 
+                    variant="secondary" 
+                    className="gap-1 px-1.5 py-0.5 h-6"
+                    style={opt?.color ? {
+                      backgroundColor: `${opt.color}20`,
+                      color: opt.color,
+                      borderColor: opt.color
+                    } : undefined}
                   >
-                    <X className="h-3 w-3" />
-                  </button>
-                </Badge>
-              ))}
+                    {opt?.icon && <DynamicIcon name={opt.icon} fallback={Tag} className="w-3 h-3" />}
+                    {opt?.label || val}
+                    <button 
+                      onClick={() => onChange(currentValues.filter(v => v !== val))}
+                      className="hover:text-destructive transition-colors"
+                    >
+                      <X className="h-3 w-3" />
+                    </button>
+                  </Badge>
+                );
+              })}
             </div>
           )}
         </div>
       );
+    }
+      
     default:
       return <div className="text-xs text-destructive">Unsupported field type: {field.type}</div>;
   }

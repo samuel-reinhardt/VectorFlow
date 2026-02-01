@@ -148,6 +148,31 @@ export class GoogleDriveService {
   }
 
   /**
+   * Gets the current user's permissions for a file.
+   * Returns whether the user can edit the file.
+   */
+  static async getFilePermissions(fileId: string): Promise<{ canEdit: boolean }> {
+    const token = this.getAccessToken();
+    if (!token) throw new Error('Not authenticated with Google Drive');
+
+    const response = await fetch(`${DRIVE_API_URL}/files/${fileId}?fields=capabilities`, {
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+    });
+
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(`Failed to get file permissions: ${error.error?.message || response.statusText}`);
+    }
+
+    const data = await response.json();
+    return {
+      canEdit: data.capabilities?.canEdit ?? false,
+    };
+  }
+
+  /**
    * Downloads the content of a file from Google Drive.
    */
   static async getFileContent(fileId: string): Promise<ExportData> {

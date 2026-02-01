@@ -33,6 +33,8 @@ import { useDrivePicker } from '@/lib/google-drive/picker';
 import { useUser } from '@/firebase/auth/use-user';
 import { useToast } from '@/hooks/use-toast';
 import { ExportImportService } from '@/lib/export-import';
+import { ReadOnlyBanner } from '@/components/read-only-banner';
+import { ReadOnlyPropertiesPanel } from '@/components/read-only-properties-panel';
 
 import { demoNodes } from './flow/data/demo-nodes';
 import { demoEdges } from './flow/data/demo-edges';
@@ -96,6 +98,8 @@ export function VectorFlow() {
         setProjectId,
         projectName,
         setProjectName,
+        isReadOnly,
+        setIsReadOnly,
     } = useVectorFlow(initialNodes, initialEdges);
 
     const { user } = useUser();
@@ -110,7 +114,17 @@ export function VectorFlow() {
         flows,
         activeFlowId,
         onImport: loadProject,
+        onPermissionsChange: (shouldBeReadOnly) => {
+            // Only force read-only if permissions require it
+            if (shouldBeReadOnly) {
+                setIsReadOnly(true);
+            }
+            // Don't automatically disable read-only when permissions allow editing
+            // Let the user control it manually
+        },
     });
+
+    const [bannerDismissed, setBannerDismissed] = useState(false);
 
     const { fitView, getNode, getNodes, setEdges } = useReactFlow();
 
@@ -306,6 +320,7 @@ export function VectorFlow() {
             <Header 
                 projectName={projectName} 
                 onNameChange={setProjectName}
+                isReadOnly={isReadOnly}
                 syncIndicator={
                     <SyncIndicator
                         user={user}
@@ -330,9 +345,29 @@ export function VectorFlow() {
                 rightSidebarOpen={rightSidebarOpen}
                 onExport={handleExport}
                 onImport={handleImport}
+                isReadOnly={isReadOnly}
+                onToggleReadOnly={() => {
+                    if (!syncState.isReadOnlyDueToPermissions) {
+                        setIsReadOnly(!isReadOnly);
+                        if (!isReadOnly) {
+                            setBannerDismissed(false);
+                        }
+                    }
+                }}
+                isReadOnlyForced={syncState.isReadOnlyDueToPermissions}
             />
 
             <div className="flex flex-1 overflow-hidden">
+                {/* Read-Only Banner */}
+                {isReadOnly && !bannerDismissed && (
+                    <ReadOnlyBanner
+                        reason={syncState.isReadOnlyDueToPermissions ? 'permissions' : 'manual'}
+                        onDisable={!syncState.isReadOnlyDueToPermissions ? () => setIsReadOnly(false) : undefined}
+                        onDismiss={() => setBannerDismissed(true)}
+                    />
+                )}
+
+                {/* Left Sidebar - Outline */}
                 <Sidebar side="left" open={leftSidebarOpen} onOpenChange={handleLeftSidebarChange} isDesktop={isDesktop}>
                     <Outline 
                         nodes={nodes} 
@@ -356,55 +391,73 @@ export function VectorFlow() {
                         nodeTypes={nodeTypes}
                         edgeTypes={edgeTypes}
                         defaultEdgeOptions={{ type: 'custom', zIndex: 10 }}
+                        nodesDraggable={!isReadOnly}
+                        nodesConnectable={!isReadOnly}
+                        elementsSelectable={true}
+                        deleteKeyCode={isReadOnly ? null : 'Delete'}
                         fitView
+                        minZoom={0.1}
+                        maxZoom={4}
                         className="bg-background"
-                        deleteKeyCode={['Delete', 'Backspace']}
                     >
                         <Controls />
                         <Background variant={BackgroundVariant.Dots} gap={16} size={1} />
                     </ReactFlow>
                 </main>
                 
+                {/* Right Sidebar - Settings/Properties */}
                 <Sidebar side="right" open={rightSidebarOpen} onOpenChange={handleRightSidebarChange} isDesktop={isDesktop}>
-                    <SidebarHeader>
-                    <div className="flex items-center gap-3">
-                        <div className="p-2 rounded-md bg-muted shrink-0">
-                            {rightSidebarInfo.type === 'step' && <DynamicIcon name={rightSidebarInfo.icon} fallback={Square} className="w-5 h-5" />}
-                            {rightSidebarInfo.type === 'deliverable' && <DynamicIcon name={rightSidebarInfo.icon} fallback={FileText} className="w-5 h-5" />}
-                            {rightSidebarInfo.type === 'group' && <DynamicIcon name={rightSidebarInfo.icon} fallback={Layers} className="w-5 h-5" />}
-                            {rightSidebarInfo.type === 'edge' && <DynamicIcon name={rightSidebarInfo.icon} fallback={Share2} className="w-5 h-5" />}
-                            {rightSidebarInfo.type === 'multi' && <Boxes className="w-5 h-5" />}
-                            {rightSidebarInfo.type === 'none' && <LayoutGrid className="w-5 h-5" />}
-                        </div>
-                        <div className="flex flex-col">
-                            <h2 className="text-lg font-semibold leading-none">{rightSidebarInfo.title}</h2>
-                            <p className="text-xs text-muted-foreground mt-1">{rightSidebarInfo.description}</p>
-                        </div>
-                    </div>
-                    </SidebarHeader>
-                    <SidebarContent className="p-4">
-                        <SettingsPanel 
-                            selectedSteps={selectedNodes}
+                    {isReadOnly ? (
+                        <ReadOnlyPropertiesPanel
+                            selectedNodes={selectedNodes}
                             selectedEdge={selectedEdges.length === 1 ? selectedEdges[0] : null}
                             selectedDeliverableId={selectedDeliverableId}
-                            onAddStep={addStep}
-                            onAddDeliverable={addDeliverable}
-                            onUpdateStepLabel={updateStepLabel}
-                            onUpdateStepColor={updateStepColor}
-                            onUpdateStepIcon={updateStepIcon}
-                            onUpdateEdgeLabel={updateEdgeLabel}
-                            onUpdateEdgeColor={updateEdgeColor}
-                            onUpdateEdgeIcon={updateEdgeIcon}
-                            onUpdateDeliverable={updateDeliverable}
-                            onDeleteSelection={deleteSelection}
-                            onGroupSelection={groupSelection}
-                            onUngroup={ungroupSelection}
-                            onTitleChange={handleSettingsPanelTitleChange}
+                            nodes={nodes}
                             metaConfig={metaConfig}
-                            onUpdateMetaData={updateMetaData}
-                            onUpdateDeliverableMetaData={updateDeliverableMetaData}
                         />
-                    </SidebarContent>
+                    ) : (
+                        <>
+                            <SidebarHeader>
+                                <div className="flex items-center gap-3">
+                                    <div className="p-2 rounded-md bg-muted shrink-0">
+                                        {rightSidebarInfo.type === 'step' && <DynamicIcon name={rightSidebarInfo.icon} fallback={Square} className="w-5 h-5" />}
+                                        {rightSidebarInfo.type === 'deliverable' && <DynamicIcon name={rightSidebarInfo.icon} fallback={FileText} className="w-5 h-5" />}
+                                        {rightSidebarInfo.type === 'group' && <DynamicIcon name={rightSidebarInfo.icon} fallback={Layers} className="w-5 h-5" />}
+                                        {rightSidebarInfo.type === 'edge' && <DynamicIcon name={rightSidebarInfo.icon} fallback={Share2} className="w-5 h-5" />}
+                                        {rightSidebarInfo.type === 'multi' && <Boxes className="w-5 h-5" />}
+                                        {rightSidebarInfo.type === 'none' && <LayoutGrid className="w-5 h-5" />}
+                                    </div>
+                                    <div className="flex flex-col">
+                                        <h2 className="text-lg font-semibold leading-none">{rightSidebarInfo.title}</h2>
+                                        <p className="text-xs text-muted-foreground mt-1">{rightSidebarInfo.description}</p>
+                                    </div>
+                                </div>
+                            </SidebarHeader>
+                            <SidebarContent className="p-4">
+                                <SettingsPanel 
+                                    selectedSteps={selectedNodes}
+                                    selectedEdge={selectedEdges.length === 1 ? selectedEdges[0] : null}
+                                    selectedDeliverableId={selectedDeliverableId}
+                                    onAddStep={addStep}
+                                    onAddDeliverable={addDeliverable}
+                                    onUpdateStepLabel={updateStepLabel}
+                                    onUpdateStepColor={updateStepColor}
+                                    onUpdateStepIcon={updateStepIcon}
+                                    onUpdateEdgeLabel={updateEdgeLabel}
+                                    onUpdateEdgeColor={updateEdgeColor}
+                                    onUpdateEdgeIcon={updateEdgeIcon}
+                                    onUpdateDeliverable={updateDeliverable}
+                                    onDeleteSelection={deleteSelection}
+                                    onGroupSelection={groupSelection}
+                                    onUngroup={ungroupSelection}
+                                    onTitleChange={handleSettingsPanelTitleChange}
+                                    metaConfig={metaConfig}
+                                    onUpdateMetaData={updateMetaData}
+                                    onUpdateDeliverableMetaData={updateDeliverableMetaData}
+                                />
+                            </SidebarContent>
+                        </>
+                    )}
                 </Sidebar>
             </div>
             
@@ -417,6 +470,7 @@ export function VectorFlow() {
                 onDeleteFlow={deleteFlow}
                 onDuplicateFlow={duplicateFlow}
                 onReorderFlow={reorderFlow}
+                isReadOnly={isReadOnly}
             />
             
             <ConflictDialog

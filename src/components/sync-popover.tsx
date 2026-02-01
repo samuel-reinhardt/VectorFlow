@@ -59,7 +59,7 @@ export function SyncPopover({
             </div>
             <div className="flex-1">
               <div className="font-medium text-xs">Share with team</div>
-              <div className="text-[10px] text-muted-foreground">Collaborate in real-time</div>
+              <div className="text-[10px] text-muted-foreground">Collaborate with peers</div>
             </div>
           </div>
 

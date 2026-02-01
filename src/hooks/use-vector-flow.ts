@@ -27,6 +27,7 @@ export const useVectorFlow = (initialNodes: Node[], initialEdges: Edge[]) => {
   const [edges, setEdges] = useState<Edge[]>(initialEdges);
   const [selectedDeliverableId, setSelectedDeliverableId] = useState<string | null>(null);
   const [selectedEdgeId, setSelectedEdgeId] = useState<string | null>(null);
+  const [isReadOnly, setIsReadOnly] = useState<boolean>(false);
 
   // --- Derived Selection State ---
   // We derive these from the main nodes/edges to ensure metadata changes (re-renders) 
@@ -88,7 +89,7 @@ export const useVectorFlow = (initialNodes: Node[], initialEdges: Edge[]) => {
   const nodeOps = useNodeOperations(nodes, setNodesState);
 
   // 4. Edge Operations
-  const edgeOps = useEdgeOperations(setEdges);
+  const edgeOps = useEdgeOperations(setEdges, isReadOnly);
 
   // 5. Deliverable Operations
   const deliverableOps = useDeliverableOperations(setNodesState, setSelectedDeliverableId);
@@ -202,5 +203,7 @@ export const useVectorFlow = (initialNodes: Node[], initialEdges: Edge[]) => {
     setProjectId,
     projectName,
     setProjectName,
+    isReadOnly,
+    setIsReadOnly,
   };
 };

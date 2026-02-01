@@ -28,7 +28,10 @@ import {
   TabsTrigger,
 } from '@/components/ui/layout/tabs';
 import { Separator } from '@/components/ui/layout/separator';
-import type { FieldDefinition, MetaConfig, FieldType } from '@/types';
+import type { FieldDefinition, MetaConfig, FieldType, SelectOption, NumberConfig } from '@/types';
+import { SelectOptionEditor } from '@/components/select-option-editor';
+import { NumberConfigEditor } from '@/components/number-config-editor';
+import { normalizeOptions } from '@/lib/metadata-utils';
 
 interface MetaConfigEditorProps {
   config: MetaConfig;
@@ -58,6 +61,12 @@ export function MetaConfigEditor({ config, onUpdate }: MetaConfigEditorProps) {
     onUpdate(activeTab, config[activeTab].filter(f => f.id !== id));
   };
 
+  const isNumberType = (type: FieldType) => 
+    ['number', 'hours', 'currency', 'slider'].includes(type);
+
+  const isSelectType = (type: FieldType) => 
+    ['select', 'multi-select'].includes(type);
+
   return (
     <Dialog>
       <DialogTrigger asChild>
@@ -71,7 +80,7 @@ export function MetaConfigEditor({ config, onUpdate }: MetaConfigEditorProps) {
           <span className="text-xs font-medium">Metadata</span>
         </Button>
       </DialogTrigger>
-      <DialogContent className="sm:max-w-[600px] h-[80vh] flex flex-col p-0">
+      <DialogContent className="sm:max-w-[700px] h-[85vh] flex flex-col p-0">
         <DialogHeader className="p-6 pb-2">
           <DialogTitle>Metadata Settings</DialogTitle>
           <DialogDescription>
@@ -106,7 +115,17 @@ export function MetaConfigEditor({ config, onUpdate }: MetaConfigEditorProps) {
                           <Label>Type</Label>
                           <Select 
                             value={field.type} 
-                            onValueChange={(val: FieldType) => updateField(field.id, { type: val })}
+                            onValueChange={(val: FieldType) => {
+                              const updates: Partial<FieldDefinition> = { type: val };
+                              // Clear incompatible configs when changing type
+                              if (!isNumberType(val)) {
+                                updates.numberConfig = undefined;
+                              }
+                              if (!isSelectType(val)) {
+                                updates.options = undefined;
+                              }
+                              updateField(field.id, updates);
+                            }}
                           >
                             <SelectTrigger>
                               <SelectValue />
@@ -115,6 +134,10 @@ export function MetaConfigEditor({ config, onUpdate }: MetaConfigEditorProps) {
                               <SelectItem value="text">Text</SelectItem>
                               <SelectItem value="long-text">Long Text</SelectItem>
                               <SelectItem value="date">Date</SelectItem>
+                              <SelectItem value="number">Number</SelectItem>
+                              <SelectItem value="hours">Hours</SelectItem>
+                              <SelectItem value="currency">Currency</SelectItem>
+                              <SelectItem value="slider">Slider</SelectItem>
                               <SelectItem value="select">Select</SelectItem>
                               <SelectItem value="multi-select">Multi-Select</SelectItem>
                             </SelectContent>
@@ -131,17 +154,21 @@ export function MetaConfigEditor({ config, onUpdate }: MetaConfigEditorProps) {
                       </Button>
                     </div>
 
-                    {(field.type === 'select' || field.type === 'multi-select') && (
-                      <div className="space-y-2">
-                        <Label>Options (comma separated)</Label>
-                        <Input 
-                          value={field.options?.join(', ') || ''} 
-                          onChange={(e) => updateField(field.id, { 
-                            options: e.target.value.split(',').map(s => s.trim()).filter(Boolean) 
-                          })}
-                          placeholder="Option 1, Option 2, ..."
-                        />
-                      </div>
+                    {/* Number Configuration */}
+                    {isNumberType(field.type) && (
+                      <NumberConfigEditor
+                        config={field.numberConfig}
+                        onChange={(config) => updateField(field.id, { numberConfig: config })}
+                        fieldType={field.type as 'number' | 'hours' | 'currency' | 'slider'}
+                      />
+                    )}
+
+                    {/* Select Options Configuration */}
+                    {isSelectType(field.type) && (
+                      <SelectOptionEditor
+                        options={normalizeOptions(field.options)}
+                        onChange={(options) => updateField(field.id, { options })}
+                      />
                     )}
                   </div>
                 ))}

@@ -7,16 +7,20 @@ import { DEFAULT_COLORS } from '@/lib/constants';
  * Handles adding connections and updating their properties.
  */
 export function useEdgeOperations(
-  setEdges: (value: Edge[] | ((prev: Edge[]) => Edge[])) => void
+  setEdges: (value: Edge[] | ((prev: Edge[]) => Edge[])) => void,
+  isReadOnly: boolean = false
 ) {
   const onConnect: OnConnect = useCallback((connection) => {
+    // Prevent creating new connections in read-only mode
+    if (isReadOnly) return;
+    
     setEdges((eds) => addEdge({ 
       ...connection, 
       animated: true, 
       label: '', 
       style: { stroke: DEFAULT_COLORS.CONNECTION } 
     }, eds));
-  }, [setEdges]);
+  }, [setEdges, isReadOnly]);
 
   const updateEdgeLabel = useCallback((edgeId: string, label: string) => {
     setEdges((eds) =>

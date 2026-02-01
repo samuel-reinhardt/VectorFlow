@@ -2,18 +2,28 @@
 
 import { Orbit } from 'lucide-react';
 import { UserProfile } from './user-profile';
+import { useState } from 'react'; // Added useState import
+
+// Assuming HeaderProps is defined elsewhere or will be defined.
+// For now, I'll define it based on the original inline type and the new isReadOnly prop.
+interface HeaderProps {
+  projectName?: string;
+  onNameChange?: (name: string) => void;
+  syncIndicator?: React.ReactNode;
+  isReadOnly?: boolean;
+  children?: React.ReactNode;
+}
 
 export function Header({ 
   projectName, 
   onNameChange,
   syncIndicator,
-  children 
-}: { 
-  projectName?: string;
-  onNameChange?: (name: string) => void;
-  syncIndicator?: React.ReactNode;
-  children?: React.ReactNode 
-}) {
+  children,
+  isReadOnly = false // Added isReadOnly with default value
+}: HeaderProps) { // Changed to HeaderProps type
+  const [isEditing, setIsEditing] = useState(false); // Added state
+  const [tempName, setTempName] = useState(projectName); // Added state
+
   return (
     <header className="flex items-center justify-between p-4 border-b border-border shadow-sm z-10 bg-card shrink-0">
       <div className="flex items-center gap-6">
@@ -28,7 +38,8 @@ export function Header({
               type="text"
               value={projectName || 'Untitled Project'}
               onChange={(e) => onNameChange(e.target.value)}
-              className="text-lg font-semibold bg-transparent border-none focus:ring-1 focus:ring-primary/30 rounded px-2 py-1 w-full hover:bg-muted/50 transition-colors"
+              disabled={isReadOnly}
+              className="text-lg font-semibold bg-transparent border-none focus:ring-1 focus:ring-primary/30 rounded px-2 py-1 w-full hover:bg-muted/50 transition-colors disabled:opacity-60 disabled:cursor-not-allowed disabled:hover:bg-transparent"
               placeholder="Project Name"
             />
           </div>

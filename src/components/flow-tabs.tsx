@@ -21,6 +21,7 @@ interface FlowTabsProps {
   onDeleteFlow: (id: string) => void;
   onDuplicateFlow: (id: string) => void;
   onReorderFlow: (id: string, direction: 'left' | 'right') => void;
+  isReadOnly?: boolean;
 }
 
 export function FlowTabs({
@@ -32,6 +33,7 @@ export function FlowTabs({
   onDeleteFlow,
   onDuplicateFlow,
   onReorderFlow,
+  isReadOnly = false,
 }: FlowTabsProps) {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editValue, setEditValue] = useState('');
@@ -77,8 +79,10 @@ export function FlowTabs({
           )}
           onClick={() => onSwitchFlow(flow.id)}
           onDoubleClick={(e) => {
-            e.stopPropagation();
-            startEditing(flow.id, flow.title);
+            if (!isReadOnly) {
+              e.stopPropagation();
+              startEditing(flow.id, flow.title);
+            }
           }}
         >
           {editingId === flow.id ? (
@@ -148,7 +152,8 @@ export function FlowTabs({
         </div>
       ))}
       
-      <Button
+      {!isReadOnly && (
+        <Button
         variant="ghost"
         size="icon"
         className="h-8 w-8 ml-1 shrink-0 transition-all duration-200 active:scale-90 hover:bg-muted-foreground/20"
@@ -157,6 +162,7 @@ export function FlowTabs({
       >
         <Plus className="h-4 w-4" />
       </Button>
+      )}
     </div>
   );
 }
