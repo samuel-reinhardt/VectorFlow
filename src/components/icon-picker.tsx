@@ -16,17 +16,55 @@ interface IconPickerProps {
   fallbackIcon?: React.ComponentType<any>;
 }
 
+// Error Boundary to catch render errors for specific icons
+class SafeIcon extends React.Component<{ icon: any, name: string, className?: string }, { hasError: boolean }> {
+    constructor(props: any) {
+        super(props);
+        this.state = { hasError: false };
+    }
+
+    static getDerivedStateFromError(error: any) {
+        return { hasError: true };
+    }
+
+    componentDidCatch(error: any, errorInfo: any) {
+        console.error(`Failed to render icon: ${this.props.name}`, error, errorInfo);
+    }
+
+    render() {
+        if (this.state.hasError) {
+            return <div className="w-4 h-4 text-destructive flex items-center justify-center" title="Icon failed to load">!</div>;
+        }
+
+        const { icon: Icon, className } = this.props;
+        
+        // Safety check if Icon is not a valid component type
+        if (!Icon) return null;
+
+        return <Icon className={className} />;
+    }
+}
+
 export function IconPicker({ value, onChange, fallbackIcon: Fallback = Square }: IconPickerProps) {
   const [open, setOpen] = React.useState(false);
   const [search, setSearch] = React.useState('');
 
   // Get all icon names from Lucide
   const iconNames = React.useMemo(() => {
-    return Object.keys(Icons).filter(
+    const filters = ['lucide', 'createLucideIcon'];
+    const allExports = Object.keys(Icons);
+    const exportSet = new Set(allExports);
+    
+    return allExports.filter(
       (name) => 
         // Likely an icon if it starts with uppercase and is a component
         /^[A-Z]/.test(name) && 
-        (typeof (Icons as any)[name] === 'function' || (Icons as any)[name]?.render)
+        !filters.includes(name) &&
+        (typeof (Icons as any)[name] === 'function' || (Icons as any)[name]?.render) &&
+        // Deduplicate: If name ends with "Icon" and the base name exists, skip it
+        !(name.endsWith('Icon') && exportSet.has(name.slice(0, -4))) &&
+        // Deduplicate: If name starts with "Lucide" and the base name exists, skip it
+        !(name.startsWith('Lucide') && exportSet.has(name.slice(6)))
     );
   }, []);
 
@@ -86,7 +124,7 @@ export function IconPicker({ value, onChange, fallbackIcon: Fallback = Square }:
                         isSelected && "bg-primary/10 ring-1 ring-primary/30"
                       )}
                     >
-                      <Icon className={cn(
+                      <SafeIcon icon={Icon} name={name} className={cn(
                         "w-5 h-5 mb-1",
                         isSelected ? "text-primary" : "text-muted-foreground group-hover:text-foreground"
                       )} />
