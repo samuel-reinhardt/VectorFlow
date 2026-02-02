@@ -51,7 +51,7 @@ export function IconPicker({ value, onChange, fallbackIcon: Fallback = Square }:
 
   // Get all icon names from Lucide
   const iconNames = React.useMemo(() => {
-    const filters = ['lucide', 'createLucideIcon'];
+    const filters = ['lucide', 'createLucideIcon', 'Icon'];
     const allExports = Object.keys(Icons);
     const exportSet = new Set(allExports);
     
