@@ -137,6 +137,17 @@ export function useDriveSync({
     if (!fileId) return;
 
     try {
+      // Check for auth token first
+      if (!GoogleDriveService.getAccessToken()) {
+        setSyncState(prev => ({
+          ...prev,
+          syncStatus: 'error',
+          errorMessage: 'Session expired. Please sign in again.',
+          isSyncEnabled: false
+        }));
+        return;
+      }
+
       setSyncState(prev => ({ ...prev, syncStatus: 'saving' }));
 
       const data: ExportData = {

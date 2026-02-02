@@ -9,6 +9,7 @@ import ReactFlow, {
   useReactFlow,
   useNodesInitialized,
   BackgroundVariant,
+  SelectionMode,
 } from 'reactflow';
 import 'reactflow/dist/style.css';
 import { Plus, Trash2, Settings2, X, Grip, LayoutGrid, Square, FileText, Layers, Boxes, Share2 } from 'lucide-react';
@@ -651,6 +652,9 @@ export function VectorFlow() {
                         minZoom={0.1}
                         maxZoom={4}
                         className="bg-background"
+                        selectionOnDrag={true}
+                        panOnDrag={[1, 2]} // Middle and Right click to pan
+                        selectionMode={SelectionMode.Partial}
                     >
                         <Controls />
                         <Background variant={BackgroundVariant.Dots} gap={16} size={1} />

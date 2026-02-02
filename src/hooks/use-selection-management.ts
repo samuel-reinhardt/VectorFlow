@@ -17,6 +17,12 @@ export function useSelectionManagement(
   selectedNodes: Node[],
   selectedDeliverableId: string | null
 ) {
+  // Helper to determine node type
+  const getNodeType = useCallback((nodeId: string) => {
+    const node = getNodes().find(n => n.id === nodeId);
+    return node?.type;
+  }, [getNodes]);
+
   const onSelectionChange = useCallback(({ nodes, edges }: { nodes: Node[], edges: Edge[] }) => {
     setSelectedNodes(nodes);
     setSelectedEdges(edges);
@@ -65,14 +71,38 @@ export function useSelectionManagement(
   }, [selectedDeliverableId, selectedNodes, deleteDeliverable, getNodes, getEdges, setNodes, setEdges, autoResizeGroups, setSelectedNodes, setSelectedEdges, setSelectedDeliverableId]);
 
   const onNodesChange = useCallback((changes: NodeChange[]) => {
+    // Filter selection changes for groups during multi-select
+    // Heuristic: If we have multiple 'select: true' changes, it's likely a box selection.
+    // In that case, we want to exclude groups.
+    const selectChanges = changes.filter(c => c.type === 'select' && c.selected) as any[];
+    
+    let filteredChanges = changes;
+    
+    // If selecting multiple items (box select), prevent group selection
+    if (selectChanges.length > 1) {
+       const groupIds = new Set();
+       selectChanges.forEach(change => {
+           if (getNodeType(change.id) === 'group') {
+               groupIds.add(change.id);
+           }
+       });
+
+       if (groupIds.size > 0) {
+           // Remove select changes for groups
+           filteredChanges = changes.filter(c => 
+               !(c.type === 'select' && groupIds.has(c.id))
+           );
+       }
+    }
+
     setNodes((nds) => {
-      const nextNodes = applyNodeChanges(changes, nds);
-      if (changes.some(c => c.type === 'position' || c.type === 'dimensions')) {
+      const nextNodes = applyNodeChanges(filteredChanges, nds);
+      if (filteredChanges.some(c => c.type === 'position' || c.type === 'dimensions')) {
         return autoResizeGroups(nextNodes);
       }
       return nextNodes;
     });
-  }, [setNodes, autoResizeGroups]);
+  }, [setNodes, autoResizeGroups, getNodeType]);
 
   const onEdgesChange = useCallback((changes: EdgeChange[]) => {
     setEdges((eds) => applyEdgeChanges(changes, eds));

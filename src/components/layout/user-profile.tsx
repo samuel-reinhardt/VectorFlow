@@ -100,7 +100,7 @@ export function UserProfile() {
     return names[0]?.[0] || 'A';
   }
 
-  const displayName = user.displayName || user.providerData?.[0]?.displayName || (user.isAnonymous ? 'Anonymous Guest' : 'Google Account');
+  const displayName = user.displayName || user.providerData?.[0]?.displayName || 'Google Account';
   const photoURL = user.photoURL || user.providerData?.[0]?.photoURL;
 
   return (
@@ -109,36 +109,27 @@ export function UserProfile() {
         <Avatar key={user.uid + (photoURL || '')} className="h-8 w-8 hover:opacity-80 transition-opacity animate-in fade-in zoom-in duration-300">
           <AvatarImage src={photoURL ?? undefined} alt={displayName} />
           <AvatarFallback className="bg-primary/10 text-primary font-semibold">
-            {user.isAnonymous ? <UserIcon className="w-5 h-5" /> : getInitials(displayName)}
+            {getInitials(displayName)}
           </AvatarFallback>
         </Avatar>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end" className="w-64 p-2 shadow-xl border-border/50">
         <DropdownMenuLabel className="p-3 mb-1 bg-muted/30 rounded-md">
             <div className="font-semibold text-sm truncate">{displayName}</div>
-            {!user.isAnonymous && user.email && <div className="text-[10px] text-muted-foreground font-medium truncate mt-0.5">{user.email}</div>}
+            {user.email && <div className="text-[10px] text-muted-foreground font-medium truncate mt-0.5">{user.email}</div>}
         </DropdownMenuLabel>
         <DropdownMenuSeparator />
-        {user.isAnonymous && (
-            <DropdownMenuItem className="cursor-pointer" onClick={handleSignIn}>
+
+        {!accessToken && (
+            <DropdownMenuItem className="cursor-pointer text-amber-600 focus:text-amber-600 focus:bg-amber-50" onClick={handleSignIn}>
                 <LogIn className="mr-2 h-4 w-4" />
-                <span>Login with Google</span>
+                <span>Reconnect Drive</span>
             </DropdownMenuItem>
         )}
-        {!user.isAnonymous && (
-           <>
-            {!accessToken && (
-                <DropdownMenuItem className="cursor-pointer text-amber-600 focus:text-amber-600 focus:bg-amber-50" onClick={handleSignIn}>
-                    <LogIn className="mr-2 h-4 w-4" />
-                    <span>Reconnect Drive</span>
-                </DropdownMenuItem>
-            )}
-            <DropdownMenuItem className="cursor-pointer" onClick={handleSignOut}>
+        <DropdownMenuItem className="cursor-pointer" onClick={handleSignOut}>
             <LogOut className="mr-2 h-4 w-4" />
             <span>Log out</span>
-            </DropdownMenuItem>
-           </>
-        )}
+        </DropdownMenuItem>
       </DropdownMenuContent>
     </DropdownMenu>
   );
