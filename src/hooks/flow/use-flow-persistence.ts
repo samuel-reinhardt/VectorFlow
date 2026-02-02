@@ -28,6 +28,9 @@ export function useFlowPersistence(
         ...flow,
         nodes: flow.nodes.map(node => ({
           ...node,
+          position: (node.position && typeof node.position.x === 'number' && typeof node.position.y === 'number') 
+            ? node.position 
+            : { x: 0, y: 0 },
           data: {
             ...node.data,
             deliverables: Array.isArray(node.data.deliverables) 

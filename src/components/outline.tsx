@@ -60,8 +60,11 @@ export function Outline({ nodes, selectedStepId, onStepSelect, onDeliverableSele
     // Helper to sort nodes by position
     const sortNodes = (nodeList: any[]) => {
       nodeList.sort((a, b) => {
-        if (a.position.x !== b.position.x) return a.position.x - b.position.x;
-        return a.position.y - b.position.y;
+        const posA = a.position || { x: 0, y: 0 };
+        const posB = b.position || { x: 0, y: 0 };
+        
+        if (posA.x !== posB.x) return posA.x - posB.x;
+        return posA.y - posB.y;
       });
     };
 

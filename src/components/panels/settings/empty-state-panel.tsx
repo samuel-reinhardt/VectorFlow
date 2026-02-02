@@ -50,7 +50,7 @@ export function EmptyStatePanel({
         Select an element to edit its properties, or add a new step to the canvas.
       </p>
       {onAddStep && (
-        <Button onClick={onAddStep}>
+        <Button onClick={() => onAddStep()}>
           <Plus className="mr-2 h-4 w-4" />
           Add Step
         </Button>

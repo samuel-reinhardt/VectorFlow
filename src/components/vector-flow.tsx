@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useCallback, useMemo, useEffect } from 'react';
+import { useState, useCallback, useMemo, useEffect, useRef } from 'react';
 import ReactFlow, {
   Controls,
   Background,
@@ -53,11 +53,18 @@ const edgeTypes = {
 
 export function VectorFlow() {
     const {
+        flows,
+        activeFlowId,
+        switchFlow,
+        addFlow,
+        updateFlowTitle,
+        deleteFlow,
+        duplicateFlow,
+        reorderFlow,
+        updateMetaConfig,
         nodes,
         edges,
-        selectedNodes,
-        selectedEdges,
-        setNodes,
+        setNodes: setNodesState,
         onNodesChange,
         onEdgesChange,
         onConnect,
@@ -70,23 +77,16 @@ export function VectorFlow() {
         updateEdgeLabel,
         updateEdgeColor,
         updateEdgeIcon,
+        updateDeliverable,
         deleteSelection,
         groupSelection,
         ungroupSelection,
         handleAutoLayout,
-        flows,
-        activeFlowId,
-        switchFlow,
-        addFlow,
-        updateFlowTitle,
-        deleteFlow,
-        duplicateFlow,
-        reorderFlow,
+        selectedNodes,
+        selectedEdges,
         selectedDeliverableId,
-        updateDeliverable,
         selectDeliverable,
         metaConfig,
-        updateMetaConfig,
         updateMetaData,
         updateDeliverableMetaData,
         hasLoadedFromStorage,
@@ -100,6 +100,12 @@ export function VectorFlow() {
         setProjectName,
         isReadOnly,
         setIsReadOnly,
+        undo,
+        redo,
+        takeSnapshot,
+        canUndo,
+        canRedo,
+        screenToFlowPosition
     } = useVectorFlow(initialNodes, initialEdges);
 
     const { user } = useUser();
@@ -125,8 +131,58 @@ export function VectorFlow() {
     });
 
     const [bannerDismissed, setBannerDismissed] = useState(false);
+    
+    // Connection handling state
+    const connectingNodeId = useRef<string | null>(null);
+    const connectingHandleId = useRef<string | null>(null);
 
-    const { fitView, getNode, getNodes, setEdges } = useReactFlow();
+    const { fitView, getNode, getNodes, setEdges, project } = useReactFlow();
+
+    const onConnectStart = useCallback((_: any, { nodeId, handleId }: { nodeId: string | null; handleId: string | null }) => {
+        connectingNodeId.current = nodeId;
+        connectingHandleId.current = handleId;
+    }, []);
+
+    const onConnectEnd = useCallback(
+        (event: any) => {
+            if (!connectingNodeId.current) return;
+
+            const targetIsPane = event.target.classList.contains('react-flow__pane');
+            console.log('onConnectEnd EVENT', {
+                target: event.target,
+                classes: Array.from(event.target.classList),
+                targetIsPane,
+                connectingNodeId: connectingNodeId.current
+            });
+
+            if (targetIsPane) {
+                // Remove the wrapper bounds calculation if not needed or perform exact calculations
+                // Assuming event is a mouse/touch event on the window/element
+                const { clientX, clientY } = 'changedTouches' in event ? event.changedTouches[0] : event;
+                
+                // screenToFlowPosition handles bounds and zoom automatically
+                const position = screenToFlowPosition({ x: clientX, y: clientY });
+
+                // Create new step at this position
+                const newNodeId = addStep(position);
+
+                // Add connection
+                const newEdge = {
+                    id: `e${connectingNodeId.current}-${newNodeId}`,
+                    source: connectingNodeId.current,
+                    target: newNodeId,
+                    type: 'custom',
+                    animated: true,
+                };
+
+                setEdges((eds) => eds.concat(newEdge));
+            }
+            
+            connectingNodeId.current = null;
+            connectingHandleId.current = null;
+        },
+        [project, addStep, setEdges]
+    );
 
     const isDesktop = useMediaQuery('(min-width: 768px)');
     const [leftSidebarOpen, setLeftSidebarOpen] = useState(false);
@@ -177,11 +233,11 @@ export function VectorFlow() {
     const handleStepSelect = useCallback((nodeId: string) => {
         const nodeToSelect = getNode(nodeId);
         if (nodeToSelect) {
-            setNodes((nds) => nds.map((n) => ({ ...n, selected: n.id === nodeId })));
+            setNodesState((nds) => nds.map((n) => ({ ...n, selected: n.id === nodeId })));
             setEdges((eds) => eds.map((e) => ({ ...e, selected: false })));
             fitView({ nodes: [{id: nodeId}], duration: 300, maxZoom: 1.2 });
         }
-    }, [getNode, setNodes, setEdges, fitView]);
+    }, [getNode, setNodesState, setEdges, fitView]);
 
     const nodesInitialized = useNodesInitialized();
     const [initialFitDone, setInitialFitDone] = useState(false);
@@ -371,6 +427,28 @@ export function VectorFlow() {
         input.click();
     };
 
+    // Keyboard Shortcuts for Undo/Redo
+    useEffect(() => {
+        const handleKeyDown = (e: KeyboardEvent) => {
+            if (isReadOnly) return;
+            
+            if ((e.metaKey || e.ctrlKey) && e.key === 'z') {
+                e.preventDefault();
+                if (e.shiftKey) {
+                    redo();
+                } else {
+                    undo();
+                }
+            } else if ((e.metaKey || e.ctrlKey) && e.key === 'y') {
+                e.preventDefault();
+                redo();
+            }
+        };
+
+        window.addEventListener('keydown', handleKeyDown);
+        return () => window.removeEventListener('keydown', handleKeyDown);
+    }, [undo, redo, isReadOnly]);
+
     return (
         <div className="flex flex-col h-screen w-screen bg-background text-foreground font-body">
             <Header 
@@ -412,6 +490,10 @@ export function VectorFlow() {
                     }
                 }}
                 isReadOnlyForced={syncState.isReadOnlyDueToPermissions}
+                onUndo={undo}
+                onRedo={redo}
+                canUndo={canUndo}
+                canRedo={canRedo}
             />
 
             <div className="flex flex-1 overflow-hidden">
@@ -444,7 +526,10 @@ export function VectorFlow() {
                         onNodesChange={onNodesChange}
                         onEdgesChange={onEdgesChange}
                         onConnect={onConnect}
+                        onConnectStart={onConnectStart}
+                        onConnectEnd={onConnectEnd}
                         onSelectionChange={onSelectionChange}
+                        onNodeDragStart={takeSnapshot}
                         nodeTypes={nodeTypes}
                         edgeTypes={edgeTypes}
                         defaultEdgeOptions={{ type: 'custom', zIndex: 10 }}

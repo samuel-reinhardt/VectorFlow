@@ -12,12 +12,13 @@ export function useDeliverableOperations(
   setSelectedDeliverableId: (id: string | null) => void
 ) {
   const handleAddDeliverable = useCallback((stepId: string) => {
+    const newId = `del_${Date.now()}`;
     setNodes(nds => {
       const next = nds.map(n => {
         if (n.id === stepId) {
           const deliverables = n.data.deliverables || [];
           const newDeliverable: Deliverable = {
-            id: `del_${Date.now()}`,
+            id: newId,
             label: 'New Deliverable',
             color: DEFAULT_COLORS.DELIVERABLE,
           };
@@ -33,7 +34,9 @@ export function useDeliverableOperations(
       });
       return next;
     });
-  }, [setNodes]);
+    setSelectedDeliverableId(newId);
+    return newId;
+  }, [setNodes, setSelectedDeliverableId]);
 
   const handleReorderDeliverables = useCallback((stepId: string, newDeliverables: Deliverable[]) => {
     setNodes(nds => {

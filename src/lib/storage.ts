@@ -33,7 +33,46 @@ export const StorageManager = {
         activeFlowId,
         googleDriveFileId,
       };
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+
+      const replacer = (key: string, value: any) => {
+        // Filter out Window objects
+        if (value && typeof value === 'object' && value.constructor && value.constructor.name === 'Window') {
+          return undefined;
+        }
+        // Filter out DOM elements
+        if (value && typeof value === 'object' && value instanceof Node) { // Check for DOM Node
+            return undefined;
+        }
+        // Basic circular reference check
+        // Note: WeakSet approach works for basic cycles
+        return value;
+      };
+
+      // Since JSON.stringify doesn't verify deep cycles easily with just a replacer without set
+      // Let's implement a cycle-safe stringify helper inline or try-catch wrap if needed.
+      // Actually, let's use a known safe-stringify approach
+      
+      const seen = new WeakSet();
+      const safeReplacer = (key: string, value: any) => {
+        if (typeof value === "object" && value !== null) {
+          if (seen.has(value)) {
+            return;
+          }
+          // Filter out Window/DOM
+          if (value.constructor && (value.constructor.name === 'Window' || value.constructor.name === 'HTMLDocument')) {
+             return undefined;
+          }
+          // Filter out React Synthetic Events
+          if (value._reactName) {
+             return undefined;
+          }
+           
+          seen.add(value);
+        }
+        return value;
+      };
+
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(state, safeReplacer));
     } catch (error) {
       console.error('Failed to save state to localStorage:', error);
     }

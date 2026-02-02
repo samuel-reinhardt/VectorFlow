@@ -1,6 +1,6 @@
 'use client';
 
-import { PanelLeft, LayoutGrid, Workflow, Settings2, Download, Upload, Eye } from 'lucide-react';
+import { PanelLeft, LayoutGrid, Workflow, Settings2, Download, Upload, Eye, RotateCcw, RotateCw } from 'lucide-react';
 import { Button } from '@/components/ui/forms/button';
 import { MetaConfigEditor } from './meta-config-editor';
 import type { MetaConfig, FieldDefinition } from '@/types';
@@ -18,6 +18,10 @@ interface ToolbarProps {
   isReadOnly: boolean;
   onToggleReadOnly: () => void;
   isReadOnlyForced?: boolean;
+  onUndo?: () => void;
+  onRedo?: () => void;
+  canUndo?: boolean;
+  canRedo?: boolean;
 }
 
 export function Toolbar({
@@ -33,6 +37,10 @@ export function Toolbar({
   isReadOnly,
   onToggleReadOnly,
   isReadOnlyForced = false,
+  onUndo,
+  onRedo,
+  canUndo = false,
+  canRedo = false,
 }: ToolbarProps) {
   return (
     <div className="flex items-center justify-between px-4 py-2 border-b border-border bg-card shrink-0">
@@ -63,6 +71,32 @@ export function Toolbar({
       
       {/* Center Section - Actions */}
       <div className="flex items-center gap-2">
+
+        {/* Undo/Redo */}
+        <div className="flex items-center gap-1 border-r border-border pr-2 mr-2">
+            <Button
+                variant="ghost"
+                size="sm"
+                onClick={onUndo}
+                disabled={!canUndo}
+                className="h-8 w-8 p-0"
+                aria-label="Undo"
+                title="Undo (Ctrl+Z)"
+            >
+                <RotateCcw className="h-4 w-4" />
+            </Button>
+            <Button
+                variant="ghost"
+                size="sm"
+                onClick={onRedo}
+                disabled={!canRedo}
+                className="h-8 w-8 p-0"
+                aria-label="Redo"
+                title="Redo (Ctrl+Y)"
+            >
+                <RotateCw className="h-4 w-4" />
+            </Button>
+        </div>
 
         {onImport && (
           <Button
