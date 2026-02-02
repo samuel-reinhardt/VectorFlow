@@ -37,20 +37,13 @@ export function SyncIndicator({
     }
 
     switch (syncState.syncStatus) {
-      case 'syncing':
+      case 'saving':
         return <RefreshCw className="w-4 h-4 text-blue-500 animate-spin" />;
-      case 'synced':
+      case 'saved':
         return (
           <div className="relative">
             <Cloud className="w-4 h-4 text-green-500" />
             <Check className="w-2.5 h-2.5 text-green-500 absolute -bottom-0.5 -right-0.5 bg-background rounded-full" />
-          </div>
-        );
-      case 'conflict':
-        return (
-          <div className="relative">
-            <Cloud className="w-4 h-4 text-yellow-500" />
-            <AlertTriangle className="w-2.5 h-2.5 text-yellow-500 absolute -bottom-0.5 -right-0.5 bg-background rounded-full" />
           </div>
         );
       case 'error':
@@ -61,27 +54,26 @@ export function SyncIndicator({
           </div>
         );
       default:
+        // Idle or disabled
         return <Cloud className="w-4 h-4 text-muted-foreground" />;
     }
   };
 
   const getTooltipText = () => {
-    if (!user) return 'Sign in to sync with Drive';
-    if (!googleDriveFileId) return 'Not synced to Drive';
+    if (!user) return 'Sign in to auto-save to Drive';
+    if (!googleDriveFileId) return 'Not auto-saving to Drive';
     
     switch (syncState.syncStatus) {
-      case 'syncing':
-        return 'Syncing...';
-      case 'synced':
+      case 'saving':
+        return 'Saving to Drive...';
+      case 'saved':
         return syncState.lastSyncTime 
-          ? `Synced ${syncState.lastSyncTime.toLocaleTimeString()}`
-          : 'Synced';
-      case 'conflict':
-        return 'Conflict detected';
+          ? `Saved to Drive at ${syncState.lastSyncTime.toLocaleTimeString()}`
+          : 'Saved to Drive';
       case 'error':
-        return syncState.errorMessage || 'Sync error';
+        return syncState.errorMessage || 'Auto-save error';
       default:
-        return 'Sync off';
+        return 'Auto-save enabled';
     }
   };
 

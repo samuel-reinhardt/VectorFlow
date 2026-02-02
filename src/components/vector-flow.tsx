@@ -113,7 +113,7 @@ export function VectorFlow() {
     const accessToken = GoogleDriveService.getAccessToken();
     const { openPicker } = useDrivePicker(accessToken);
 
-    const { syncState, toggleSync, resolveConflictKeepLocal, resolveConflictKeepRemote } = useDriveSync({
+    const { syncState, toggleSync } = useDriveSync({
         fileId: googleDriveFileId,
         projectId,
         projectName,
@@ -615,30 +615,7 @@ export function VectorFlow() {
                 isReadOnly={isReadOnly}
             />
             
-            <ConflictDialog
-                isOpen={syncState.hasConflict}
-                onKeepLocal={() => {
-                    resolveConflictKeepLocal();
-                    toast({
-                        title: "Conflict Resolved",
-                        description: "Kept local version and synced to Drive.",
-                    });
-                }}
-                onKeepRemote={() => {
-                    resolveConflictKeepRemote();
-                    toast({
-                        title: "Conflict Resolved",
-                        description: "Loaded Drive version and discarded local changes.",
-                    });
-                }}
-                onCancel={() => {
-                    toggleSync();
-                    toast({
-                        title: "Sync Disabled",
-                        description: "You can manually sync when ready.",
-                    });
-                }}
-            />
+
         </div>
     );
 }

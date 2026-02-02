@@ -4,14 +4,12 @@ import { useUser } from '@/firebase/auth/use-user';
 import { ExportData } from '@/lib/export-import';
 import { Flow } from '@/types';
 
-const POLL_INTERVAL = 10000; // 10 seconds
 const AUTO_SAVE_DELAY = 3000; // 3 seconds after last edit
 
 export interface SyncState {
   isSyncEnabled: boolean;
-  syncStatus: 'idle' | 'syncing' | 'synced' | 'error' | 'conflict';
+  syncStatus: 'idle' | 'saving' | 'saved' | 'error';
   lastSyncTime: Date | null;
-  hasConflict: boolean;
   errorMessage?: string;
   isReadOnlyDueToPermissions: boolean;
 }
@@ -39,21 +37,36 @@ export function useDriveSync({
     isSyncEnabled: false,
     syncStatus: 'idle',
     lastSyncTime: null,
-    hasConflict: false,
     isReadOnlyDueToPermissions: false,
   });
 
-  const lastRemoteModifiedTime = useRef<string | null>(null);
   const lastLocalEditTime = useRef<Date>(new Date());
-  const hasUnsavedChanges = useRef(false);
   const autoSaveTimeout = useRef<NodeJS.Timeout | null>(null);
-  const pollInterval = useRef<NodeJS.Timeout | null>(null);
 
-  // Track local changes
+  // Auto-enable sync when fileId is present
+  useEffect(() => {
+    if (fileId) {
+      setSyncState(prev => ({ ...prev, isSyncEnabled: true }));
+    } else {
+        setSyncState(prev => ({ ...prev, isSyncEnabled: false, syncStatus: 'idle' }));
+    }
+  }, [fileId]);
+
+  // Track local changes and trigger auto-save
   useEffect(() => {
     if (syncState.isSyncEnabled && fileId) {
       lastLocalEditTime.current = new Date();
-      hasUnsavedChanges.current = true;
+      
+      // Update status to "saving" (pending)
+      setSyncState(prev => {
+          // Verify we aren't already in error state which might need manual retry
+          // But for auto-save, we usually just retry.
+          // Let's show saving immediately to indicate dirty state
+          if (prev.syncStatus !== 'saving') {
+              return { ...prev, syncStatus: 'saving' };
+          }
+          return prev;
+      });
 
       // Clear existing timeout
       if (autoSaveTimeout.current) {
@@ -62,7 +75,7 @@ export function useDriveSync({
 
       // Debounced auto-save
       autoSaveTimeout.current = setTimeout(() => {
-        if (syncState.isSyncEnabled && !syncState.hasConflict) {
+        if (syncState.isSyncEnabled) {
           pushLocalChanges();
         }
       }, AUTO_SAVE_DELAY);
@@ -73,14 +86,13 @@ export function useDriveSync({
         clearTimeout(autoSaveTimeout.current);
       }
     };
-  }, [flows, activeFlowId, syncState.isSyncEnabled, syncState.hasConflict]);
+  }, [flows, activeFlowId, syncState.isSyncEnabled, fileId]);
 
   const { user } = useUser();
 
   // Check permissions when fileId changes
   useEffect(() => {
     if (!fileId) {
-      // Clear read-only state when no file is linked
       setSyncState(prev => {
         if (prev.isReadOnlyDueToPermissions) {
           return { ...prev, isReadOnlyDueToPermissions: false };
@@ -90,12 +102,8 @@ export function useDriveSync({
       return;
     }
 
-    // Don't check permissions if user is not authenticated
-    if (!user) {
-      return;
-    }
+    if (!user) return;
 
-    // Only check permissions if we have a valid fileId and authenticated user
     let cancelled = false;
     
     GoogleDriveService.getFilePermissions(fileId)
@@ -110,7 +118,6 @@ export function useDriveSync({
           return prev;
         });
         
-        // Only call callback if changing to read-only
         if (isReadOnly) {
           onPermissionsChange?.(true);
         }
@@ -118,20 +125,19 @@ export function useDriveSync({
       .catch(error => {
         if (cancelled) return;
         console.error('Failed to check file permissions:', error);
-        // Don't force read-only on error, just log it
       });
       
     return () => {
       cancelled = true;
     };
-  }, [fileId]); // Removed onPermissionsChange from dependencies to prevent infinite loop
+  }, [fileId, user]); // Clean deps
 
-  // Push local changes to Drive
+  // Push local changes to Drive (Auto-Save)
   const pushLocalChanges = useCallback(async () => {
-    if (!fileId || syncState.hasConflict) return;
+    if (!fileId) return;
 
     try {
-      setSyncState(prev => ({ ...prev, syncStatus: 'syncing' }));
+      setSyncState(prev => ({ ...prev, syncStatus: 'saving' }));
 
       const data: ExportData = {
         version: '1.0.0',
@@ -145,175 +151,49 @@ export function useDriveSync({
 
       await GoogleDriveService.updateFile(fileId, data);
       
-      // Update last remote time after successful push
-      const metadata = await GoogleDriveService.getFileMetadata(fileId);
-      lastRemoteModifiedTime.current = metadata.modifiedTime;
-      hasUnsavedChanges.current = false;
-
       setSyncState(prev => ({
         ...prev,
-        syncStatus: 'synced',
+        syncStatus: 'saved',
         lastSyncTime: new Date(),
+        errorMessage: undefined
       }));
     } catch (error: any) {
-      console.error('Push failed:', error);
+      console.error('Auto-save failed:', error);
+      
+      const isAuthError = error.message?.includes('authentication') || error.message?.includes('token') || error.message?.includes('401');
+      const friendlyMessage = isAuthError 
+        ? 'Session expired. Please sign in again to resume saving.'
+        : (error.message || 'Failed to auto-save to Drive');
+
       setSyncState(prev => ({
         ...prev,
         syncStatus: 'error',
-        errorMessage: error.message || 'Failed to save to Drive',
+        errorMessage: friendlyMessage,
+        // If auth error, disable sync to prevent infinite loops/toast spam
+        isSyncEnabled: isAuthError ? false : prev.isSyncEnabled
       }));
     }
-  }, [fileId, projectId, projectName, flows, activeFlowId, syncState.hasConflict]);
+  }, [fileId, projectId, projectName, flows, activeFlowId]);
 
-  // Pull remote changes from Drive
+  // Initial Pull (Load)
+  // We likely rely on the main app logic to load first, but if we need a manual pull function:
   const pullRemoteChanges = useCallback(async () => {
-    if (!fileId) return;
+      // NOTE: This now overwrites local without checking timestamps. 
+      // Should be used carefully (e.g. initial load or explicit "Revert")
+      if (!fileId) return;
+      // Implementation similar to before if needed, or rely on `loadProject` passed from parent
+  }, [fileId]);
 
-    try {
-      setSyncState(prev => ({ ...prev, syncStatus: 'syncing' }));
-
-      const data = await GoogleDriveService.getFileContent(fileId);
-      onImport(data.flows, data.activeFlowId, data.projectId, data.projectName, fileId);
-
-      const metadata = await GoogleDriveService.getFileMetadata(fileId);
-      lastRemoteModifiedTime.current = metadata.modifiedTime;
-      hasUnsavedChanges.current = false;
-
-      setSyncState(prev => ({
-        ...prev,
-        syncStatus: 'synced',
-        lastSyncTime: new Date(),
-      }));
-    } catch (error: any) {
-      console.error('Pull failed:', error);
-      setSyncState(prev => ({
-        ...prev,
-        syncStatus: 'error',
-        errorMessage: error.message || 'Failed to load from Drive',
-      }));
-    }
-  }, [fileId, onImport]);
-
-  // Poll for remote changes
-  useEffect(() => {
-    if (!syncState.isSyncEnabled || !fileId || syncState.hasConflict) {
-      if (pollInterval.current) {
-        clearInterval(pollInterval.current);
-        pollInterval.current = null;
-      }
-      return;
-    }
-
-    // Check if we have a valid access token
-    const token = GoogleDriveService.getAccessToken();
-    if (!token) {
-      console.error('No access token available for sync');
-      setSyncState(prev => ({
-        ...prev,
-        syncStatus: 'error',
-        errorMessage: 'Not authenticated. Please sign in again.',
-        isSyncEnabled: false,
-      }));
-      return;
-    }
-
-    // Initial metadata fetch
-    if (!lastRemoteModifiedTime.current) {
-      GoogleDriveService.getFileMetadata(fileId)
-        .then(metadata => {
-          lastRemoteModifiedTime.current = metadata.modifiedTime;
-        })
-        .catch(error => {
-          console.error('Initial metadata fetch failed:', error);
-          setSyncState(prev => ({
-            ...prev,
-            syncStatus: 'error',
-            errorMessage: 'Failed to connect to Drive. Please check your authentication.',
-            isSyncEnabled: false,
-          }));
-        });
-    }
-
-    // Poll for changes
-    pollInterval.current = setInterval(async () => {
-      // Only poll when tab is active
-      if (document.hidden) return;
-
-      try {
-        const metadata = await GoogleDriveService.getFileMetadata(fileId);
-        
-        if (lastRemoteModifiedTime.current && metadata.modifiedTime > lastRemoteModifiedTime.current) {
-          // Remote file has changed
-          if (hasUnsavedChanges.current) {
-            // Conflict detected!
-            setSyncState(prev => ({
-              ...prev,
-              syncStatus: 'conflict',
-              hasConflict: true,
-            }));
-          } else {
-            // No local changes, safe to pull
-            await pullRemoteChanges();
-          }
-        }
-      } catch (error: any) {
-        console.error('Polling error:', error);
-        // If auth error, disable sync
-        if (error.message?.includes('authentication') || error.message?.includes('OAuth')) {
-          setSyncState(prev => ({
-            ...prev,
-            syncStatus: 'error',
-            errorMessage: 'Authentication expired. Please sign in again.',
-            isSyncEnabled: false,
-          }));
-          if (pollInterval.current) {
-            clearInterval(pollInterval.current);
-            pollInterval.current = null;
-          }
-        }
-      }
-    }, POLL_INTERVAL);
-
-    return () => {
-      if (pollInterval.current) {
-        clearInterval(pollInterval.current);
-        pollInterval.current = null;
-      }
-    };
-  }, [syncState.isSyncEnabled, fileId, syncState.hasConflict, pullRemoteChanges]);
-
-  // Toggle sync on/off
   const toggleSync = useCallback(() => {
-    setSyncState(prev => ({
-      ...prev,
-      isSyncEnabled: !prev.isSyncEnabled,
-      syncStatus: !prev.isSyncEnabled ? 'idle' : prev.syncStatus,
-      hasConflict: false,
-    }));
+    // With auto-save, "toggle sync" might just mean unlinking or pausing.
+    // For now, let's just update the enabled state, but mostly it's fileId driven.
+    setSyncState(prev => ({ ...prev, isSyncEnabled: !prev.isSyncEnabled }));
   }, []);
-
-  // Resolve conflict by choosing local version
-  const resolveConflictKeepLocal = useCallback(async () => {
-    if (!fileId) return;
-    
-    hasUnsavedChanges.current = true;
-    setSyncState(prev => ({ ...prev, hasConflict: false }));
-    await pushLocalChanges();
-  }, [fileId, pushLocalChanges]);
-
-  // Resolve conflict by choosing remote version
-  const resolveConflictKeepRemote = useCallback(async () => {
-    if (!fileId) return;
-    
-    await pullRemoteChanges();
-    setSyncState(prev => ({ ...prev, hasConflict: false }));
-  }, [fileId, pullRemoteChanges]);
 
   return {
     syncState,
     toggleSync,
-    resolveConflictKeepLocal,
-    resolveConflictKeepRemote,
+    // No conflict resolution functions needed anymore
     manualSync: pushLocalChanges,
   };
 }

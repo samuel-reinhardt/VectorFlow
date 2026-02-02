@@ -37,7 +37,7 @@ import { useUser } from '@/firebase/auth/use-user';
 import { GoogleDriveService, DriveFile } from '@/lib/google-drive/service';
 import { useDrivePicker, PickerFile } from '@/lib/google-drive/picker';
 import { useDriveSync } from '@/hooks/use-drive-sync';
-import { ConflictDialog } from './conflict-dialog';
+
 
 interface ExportDialogProps {
   flows: Flow[];
@@ -71,7 +71,7 @@ export function ExportDialog({
   const accessToken = GoogleDriveService.getAccessToken();
   const { openPicker } = useDrivePicker(accessToken);
 
-  const { syncState, toggleSync, resolveConflictKeepLocal, resolveConflictKeepRemote, manualSync } = useDriveSync({
+  const { syncState, toggleSync, manualSync } = useDriveSync({
     fileId: googleDriveFileId,
     projectId,
     projectName,
@@ -185,7 +185,7 @@ export function ExportDialog({
       if (isQuickSave && googleDriveFileId) {
         await GoogleDriveService.updateFile(googleDriveFileId, data);
         toast({
-          title: "Project Synced",
+          title: "Project Saved",
           description: `Changes saved to "${projectName}" on Google Drive.`,
         });
       } else {
@@ -300,7 +300,7 @@ export function ExportDialog({
 
             {!user ? (
               <div className="flex flex-col items-center justify-center py-4 text-center gap-2">
-                <p className="text-xs text-muted-foreground">Sign in to sync your projects with Google Drive.</p>
+                 <p className="text-xs text-muted-foreground">Sign in to auto-save your projects to Google Drive.</p>
                 <div className="flex items-center gap-2 p-2 bg-yellow-50 text-yellow-700 text-[10px] rounded border border-yellow-100">
                   <AlertCircle className="w-3 h-3" />
                   <span>Portability requires a Google Account</span>
@@ -312,19 +312,17 @@ export function ExportDialog({
                   <div className="flex items-center justify-between p-3 rounded-lg border bg-muted/30">
                     <div className="flex items-center gap-3">
                       <div className={`w-2 h-2 rounded-full ${
-                        syncState.syncStatus === 'syncing' ? 'bg-blue-500 animate-pulse' :
-                        syncState.syncStatus === 'synced' ? 'bg-green-500' :
-                        syncState.syncStatus === 'conflict' ? 'bg-yellow-500' :
+                        syncState.syncStatus === 'saving' ? 'bg-blue-500 animate-pulse' :
+                        syncState.syncStatus === 'saved' ? 'bg-green-500' :
                         syncState.syncStatus === 'error' ? 'bg-red-500' :
                         'bg-gray-400'
                       }`} />
                       <div className="text-xs">
                         <div className="font-medium">
-                          {syncState.syncStatus === 'syncing' ? 'Syncing...' :
-                           syncState.syncStatus === 'synced' ? 'Synced' :
-                           syncState.syncStatus === 'conflict' ? 'Conflict Detected' :
-                           syncState.syncStatus === 'error' ? 'Sync Error' :
-                           'Sync Off'}
+                          {syncState.syncStatus === 'saving' ? 'Saving to Drive...' :
+                           syncState.syncStatus === 'saved' ? 'Saved to Drive' :
+                           syncState.syncStatus === 'error' ? 'Auto-save Error' :
+                           'Auto-save Off'}
                         </div>
                         {syncState.lastSyncTime && (
                           <div className="text-[10px] text-muted-foreground">
@@ -339,7 +337,7 @@ export function ExportDialog({
                       onClick={toggleSync}
                       className="h-7 text-xs"
                     >
-                      {syncState.isSyncEnabled ? 'Disable Sync' : 'Enable Sync'}
+                      {syncState.isSyncEnabled ? 'Disable Auto-Save' : 'Enable Auto-Save'}
                     </Button>
                   </div>
                 )}
@@ -355,7 +353,7 @@ export function ExportDialog({
                     ) : googleDriveFileId ? (
                       <>
                         <RefreshCw className="w-4 h-4" />
-                        Manual Sync
+                        Save Now
                       </>
                     ) : (
                       <>
@@ -369,7 +367,7 @@ export function ExportDialog({
                     className="h-9 w-9 p-0"
                     onClick={handleOpenPicker}
                     disabled={isDriveLoading}
-                    title="Sync to Existing"
+                    title="Link to Existing File"
                   >
                     <Search className="w-4 h-4" />
                   </Button>
@@ -454,30 +452,7 @@ export function ExportDialog({
         </div>
       </DialogContent>
       
-      <ConflictDialog
-        isOpen={syncState.hasConflict}
-        onKeepLocal={() => {
-          resolveConflictKeepLocal();
-          toast({
-            title: "Conflict Resolved",
-            description: "Kept local version and synced to Drive.",
-          });
-        }}
-        onKeepRemote={() => {
-          resolveConflictKeepRemote();
-          toast({
-            title: "Conflict Resolved",
-            description: "Loaded Drive version and discarded local changes.",
-          });
-        }}
-        onCancel={() => {
-          toggleSync(); // Disable sync
-          toast({
-            title: "Sync Disabled",
-            description: "You can manually sync when ready.",
-          });
-        }}
-      />
+
     </Dialog>
   );
 }

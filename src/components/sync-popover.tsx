@@ -30,7 +30,7 @@ export function SyncPopover({
     return (
       <div className="space-y-4">
         <div>
-          <h3 className="font-semibold text-sm mb-1">Google Drive Sync</h3>
+          <h3 className="font-semibold text-sm mb-1">Google Drive Auto-Save</h3>
           <p className="text-xs text-muted-foreground">Sign in to unlock cloud features</p>
         </div>
 
@@ -89,7 +89,7 @@ export function SyncPopover({
     return (
       <div className="space-y-4">
         <div>
-          <h3 className="font-semibold text-sm mb-1">Google Drive Sync</h3>
+          <h3 className="font-semibold text-sm mb-1">Google Drive Auto-Save</h3>
           <p className="text-xs text-muted-foreground">Connect this project to Drive</p>
         </div>
 
@@ -100,7 +100,7 @@ export function SyncPopover({
         <div className="space-y-2">
           <Button className="w-full gap-2" size="sm" onClick={onBrowseDrive}>
             <FileJson className="w-4 h-4" />
-            Select New Sync File
+            Open Existing File
           </Button>
           <Button variant="outline" className="w-full gap-2" size="sm" onClick={onCreateFile || onBrowseDrive}>
             <Cloud className="w-4 h-4" />
@@ -124,7 +124,7 @@ export function SyncPopover({
   return (
     <div className="space-y-4">
       <div>
-        <h3 className="font-semibold text-sm mb-1">Google Drive Sync</h3>
+        <h3 className="font-semibold text-sm mb-1">Google Drive Auto-Save</h3>
         <p className="text-xs text-muted-foreground truncate" title={`${projectName}.json`}>
           📄 {projectName}.json
         </p>
@@ -134,23 +134,21 @@ export function SyncPopover({
       <div className="p-3 rounded-lg border bg-muted/30">
         <div className="flex items-center gap-3 mb-2">
           <div className={`w-2 h-2 rounded-full ${
-            syncState.syncStatus === 'syncing' ? 'bg-blue-500 animate-pulse' :
-            syncState.syncStatus === 'synced' ? 'bg-green-500' :
-            syncState.syncStatus === 'conflict' ? 'bg-yellow-500' :
+            syncState.syncStatus === 'saving' ? 'bg-blue-500 animate-pulse' :
+            syncState.syncStatus === 'saved' ? 'bg-green-500' :
             syncState.syncStatus === 'error' ? 'bg-red-500' :
             'bg-gray-400'
           }`} />
           <div className="flex-1">
             <div className="text-xs font-medium">
-              {syncState.syncStatus === 'syncing' ? 'Syncing changes...' :
-               syncState.syncStatus === 'synced' ? 'All changes saved' :
-               syncState.syncStatus === 'conflict' ? 'Conflict detected' :
-               syncState.syncStatus === 'error' ? 'Sync error' :
-               'Ready to sync'}
+              {syncState.syncStatus === 'saving' ? 'Saving to Drive...' :
+               syncState.syncStatus === 'saved' ? 'All changes saved' :
+               syncState.syncStatus === 'error' ? 'Auto-save error' :
+               'Auto-save enabled'}
             </div>
-            {syncState.lastSyncTime && syncState.syncStatus === 'synced' && (
+            {syncState.lastSyncTime && syncState.syncStatus === 'saved' && (
               <div className="text-[10px] text-muted-foreground">
-                Last synced at {syncState.lastSyncTime.toLocaleTimeString()}
+                Ready to save {syncState.lastSyncTime.toLocaleTimeString()}
               </div>
             )}
           </div>
@@ -161,10 +159,10 @@ export function SyncPopover({
       <div className="space-y-2">
         <div className="flex items-start justify-between gap-3">
           <div className="flex-1">
-            <div className="text-xs font-medium mb-0.5">Automatic Sync</div>
+            <div className="text-xs font-medium mb-0.5">Auto-Save</div>
             <div className="text-[10px] text-muted-foreground leading-relaxed">
               {syncState.isSyncEnabled 
-                ? 'Changes auto-save every 3 seconds and sync from Drive every 10 seconds'
+                ? 'Changes auto-save every 3 seconds'
                 : 'Turn on to automatically save and sync your changes'}
             </div>
           </div>
@@ -197,10 +195,10 @@ export function SyncPopover({
       {/* Actions */}
       <div className="flex gap-2 pt-2 border-t">
         <Button variant="outline" size="sm" className="flex-1 text-xs" onClick={onBrowseDrive}>
-          Sync New File
+          Open New File
         </Button>
         <Button variant="outline" size="sm" className="flex-1 text-xs" onClick={onUnlink}>
-          Clear Selected File
+          Disconnect Auto Save
         </Button>
       </div>
 

@@ -76,7 +76,7 @@ export function UserProfile() {
         <DropdownMenuContent align="end" className="w-64 p-2 shadow-xl border-border/50">
           <DropdownMenuLabel className="p-3 mb-1 bg-muted/30 rounded-md">
               <div className="font-semibold text-sm">Guest User</div>
-              <div className="text-[10px] text-muted-foreground font-medium mt-0.5">Sign in to sync your work</div>
+              <div className="text-[10px] text-muted-foreground font-medium mt-0.5">Sign in to auto-save your work</div>
           </DropdownMenuLabel>
           <DropdownMenuSeparator />
           <DropdownMenuItem className="cursor-pointer" onClick={handleSignIn}>
