@@ -1,4 +1,4 @@
-import { Cloud, FileJson, Users, Shield, LogIn, Info } from 'lucide-react';
+import { Cloud, FileJson, Users, Shield, LogIn, Info, Share2 } from 'lucide-react';
 import { Button } from '@/components/ui/forms/button';
 import { SyncState } from '@/hooks/use-drive-sync';
 
@@ -12,6 +12,7 @@ interface SyncPopoverProps {
   onBrowseDrive: () => void;
   onCreateFile?: () => void;
   onUnlink: () => void;
+  onCopyLink: () => void;
 }
 
 export function SyncPopover({
@@ -24,6 +25,7 @@ export function SyncPopover({
   onBrowseDrive,
   onCreateFile,
   onUnlink,
+  onCopyLink,
 }: SyncPopoverProps) {
   // Not signed in - show benefits
   if (!user) {
@@ -199,6 +201,23 @@ export function SyncPopover({
         </Button>
         <Button variant="outline" size="sm" className="flex-1 text-xs" onClick={onUnlink}>
           Disconnect Auto Save
+        </Button>
+      </div>
+      
+      {/* Share Section */}
+      <div className="pt-2 border-t">
+        <Button 
+            className="w-full gap-2 bg-blue-50 text-blue-600 hover:bg-blue-100 hover:text-blue-700 border-blue-200" 
+            size="sm" 
+            variant="outline"
+            onClick={() => {
+                const url = `${window.location.origin}${window.location.pathname}?driveId=${googleDriveFileId}`;
+                navigator.clipboard.writeText(url);
+                onCopyLink();
+            }}
+        >
+            <Share2 className="w-4 h-4" />
+            Copy Share Link
         </Button>
       </div>
 

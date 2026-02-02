@@ -198,6 +198,22 @@ export class GoogleDriveService {
   }
 
   /**
+   * Attempts to download a public file without authentication.
+   * Uses a server-side proxy to bypass CORS and API limitations.
+   */
+  static async downloadPublicFile(fileId: string): Promise<ExportData> {
+    // Call our internal proxy which handles the upstream fetch server-side
+    const response = await fetch(`/api/proxy-drive?fileId=${fileId}`);
+
+    if (!response.ok) {
+      const error = await response.json().catch(() => ({}));
+      throw new Error(error.error || `Failed to download public file: ${response.statusText}`);
+    }
+
+    return await response.json();
+  }
+
+  /**
    * Lists VectorFlow JSON files from the user's Drive.
    */
   static async listFiles(): Promise<DriveFile[]> {

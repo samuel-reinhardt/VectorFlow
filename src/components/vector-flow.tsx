@@ -26,14 +26,12 @@ import { Outline } from '@/components/outline';
 import { FlowTabs } from '@/components/flow-tabs';
 import { useMediaQuery } from '@/hooks/use-media-query';
 import { SyncIndicator } from '@/components/sync-indicator';
-import { ConflictDialog } from '@/components/export-import/conflict-dialog';
 import { useDriveSync } from '@/hooks/use-drive-sync';
 import { GoogleDriveService } from '@/lib/google-drive/service';
 import { useDrivePicker } from '@/lib/google-drive/picker';
 import { useUser } from '@/firebase/auth/use-user';
 import { useToast } from '@/hooks/use-toast';
 import { ExportImportService } from '@/lib/export-import';
-import { ReadOnlyBanner } from '@/components/read-only-banner';
 import { ReadOnlyPropertiesPanel } from '@/components/read-only-properties-panel';
 
 import { demoNodes } from './flow/data/demo-nodes';
@@ -130,13 +128,130 @@ export function VectorFlow() {
         },
     });
 
-    const [bannerDismissed, setBannerDismissed] = useState(false);
+    // View Only Toast Logic
+    useEffect(() => {
+        if (isReadOnly) {
+            toast({
+                title: syncState.isReadOnlyDueToPermissions ? "View-Only Mode" : "Read-Only Mode",
+                description: syncState.isReadOnlyDueToPermissions 
+                    ? "You don't have edit permission for this Drive file." 
+                    : "Editing is disabled. You can view items but cannot make changes.",
+                duration: 5000, // Show for 5 seconds (not persistent to avoid blocking too)
+                // We could make it persistent with duration: Infinity if desired, but user asked for less blocking.
+                className: "bg-amber-50 border-amber-200 text-amber-900",
+            });
+        }
+    }, [isReadOnly, syncState.isReadOnlyDueToPermissions, toast]);
     
     // Connection handling state
     const connectingNodeId = useRef<string | null>(null);
     const connectingHandleId = useRef<string | null>(null);
 
     const { fitView, getNode, getNodes, setEdges, project } = useReactFlow();
+
+    // URL Hydration Logic
+    const hasAttemptedHydration = useRef(false);
+
+    // Handle initial fit view after hydration
+    useEffect(() => {
+        if (hasAttemptedHydration.current && nodes.length > 0) {
+           const timer = setTimeout(() => {
+               fitView({ duration: 800 });
+           }, 300); // Small delay to allow react-flow to render nodes
+           return () => clearTimeout(timer);
+        }
+    }, [hasAttemptedHydration.current, nodes.length, fitView]);
+
+    useEffect(() => {
+        // Only run on client
+        if (typeof window === 'undefined') return;
+
+        const params = new URLSearchParams(window.location.search);
+        const driveIdParam = params.get('driveId');
+
+        // If no driveId, we're done
+        if (!driveIdParam) return;
+
+        // If we already tried, stop (prevent infinite loops)
+        if (hasAttemptedHydration.current) return;
+
+        // Common success handler
+        const handleSuccess = (data: any) => {
+             loadProject(data.flows, data.activeFlowId, data.projectId, data.projectName, driveIdParam);
+             
+             // Clear the URL parameter
+             const newUrl = window.location.pathname;
+             window.history.replaceState({}, '', newUrl);
+
+             // Fit view will be handled by the effect above interacting with nodes change
+        };
+
+        // If we have a user and access token, we can try to load
+        if (user && accessToken && !googleDriveFileId && !hasLoadedFromStorage) {
+            hasAttemptedHydration.current = true;
+            
+            const loadDriveFile = async () => {
+                try {
+                    toast({
+                        title: "Loading Project...",
+                        description: "Fetching project from Google Drive link.",
+                    });
+
+                    const data = await GoogleDriveService.getFileContent(driveIdParam);
+                    handleSuccess(data);
+                    
+                    toast({
+                        title: "Project Loaded",
+                        description: `Successfully loaded "${data.projectName || 'project'}" from shared link.`,
+                    });
+
+                } catch (error: any) {
+                    console.error('Failed to hydrate from driveId:', error);
+                    toast({
+                        variant: "destructive",
+                        title: "Load Failed",
+                        description: error.message || "Failed to load shared project. You may need to request access.",
+                    });
+                }
+            };
+
+            loadDriveFile();
+        } else if (!user && !googleDriveFileId && !hasLoadedFromStorage) {
+            // Not logged in - try public download first
+             if (!hasAttemptedHydration.current) {
+                 hasAttemptedHydration.current = true;
+                 
+                 const loadPublicFile = async () => {
+                     try {
+                         toast({
+                             title: "Loading Shared Project...",
+                             description: "Attempting to load public project...",
+                         });
+
+                         const data = await GoogleDriveService.downloadPublicFile(driveIdParam);
+                         handleSuccess(data);
+                         
+                         // Force read-only for public views
+                         setIsReadOnly(true);
+                         
+                         toast({
+                             title: "View-Only Mode",
+                             description: `Loaded "${data.projectName || 'project'}". Sign in to edit.`,
+                         });
+                    } catch (error: any) {
+                        console.warn('Public download failed, prompting login:', error);
+                        // If public download fails, just notify them to sign in
+                        toast({
+                            title: "Sign In Required",
+                            description: "Please sign in to access this private project.",
+                        });
+                    }
+                 }
+                 
+                 loadPublicFile();
+             }
+        }
+    }, [user, accessToken, googleDriveFileId, hasLoadedFromStorage, loadProject, toast, setIsReadOnly]);
 
     const onConnectStart = useCallback((_: any, { nodeId, handleId }: { nodeId: string | null; handleId: string | null }) => {
         connectingNodeId.current = nodeId;
@@ -466,6 +581,12 @@ export function VectorFlow() {
                         onBrowseDrive={handleBrowseDrive}
                         onCreateFile={handleCreateDriveFile}
                         onUnlink={handleUnlinkDrive}
+                        onCopyLink={() => {
+                            toast({
+                                title: "Link Copied",
+                                description: "Shareable link copied to clipboard.",
+                            });
+                        }}
                     />
                 }
             />
@@ -484,9 +605,6 @@ export function VectorFlow() {
                 onToggleReadOnly={() => {
                     if (!syncState.isReadOnlyDueToPermissions) {
                         setIsReadOnly(!isReadOnly);
-                        if (!isReadOnly) {
-                            setBannerDismissed(false);
-                        }
                     }
                 }}
                 isReadOnlyForced={syncState.isReadOnlyDueToPermissions}
@@ -497,15 +615,6 @@ export function VectorFlow() {
             />
 
             <div className="flex flex-1 overflow-hidden">
-                {/* Read-Only Banner */}
-                {isReadOnly && !bannerDismissed && (
-                    <ReadOnlyBanner
-                        reason={syncState.isReadOnlyDueToPermissions ? 'permissions' : 'manual'}
-                        onDisable={!syncState.isReadOnlyDueToPermissions ? () => setIsReadOnly(false) : undefined}
-                        onDismiss={() => setBannerDismissed(true)}
-                    />
-                )}
-
                 {/* Left Sidebar - Outline */}
                 <Sidebar side="left" open={leftSidebarOpen} onOpenChange={handleLeftSidebarChange} isDesktop={isDesktop}>
                     <Outline 

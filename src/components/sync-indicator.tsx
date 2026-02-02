@@ -14,6 +14,7 @@ interface SyncIndicatorProps {
   onBrowseDrive: () => void;
   onCreateFile?: () => void;
   onUnlink: () => void;
+  onCopyLink: () => void;
 }
 
 export function SyncIndicator({
@@ -26,6 +27,7 @@ export function SyncIndicator({
   onBrowseDrive,
   onCreateFile,
   onUnlink,
+  onCopyLink,
 }: SyncIndicatorProps) {
   const getSyncIcon = () => {
     if (!user) {
@@ -101,6 +103,7 @@ export function SyncIndicator({
           onBrowseDrive={onBrowseDrive}
           onCreateFile={onCreateFile}
           onUnlink={onUnlink}
+          onCopyLink={onCopyLink}
         />
       </PopoverContent>
     </Popover>
