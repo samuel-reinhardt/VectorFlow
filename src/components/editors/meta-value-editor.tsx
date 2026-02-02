@@ -25,7 +25,7 @@ import { Calendar } from '@/components/ui/data-display/calendar';
 import { Badge } from '@/components/ui/data-display/badge';
 import type { FieldDefinition, FieldType } from '@/types';
 import { normalizeOptions } from '@/lib/metadata-utils';
-import { DynamicIcon } from '@/components/dynamic-icon';
+import { DynamicIcon } from '@/components/common/dynamic-icon';
 import { Tag } from 'lucide-react';
 
 interface MetaValueEditorProps {

@@ -2,10 +2,10 @@
 
 import { useEffect, useState, useMemo } from 'react';
 import type { Node, Edge } from 'reactflow';
-import { CommonFields } from './panels/settings/common-fields';
-import { MetadataSection } from './panels/settings/metadata-section';
-import { ActionButtons } from './panels/settings/action-buttons';
-import { EmptyStatePanel } from './panels/settings/empty-state-panel';
+import { CommonFields } from './settings/common-fields';
+import { MetadataSection } from './settings/metadata-section';
+import { ActionButtons } from './settings/action-buttons';
+import { EmptyStatePanel } from './settings/empty-state-panel';
 
 interface SettingsPanelProps {
   selectedSteps: Node[];

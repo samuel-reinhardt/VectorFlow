@@ -1,6 +1,6 @@
 import { FieldDefinition, MetaConfig, FieldType, NumberConfig } from '@/types';
 import { getOptionByValue, getOptionsByValues } from '@/lib/metadata-utils';
-import { DynamicIcon } from '@/components/dynamic-icon';
+import { DynamicIcon } from '@/components/common/dynamic-icon';
 import { Tag } from 'lucide-react';
 import { Node } from 'reactflow';
 

@@ -3,7 +3,7 @@
 import { useState, useMemo, useCallback } from 'react';
 import type { Node } from 'reactflow';
 import { ListTree, Search, ChevronRight, ChevronDown, Square, FileText, Layers, ChevronsUpDown } from 'lucide-react';
-import { DynamicIcon } from './dynamic-icon';
+import { DynamicIcon } from '@/components/common/dynamic-icon';
 
 import { Button } from '@/components/ui/forms/button';
 import { Input } from '@/components/ui/forms/input';

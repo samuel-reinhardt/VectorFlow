@@ -29,8 +29,8 @@ import {
 } from '@/components/ui/layout/tabs';
 import { Separator } from '@/components/ui/layout/separator';
 import type { FieldDefinition, MetaConfig, FieldType, SelectOption, NumberConfig } from '@/types';
-import { SelectOptionEditor } from '@/components/select-option-editor';
-import { NumberConfigEditor } from '@/components/number-config-editor';
+import { SelectOptionEditor } from '@/components/editors/select-option-editor';
+import { NumberConfigEditor } from '@/components/editors/number-config-editor';
 import { normalizeOptions } from '@/lib/metadata-utils';
 
 interface MetaConfigEditorProps {

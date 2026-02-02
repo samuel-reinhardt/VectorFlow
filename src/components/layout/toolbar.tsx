@@ -2,7 +2,7 @@
 
 import { PanelLeft, LayoutGrid, Workflow, Settings2, Download, Upload, Eye, RotateCcw, RotateCw } from 'lucide-react';
 import { Button } from '@/components/ui/forms/button';
-import { MetaConfigEditor } from './meta-config-editor';
+import { MetaConfigEditor } from '@/components/editors/meta-config-editor';
 import type { MetaConfig, FieldDefinition } from '@/types';
 
 interface ToolbarProps {

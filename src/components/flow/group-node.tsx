@@ -4,7 +4,7 @@ import { memo } from 'react';
 import { NodeProps } from 'reactflow';
 import { cn, hexToRgba } from '@/lib/utils';
 import { Layers } from 'lucide-react';
-import { DynamicIcon } from './dynamic-icon';
+import { DynamicIcon } from '@/components/common/dynamic-icon';
 
 const GroupNode = ({ data, selected }: NodeProps<{ label: string; color: string; icon?: string }>) => {
   const borderColor = data.color || 'hsl(var(--muted-foreground))';

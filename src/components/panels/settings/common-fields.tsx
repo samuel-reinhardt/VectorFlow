@@ -2,7 +2,7 @@
 
 import { Input } from '@/components/ui/forms/input';
 import { Label } from '@/components/ui/forms/label';
-import { IconPicker } from '@/components/icon-picker';
+import { IconPicker } from '@/components/common/icon-picker';
 import { ExternalLink, Square, FileText, Layers, Share2 } from 'lucide-react';
 
 interface CommonFieldsProps {

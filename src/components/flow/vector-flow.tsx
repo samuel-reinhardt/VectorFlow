@@ -14,28 +14,29 @@ import 'reactflow/dist/style.css';
 import { Plus, Trash2, Settings2, X, Grip, LayoutGrid, Square, FileText, Layers, Boxes, Share2 } from 'lucide-react';
 
 import { Sidebar, SidebarHeader, SidebarContent } from '@/components/ui/layout/sidebar';
-import { SettingsPanel } from '@/components/settings-panel';
-import CustomNode from '@/components/custom-node';
-import GroupNode from '@/components/group-node';
-import { CustomEdge } from '@/components/custom-edge';
-import { DynamicIcon } from '@/components/dynamic-icon';
+import { SettingsPanel } from '@/components/panels/settings-panel';
+import CustomNode from '@/components/flow/custom-node';
+import GroupNode from '@/components/flow/group-node';
+import { CustomEdge } from '@/components/flow/custom-edge';
+import { DynamicIcon } from '@/components/common/dynamic-icon';
 import { useVectorFlow } from '@/hooks/use-vector-flow';
-import { Header } from '@/components/header';
-import { Toolbar } from '@/components/toolbar';
-import { Outline } from '@/components/outline';
-import { FlowTabs } from '@/components/flow-tabs';
+import { Header } from '@/components/layout/header';
+import { Toolbar } from '@/components/layout/toolbar';
+import { Outline } from '@/components/panels/outline';
+import { FlowTabs } from '@/components/flow/flow-tabs';
 import { useMediaQuery } from '@/hooks/use-media-query';
-import { SyncIndicator } from '@/components/sync-indicator';
+import { SyncIndicator } from '@/components/sync/sync-indicator';
 import { useDriveSync } from '@/hooks/use-drive-sync';
+import { useGoogleDriveToken } from '@/hooks/use-google-drive';
 import { GoogleDriveService } from '@/lib/google-drive/service';
 import { useDrivePicker } from '@/lib/google-drive/picker';
 import { useUser } from '@/firebase/auth/use-user';
 import { useToast } from '@/hooks/use-toast';
 import { ExportImportService } from '@/lib/export-import';
-import { ReadOnlyPropertiesPanel } from '@/components/read-only-properties-panel';
+import { ReadOnlyPropertiesPanel } from '@/components/panels/read-only-properties-panel';
 
-import { demoNodes } from './flow/data/demo-nodes';
-import { demoEdges } from './flow/data/demo-edges';
+import { demoNodes } from './data/demo-nodes';
+import { demoEdges } from './data/demo-edges';
 
 const initialNodes = demoNodes;
 const initialEdges = demoEdges;
@@ -108,7 +109,7 @@ export function VectorFlow() {
 
     const { user } = useUser();
     const { toast } = useToast();
-    const accessToken = GoogleDriveService.getAccessToken();
+    const accessToken = useGoogleDriveToken();
     const { openPicker } = useDrivePicker(accessToken);
 
     const { syncState, toggleSync } = useDriveSync({

@@ -6,8 +6,8 @@ import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/layout
 import { cn, getTextColorForBackground } from '@/lib/utils';
 
 import { Square } from 'lucide-react';
-import { DynamicIcon } from './dynamic-icon';
-import { DeliverableItem } from './deliverable-item';
+import { DynamicIcon } from '@/components/common/dynamic-icon';
+import { DeliverableItem } from '@/components/common/deliverable-item';
 
 const CustomNode = ({ id, data, selected }: NodeProps<{ 
   label: string; 

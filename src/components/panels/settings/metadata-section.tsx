@@ -1,7 +1,7 @@
 'use client';
 
 import { Tags } from 'lucide-react';
-import { MetaValueEditor } from '@/components/meta-value-editor';
+import { MetaValueEditor } from '@/components/editors/meta-value-editor';
 import type { FieldDefinition } from '@/types';
 
 interface MetadataSectionProps {

@@ -3,7 +3,7 @@
 import React from 'react';
 import { BaseEdge, EdgeLabelRenderer, EdgeProps, getBezierPath } from 'reactflow';
 import { cn } from '@/lib/utils';
-import { DynamicIcon } from './dynamic-icon';
+import { DynamicIcon } from '@/components/common/dynamic-icon';
 import { Share2 } from 'lucide-react';
 
 export function CustomEdge({

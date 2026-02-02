@@ -3,7 +3,7 @@ import './globals.css';
 import 'react-day-picker/style.css';
 import { Toaster } from '@/components/ui/feedback/toaster';
 import { FirebaseClientProvider } from '@/firebase/client-provider';
-import { AuthGate } from '@/components/auth-gate';
+import { AuthGate } from '@/components/layout/auth-gate';
 
 export const metadata: Metadata = {
   title: 'VectorFlow',

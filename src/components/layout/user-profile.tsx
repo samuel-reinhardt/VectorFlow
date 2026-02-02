@@ -1,6 +1,7 @@
 'use client';
 
 import { useUser } from '@/firebase/auth/use-user';
+import { useGoogleDriveToken } from '@/hooks/use-google-drive';
 import { signOut, signInWithGoogle } from '@/firebase/auth/auth';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/data-display/avatar';
 import {
@@ -18,6 +19,7 @@ import { GoogleAuthProvider } from 'firebase/auth';
 
 export function UserProfile() {
   const { user, isLoading } = useUser();
+  const accessToken = useGoogleDriveToken();
   const { toast } = useToast();
 
   const handleSignIn = async () => {
@@ -47,6 +49,7 @@ export function UserProfile() {
   const handleSignOut = async () => {
     try {
       await signOut();
+      GoogleDriveService.clearAccessToken(); // Clear local storage token
       toast({
         title: "Logged out",
         description: "You have been signed out of your account.",
@@ -123,10 +126,18 @@ export function UserProfile() {
             </DropdownMenuItem>
         )}
         {!user.isAnonymous && (
-        <DropdownMenuItem className="cursor-pointer" onClick={handleSignOut}>
-          <LogOut className="mr-2 h-4 w-4" />
-          <span>Log out</span>
-        </DropdownMenuItem>
+           <>
+            {!accessToken && (
+                <DropdownMenuItem className="cursor-pointer text-amber-600 focus:text-amber-600 focus:bg-amber-50" onClick={handleSignIn}>
+                    <LogIn className="mr-2 h-4 w-4" />
+                    <span>Reconnect Drive</span>
+                </DropdownMenuItem>
+            )}
+            <DropdownMenuItem className="cursor-pointer" onClick={handleSignOut}>
+            <LogOut className="mr-2 h-4 w-4" />
+            <span>Log out</span>
+            </DropdownMenuItem>
+           </>
         )}
       </DropdownMenuContent>
     </DropdownMenu>

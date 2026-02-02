@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/forms/button';
 import { Input } from '@/components/ui/forms/input';
 import { Label } from '@/components/ui/forms/label';
 import { SelectOption } from '@/types';
-import { DynamicIcon } from '@/components/dynamic-icon';
+import { DynamicIcon } from '@/components/common/dynamic-icon';
 import { COMMON_ICONS } from '@/lib/constants';
 
 interface SelectOptionEditorProps {
