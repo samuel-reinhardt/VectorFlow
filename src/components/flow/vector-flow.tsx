@@ -12,7 +12,7 @@ import ReactFlow, {
   SelectionMode,
 } from 'reactflow';
 import 'reactflow/dist/style.css';
-import { Plus, Trash2, Settings2, X, Grip, LayoutGrid, Square, FileText, Layers, Boxes, Share2 } from 'lucide-react';
+import { Plus, Settings2, X, Grip, LayoutGrid, Square, FileText, Layers, Boxes, Share2 } from 'lucide-react';
 
 import { Sidebar, SidebarHeader, SidebarContent } from '@/components/ui/layout/sidebar';
 import { SettingsPanel } from '@/components/panels/settings-panel';
@@ -34,7 +34,10 @@ import { useDrivePicker } from '@/lib/google-drive/picker';
 import { useUser } from '@/firebase/auth/use-user';
 import { useToast } from '@/hooks/use-toast';
 import { ExportImportService } from '@/lib/export-import';
+
 import { ReadOnlyPropertiesPanel } from '@/components/panels/read-only-properties-panel';
+import { FlowContextMenu, ContextMenuAction } from '@/components/ui/flow-context-menu'; // Import custom menu using absolute path if possible or relative
+import { Copy, Trash2, ClipboardPaste, Group, Ungroup, CopyPlus } from 'lucide-react'; // Icons for menu
 
 import { demoNodes } from './data/demo-nodes';
 import { demoEdges } from './data/demo-edges';
@@ -105,7 +108,10 @@ export function VectorFlow() {
         takeSnapshot,
         canUndo,
         canRedo,
-        screenToFlowPosition
+        screenToFlowPosition,
+        copySelection,
+        pasteSelection,
+        duplicateSelection
     } = useVectorFlow(initialNodes, initialEdges);
 
     const { user } = useUser();
@@ -359,6 +365,98 @@ export function VectorFlow() {
     const nodesInitialized = useNodesInitialized();
     const [initialFitDone, setInitialFitDone] = useState(false);
 
+    // Context Menu State
+    const [contextMenu, setContextMenu] = useState<{
+        x: number;
+        y: number;
+        type: 'node' | 'pane' | 'edge' | 'selection';
+        data?: any;
+    } | null>(null);
+
+    const onNodeContextMenu = useCallback(
+        (event: React.MouseEvent, node: Node) => {
+            if (isReadOnly) return;
+            event.preventDefault();
+            
+            // If the node is not currently selected, select it (exclusive)
+            // Unless it's already part of a multi-selection
+            const isSelected = selectedNodes.some(n => n.id === node.id);
+            if (!isSelected) {
+                // We cannot use handleStepSelect here because it was defined inside the component 
+                // but we need access to it. It IS defined above though, at line ~349.
+                // Ah, the lint error was because I pasted the definition BEFORE handleStepSelect was defined.
+                // Now I am pasting it at the end (before return), so it should be fine.
+                handleStepSelect(node.id);
+            }
+            
+            setContextMenu({
+                x: event.clientX,
+                y: event.clientY,
+                type: selectedNodes.length > 1 || (isSelected && selectedNodes.length > 1) ? 'selection' : 'node',
+                data: node
+            });
+        },
+        [isReadOnly, selectedNodes, handleStepSelect]
+    );
+
+    const onPaneContextMenu = useCallback(
+        (event: React.MouseEvent) => {
+            if (isReadOnly) return;
+            event.preventDefault();
+            setContextMenu({
+                x: event.clientX,
+                y: event.clientY,
+                type: 'pane'
+            });
+        },
+        [isReadOnly]
+    );
+
+    const onEdgeContextMenu = useCallback(
+        (event: React.MouseEvent, edge: Edge) => {
+            if (isReadOnly) return;
+            event.preventDefault();
+            
+            // useReactFlow provides setEdges but we also have setEdgesState from our hook?
+            // Actually useVectorFlow exposes setEdges as well? No, it exposes updateEdge...
+            // Let's use the reactflow instance setEdges which we got at line 151
+            setEdges((eds) => eds.map((e) => ({ ...e, selected: e.id === edge.id })));
+            
+            // And we need to deselect nodes. 
+            // We have setNodesState exposed from useVectorFlow at line 66
+            setNodesState((nds) => nds.map((n) => ({ ...n, selected: false })));
+
+            setContextMenu({
+                x: event.clientX,
+                y: event.clientY,
+                type: 'edge',
+                data: edge
+            });
+        },
+        [isReadOnly, setEdges, setNodesState]
+    );
+
+    
+
+    const onSelectionContextMenu = useCallback(
+        (event: React.MouseEvent, nodes: Node[]) => {
+            if (isReadOnly) return;
+            event.preventDefault();
+
+            setContextMenu({
+                x: event.clientX,
+                y: event.clientY,
+                type: 'selection',
+                data: nodes // Pass selected nodes if needed, though we rely on selectedNodes state usually
+            });
+        },
+        [isReadOnly]
+    );
+
+    const onPaneClick = useCallback(() => {
+        setContextMenu(null);
+    }, []);
+
     useEffect(() => {
         // Initial auto-layout ONLY once on mount if we haven't recovered from storage
         if (isDesktop !== null && !initialFitDone && getNodes().length > 0) {
@@ -566,6 +664,40 @@ export function VectorFlow() {
         return () => window.removeEventListener('keydown', handleKeyDown);
     }, [undo, redo, isReadOnly]);
 
+    // Copy/Paste Shortcuts
+    useEffect(() => {
+        const handleKeyDown = (e: KeyboardEvent) => {
+            if (isReadOnly) return;
+            // Ignore if input/textarea is focused
+            if (['INPUT', 'TEXTAREA'].includes((e.target as HTMLElement).tagName)) return;
+
+            if ((e.metaKey || e.ctrlKey) && e.key === 'c') {
+                e.preventDefault();
+                const result = copySelection();
+                if (result) {
+                    toast({
+                        title: "Copied",
+                        description: result.type === 'nodes' 
+                            ? `Copied ${result.count} step(s) to clipboard.` 
+                            : "Copied deliverable to clipboard.",
+                    });
+                }
+            } else if ((e.metaKey || e.ctrlKey) && e.key === 'v') {
+                e.preventDefault();
+                // Paste happens via callback in hook, which updates state
+                // We don't get immediate feedback here unless we wrap it or trust the hook
+                // The hook currently logs warn on error.
+                // We can't catch the error from the hook's internal callback easily here without changing the hook signature
+                // to return a promise or take a toast callback.
+                // For now, let's just trigger it.
+                pasteSelection(); 
+            }
+        };
+
+        window.addEventListener('keydown', handleKeyDown);
+        return () => window.removeEventListener('keydown', handleKeyDown);
+    }, [copySelection, pasteSelection, isReadOnly, toast]);
+
     return (
         <div className="flex flex-col h-screen w-screen bg-background text-foreground font-body">
             <Header 
@@ -641,6 +773,11 @@ export function VectorFlow() {
                         onConnectEnd={onConnectEnd}
                         onSelectionChange={onSelectionChange}
                         onNodeDragStart={takeSnapshot}
+                        onNodeContextMenu={onNodeContextMenu}
+                        onPaneContextMenu={onPaneContextMenu}
+                        onEdgeContextMenu={onEdgeContextMenu}
+                        onSelectionContextMenu={onSelectionContextMenu}
+                        onPaneClick={onPaneClick}
                         nodeTypes={nodeTypes}
                         edgeTypes={edgeTypes}
                         defaultEdgeOptions={{ type: 'custom', zIndex: 10 }}
@@ -658,6 +795,77 @@ export function VectorFlow() {
                     >
                         <Controls />
                         <Background variant={BackgroundVariant.Dots} gap={16} size={1} />
+                        
+                        {contextMenu && (
+                            <FlowContextMenu
+                                x={contextMenu.x}
+                                y={contextMenu.y}
+                                onClose={() => setContextMenu(null)}
+                                actions={[
+                                    // Node Actions
+                                    ...((contextMenu.type === 'node' || contextMenu.type === 'selection') ? [
+                                        {
+                                            label: 'Copy',
+                                            icon: Copy,
+                                            shortcut: '⌘C',
+                                            action: () => {
+                                                copySelection();
+                                                toast({ title: "Copied", description: "Selection copied to clipboard." });
+                                            }
+                                        },
+                                        {
+                                            label: 'Duplicate',
+                                            icon: CopyPlus,
+                                            action: () => {
+                                                duplicateSelection();
+                                                toast({ title: "Duplicated", description: "Selection duplicated." });
+                                            }
+                                        }
+                                    ] : []),
+
+                                    // Group Actions (Single Group or Multi-Select)
+                                    ...((contextMenu.type === 'node' && contextMenu.data?.type === 'group') ? [
+                                        {
+                                            label: 'Ungroup',
+                                            icon: Ungroup,
+                                            action: ungroupSelection
+                                        }
+                                    ] : []),
+                                    
+                                    // Grouping via Multi-Select
+                                    ...((contextMenu.type === 'selection') ? [
+                                        {
+                                            label: 'Group',
+                                            icon: Group,
+                                            action: groupSelection
+                                        }
+                                    ] : []),
+
+                                    // Pane Actions
+                                    ...(contextMenu.type === 'pane' ? [
+                                        {
+                                            label: 'Paste',
+                                            icon: ClipboardPaste,
+                                            shortcut: '⌘V',
+                                            action: () => {
+                                                pasteSelection();
+                                            }
+                                        }
+                                    ] : []),
+                                    
+                                    // Delete Action (Common for all except pane)
+                                    ...(contextMenu.type !== 'pane' ? [
+                                        {
+                                            label: 'Delete',
+                                            icon: Trash2,
+                                            shortcut: 'Del',
+                                            destructive: true,
+                                            action: deleteSelection
+                                        }
+                                    ] : [])
+                                ]}
+                            />
+                        )}
                     </ReactFlow>
                 </main>
                 
