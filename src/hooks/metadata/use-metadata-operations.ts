@@ -1,5 +1,5 @@
 import { useCallback } from 'react';
-import { Node } from 'reactflow';
+import { Node, Edge } from 'reactflow';
 import type { Deliverable } from '@/types';
 
 /**
@@ -7,7 +7,8 @@ import type { Deliverable } from '@/types';
  * Handles both top-level metadata and nested deliverable metadata.
  */
 export function useMetadataOperations(
-  setNodes: (value: Node[] | ((prev: Node[]) => Node[])) => void
+  setNodes: (value: Node[] | ((prev: Node[]) => Node[])) => void,
+  setEdges?: (value: Edge[] | ((prev: Edge[]) => Edge[])) => void
 ) {
   const updateMetaData = useCallback((itemId: string, fieldId: string, value: any) => {
     setNodes(nds => nds.map(n => {
@@ -41,8 +42,25 @@ export function useMetadataOperations(
     }));
   }, [setNodes]);
 
+  const updateEdgeMetaData = useCallback((edgeId: string, fieldId: string, value: any) => {
+    if (!setEdges) return;
+    setEdges(eds => eds.map(e => {
+        if (e.id === edgeId) {
+            return {
+                ...e,
+                data: {
+                    ...e.data,
+                    meta: { ...(e.data?.meta || {}), [fieldId]: value }
+                }
+            };
+        }
+        return e;
+    }));
+  }, [setEdges]);
+
   return {
     updateMetaData,
     updateDeliverableMetaData,
+    updateEdgeMetaData
   };
 }

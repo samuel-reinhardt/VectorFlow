@@ -149,7 +149,7 @@ export const useVectorFlow = (initialNodes: Node[], initialEdges: Edge[]) => {
 
 
   // 6. Metadata Operations
-  const metadataOps = useMetadataOperations(setNodesState);
+  const metadataOps = useMetadataOperations(setNodesState, setEdges);
 
   // 7. Group Operations
   const groupOps = useGroupOperations(setNodesState, getNodes, autoResizeGroups);
@@ -324,6 +324,7 @@ export const useVectorFlow = (initialNodes: Node[], initialEdges: Edge[]) => {
     updateMetaConfig,
     updateMetaData: metadataOps.updateMetaData,
     updateDeliverableMetaData: metadataOps.updateDeliverableMetaData,
+    updateEdgeMetaData: metadataOps.updateEdgeMetaData,
     hasLoadedFromStorage,
     loadProject: handleOnLoad,
     saveCurrentFlowState,

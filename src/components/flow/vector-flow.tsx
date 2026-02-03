@@ -92,6 +92,7 @@ export function VectorFlow() {
         metaConfig,
         updateMetaData,
         updateDeliverableMetaData,
+        updateEdgeMetaData,
         hasLoadedFromStorage,
         loadProject,
         saveCurrentFlowState,
@@ -903,6 +904,7 @@ export function VectorFlow() {
                             <SidebarContent className="p-4">
                                 <SettingsPanel 
                                     selectedSteps={selectedNodes}
+                                    selectedEdges={selectedEdges}
                                     selectedEdge={selectedEdges.length === 1 ? selectedEdges[0] : null}
                                     selectedDeliverableId={selectedDeliverableId}
                                     onAddStep={addStep}
@@ -921,6 +923,7 @@ export function VectorFlow() {
                                     metaConfig={metaConfig}
                                     onUpdateMetaData={updateMetaData}
                                     onUpdateDeliverableMetaData={updateDeliverableMetaData}
+                                    onUpdateEdgeMetaData={updateEdgeMetaData} 
                                 />
                             </SidebarContent>
                         </>

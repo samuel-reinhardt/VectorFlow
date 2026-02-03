@@ -36,10 +36,12 @@ export type MetaConfig = {
   step: FieldDefinition[];
   deliverable: FieldDefinition[];
   group: FieldDefinition[];
+  edge: FieldDefinition[];
 };
 
 export const EMPTY_META_CONFIG: MetaConfig = {
   step: [],
   deliverable: [],
-  group: []
+  group: [],
+  edge: []
 };
