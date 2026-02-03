@@ -6,7 +6,9 @@ import { Plus, X, Palette, Image as ImageIcon, Wand2, Info } from 'lucide-react'
 import { VisualRules, AutoStyleRule, MetaConfig } from '@/types';
 import { IconPicker } from '@/components/common/icon-picker';
 import { IconBrowserDialog } from '@/components/common/icon-browser-dialog';
+import { ColorPickerDialog } from '@/components/common/color-picker-dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/forms/select';
+
 
 interface VisualRulesEditorProps {
     rules: VisualRules;
@@ -18,7 +20,7 @@ export function VisualRulesEditor({ rules, metaConfig, onChange }: VisualRulesEd
     const [activeTab, setActiveTab] = useState<'palette' | 'icons' | 'autostyle'>('palette');
     const [dialogState, setDialogState] = useState<{
         open: boolean;
-        context: 'add_project' | 'autostyle';
+        context: 'add_project' | 'autostyle_icon' | 'autostyle_color';
         ruleId?: string;
     }>({ open: false, context: 'add_project' });
 
@@ -48,10 +50,16 @@ export function VisualRulesEditor({ rules, metaConfig, onChange }: VisualRulesEd
     const handleIconSelect = (icon: string) => {
         if (dialogState.context === 'add_project') {
             addIcon(icon);
-        } else if (dialogState.context === 'autostyle' && dialogState.ruleId) {
+        } else if (dialogState.context === 'autostyle_icon' && dialogState.ruleId) {
             updateRuleApply(dialogState.ruleId, { icon });
         }
         setDialogState(prev => ({ ...prev, open: false }));
+    };
+
+    const handleColorDialogChange = (color: string) => {
+        if (dialogState.context === 'autostyle_color' && dialogState.ruleId) {
+             updateRuleApply(dialogState.ruleId, { color });
+        }
     };
 
     // Auto-Style Handlers
@@ -148,7 +156,7 @@ export function VisualRulesEditor({ rules, metaConfig, onChange }: VisualRulesEd
                         </div>
                         {rules.palette.length === 0 && (
                             <div className="text-center py-8 text-xs text-muted-foreground border border-dashed rounded">
-                                No colors in palette. Add one to get started.
+                                 No colors in palette. Add one to get started.
                             </div>
                         )}
                     </div>
@@ -211,7 +219,9 @@ export function VisualRulesEditor({ rules, metaConfig, onChange }: VisualRulesEd
                                 // Compute available fields based on selected targets
                                 const availableFields = new Map<string, string>();
                                 rule.target.forEach(t => {
-                                    (metaConfig[t] || []).forEach(f => availableFields.set(f.id, f.label));
+                                    (metaConfig[t] || []).forEach(f => {
+                                        if (f) availableFields.set(f.id, f.label);
+                                    });
                                 });
                                 
                                 return (
@@ -291,11 +301,12 @@ export function VisualRulesEditor({ rules, metaConfig, onChange }: VisualRulesEd
                                         <Label className="text-[10px] mb-2 block">Then Apply Style</Label>
                                         <div className="flex items-center gap-3">
                                             <div className="flex items-center gap-2">
-                                                 <input 
-                                                    type="color" 
-                                                    className="w-6 h-6 rounded cursor-pointer border p-0"
-                                                    value={rule.apply.color || '#000000'}
-                                                    onChange={e => updateRuleApply(rule.id, { color: e.target.value })}
+                                                <button 
+                                                    onClick={() => setDialogState({ open: true, context: 'autostyle_color', ruleId: rule.id })}
+                                                    className="w-6 h-6 rounded border p-0 overflow-hidden focus:ring-2 focus:ring-ring focus:ring-offset-1 hover:ring-2"
+                                                    style={{ backgroundColor: rule.apply.color || '#000000' }}
+                                                    aria-label="Pick color"
+                                                    title="Pick color"
                                                 />
                                                 <span className="text-[10px] text-muted-foreground">Color</span>
                                             </div>
@@ -304,7 +315,7 @@ export function VisualRulesEditor({ rules, metaConfig, onChange }: VisualRulesEd
                                                       variant="outline"
                                                       size="sm"
                                                       className="h-8 w-[140px] justify-between px-2"
-                                                      onClick={() => setDialogState({ open: true, context: 'autostyle', ruleId: rule.id })}
+                                                      onClick={() => setDialogState({ open: true, context: 'autostyle_icon', ruleId: rule.id })}
                                                   >
                                                       <span className="truncate text-[10px]">
                                                           {rule.apply.icon || "Select Icon..."}
@@ -323,10 +334,19 @@ export function VisualRulesEditor({ rules, metaConfig, onChange }: VisualRulesEd
             </div>
 
             <IconBrowserDialog 
-                open={dialogState.open} 
+                open={dialogState.open && (dialogState.context === 'add_project' || dialogState.context === 'autostyle_icon')} 
                 onOpenChange={(open) => setDialogState(prev => ({ ...prev, open }))}
                 onSelect={handleIconSelect}
                 title={dialogState.context === 'add_project' ? "Add Project Icon" : "Select Icon for Rule"}
+            />
+            
+            <ColorPickerDialog
+                open={dialogState.open && dialogState.context === 'autostyle_color'}
+                onOpenChange={(open) => setDialogState(prev => ({ ...prev, open }))}
+                color={(rules.autoStyle.find(r => r.id === dialogState.ruleId)?.apply.color) || '#000000'}
+                onChange={handleColorDialogChange}
+                palette={rules.palette}
+                title="Select Color"
             />
         </div>
     );

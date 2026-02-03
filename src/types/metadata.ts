@@ -4,6 +4,9 @@ export type FieldType =
   | 'date' 
   | 'select' 
   | 'multi-select'
+  | 'checkbox-group'
+  | 'radio'
+  | 'toggle'
   | 'number'        // General number input
   | 'hours'         // Number with "hrs" suffix
   | 'currency'      // Number with "$" prefix
@@ -16,6 +19,12 @@ export type SelectOption = {
   icon?: string;    // Icon name
 };
 
+export type ListDefinition = {
+  id: string;
+  name: string;
+  items: SelectOption[];
+};
+
 export type NumberConfig = {
   min?: number;
   max?: number;
@@ -26,8 +35,12 @@ export type FieldDefinition = {
   id: string;
   label: string;
   type: FieldType;
-  // For select/multi-select - support both formats for backward compatibility
-  options?: string[] | SelectOption[];
+  
+  // Options Configuration
+  optionsSource?: 'manual' | 'list';
+  listId?: string;
+  options?: string[] | SelectOption[]; // For manual options
+
   // For number types
   numberConfig?: NumberConfig;
 };
@@ -56,6 +69,7 @@ export type MetaConfig = {
   group: FieldDefinition[];
   edge: FieldDefinition[];
   visualRules: VisualRules;
+  lists: ListDefinition[];
 };
 
 export const EMPTY_META_CONFIG: MetaConfig = {
@@ -67,5 +81,6 @@ export const EMPTY_META_CONFIG: MetaConfig = {
     palette: [],
     icons: [],
     autoStyle: []
-  }
+  },
+  lists: []
 };

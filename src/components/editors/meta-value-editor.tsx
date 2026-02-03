@@ -1,14 +1,16 @@
-'use client';
-
 import * as React from 'react';
 import { format, isValid } from 'date-fns';
 import { Calendar as CalendarIcon, X } from 'lucide-react';
 import { Node } from 'reactflow';
-import { cn } from '@/lib/utils';
+import { cn, getTextColorForBackground, hexToRgba } from '@/lib/utils';
 import { Button } from '@/components/ui/forms/button';
 import { Input } from '@/components/ui/forms/input';
 import { Textarea } from '@/components/ui/forms/textarea';
 import { Label } from '@/components/ui/forms/label';
+import { Checkbox } from '@/components/ui/forms/checkbox';
+import { Switch } from '@/components/ui/forms/switch';
+import { RadioGroup, RadioGroupItem } from '@/components/ui/forms/radio-group';
+
 import {
   Select,
   SelectContent,
@@ -23,7 +25,7 @@ import {
 } from '@/components/ui/overlay/popover';
 import { Calendar } from '@/components/ui/data-display/calendar';
 import { Badge } from '@/components/ui/data-display/badge';
-import type { FieldDefinition, FieldType } from '@/types';
+import type { FieldDefinition, FieldType, ListDefinition } from '@/types';
 import { normalizeOptions } from '@/lib/metadata-utils';
 import { DynamicIcon } from '@/components/common/dynamic-icon';
 import { Tag } from 'lucide-react';
@@ -31,10 +33,11 @@ import { Tag } from 'lucide-react';
 interface MetaValueEditorProps {
   fields: FieldDefinition[];
   values: Record<string, any>;
+  lists: ListDefinition[];
   onChange: (fieldId: string, value: any) => void;
 }
 
-export function MetaValueEditor({ fields, values, onChange }: MetaValueEditorProps) {
+export function MetaValueEditor({ fields, values, lists, onChange }: MetaValueEditorProps) {
   if (fields.length === 0) {
     return (
       <div className="text-xs text-muted-foreground italic py-2">
@@ -45,16 +48,20 @@ export function MetaValueEditor({ fields, values, onChange }: MetaValueEditorPro
 
   return (
     <div className="space-y-4">
-      {fields.map((field) => (
-        <div key={field.id} className="space-y-1.5">
-          <Label className="text-sm font-medium">{field.label}</Label>
-          <RenderField 
-            field={field} 
-            value={values[field.id]} 
-            onChange={(val) => onChange(field.id, val)} 
-          />
-        </div>
-      ))}
+      {fields.map((field) => {
+        if (!field) return null;
+        return (
+          <div key={field.id} className="space-y-1.5">
+            <Label className="text-sm font-medium">{field.label}</Label>
+            <RenderField 
+              field={field} 
+              value={values[field.id]} 
+              lists={lists}
+              onChange={(val) => onChange(field.id, val)} 
+            />
+          </div>
+        );
+      })}
     </div>
   );
 }
@@ -62,12 +69,22 @@ export function MetaValueEditor({ fields, values, onChange }: MetaValueEditorPro
 function RenderField({ 
   field, 
   value, 
+  lists,
   onChange 
 }: { 
   field: FieldDefinition; 
   value: any; 
+  lists: ListDefinition[];
   onChange: (val: any) => void 
 }) {
+  const getOptions = () => {
+     if (field.optionsSource === 'list' && field.listId) {
+         const list = lists.find(l => l.id === field.listId);
+         return list ? list.items : [];
+     }
+     return normalizeOptions(field.options);
+  };
+
   switch (field.type) {
     case 'text':
       return (
@@ -195,15 +212,17 @@ function RenderField({
       );
       
     case 'select': {
-      const options = normalizeOptions(field.options);
+      const options = getOptions();
       return (
         <Select value={value || ''} onValueChange={onChange}>
           <SelectTrigger className="w-full">
             <SelectValue placeholder="Select an option" />
           </SelectTrigger>
           <SelectContent>
-            {options.map((opt) => (
-              <SelectItem key={opt.value} value={opt.value}>
+            {options
+              .filter(opt => opt.value !== '')
+              .map((opt, i) => (
+              <SelectItem key={`${opt.value}-${i}`} value={opt.value}>
                 <div className="flex items-center gap-2">
                   {opt.icon && <DynamicIcon name={opt.icon} fallback={Tag} className="w-4 h-4" />}
                   <span>{opt.label}</span>
@@ -222,7 +241,7 @@ function RenderField({
     }
       
     case 'multi-select': {
-      const options = normalizeOptions(field.options);
+      const options = getOptions();
       const currentValues = Array.isArray(value) ? value : [];
       
       return (
@@ -241,8 +260,8 @@ function RenderField({
             <SelectContent>
               {options
                 .filter(opt => !currentValues.includes(opt.value) && opt.value !== '')
-                .map((opt) => (
-                  <SelectItem key={opt.value} value={opt.value}>
+                .map((opt, i) => (
+                  <SelectItem key={`${opt.value}-${i}`} value={opt.value}>
                     <div className="flex items-center gap-2">
                       {opt.icon && <DynamicIcon name={opt.icon} fallback={Tag} className="w-4 h-4" />}
                       <span>{opt.label}</span>
@@ -259,23 +278,27 @@ function RenderField({
           </Select>
           {currentValues.length > 0 && (
             <div className="flex flex-wrap gap-1 mt-2">
-              {currentValues.map((val) => {
+              {currentValues.map((val: string) => {
                 const opt = options.find(o => o.value === val);
+                const color = opt?.color;
+                const isDark = color ? getTextColorForBackground(color) === '#FFFFFF' : true;
+                const textColor = isDark ? color : '#1f2937';
+
                 return (
                   <Badge 
                     key={val} 
                     variant="secondary" 
-                    className="gap-1 px-1.5 py-0.5 h-6"
-                    style={opt?.color ? {
-                      backgroundColor: `${opt.color}20`,
-                      color: opt.color,
-                      borderColor: opt.color
+                    className="gap-1 px-1.5 py-0.5 h-6 border"
+                    style={color ? {
+                      backgroundColor: hexToRgba(color, 0.15),
+                      borderColor: hexToRgba(color, 0.3),
+                      color: textColor,
                     } : undefined}
                   >
                     {opt?.icon && <DynamicIcon name={opt.icon} fallback={Tag} className="w-3 h-3" />}
                     {opt?.label || val}
                     <button 
-                      onClick={() => onChange(currentValues.filter(v => v !== val))}
+                      onClick={() => onChange(currentValues.filter((v: string) => v !== val))}
                       className="hover:text-destructive transition-colors"
                     >
                       <X className="h-3 w-3" />
@@ -288,6 +311,56 @@ function RenderField({
         </div>
       );
     }
+
+    case 'checkbox-group': {
+        const options = getOptions();
+        const current = Array.isArray(value) ? value : [];
+        return (
+            <div className="space-y-2">
+                {options.map(opt => (
+                    <div key={opt.value} className="flex items-center space-x-2">
+                        <Checkbox 
+                            id={`${field.id}-${opt.value}`}
+                            checked={current.includes(opt.value)}
+                            onCheckedChange={(checked) => {
+                                if (checked) onChange([...current, opt.value]);
+                                else onChange(current.filter((v: string) => v !== opt.value));
+                            }}
+                        />
+                        <Label htmlFor={`${field.id}-${opt.value}`} className="font-normal cursor-pointer flex items-center gap-2">
+                             {opt.icon && <DynamicIcon name={opt.icon} fallback={Tag} className="w-4 h-4" />}
+                             {opt.label}
+                        </Label>
+                    </div>
+                ))}
+            </div>
+        );
+    }
+
+    case 'radio': {
+        const options = getOptions();
+        return (
+            <RadioGroup value={value || ''} onValueChange={onChange}>
+                {options.map(opt => (
+                    <div key={opt.value} className="flex items-center space-x-2">
+                        <RadioGroupItem value={opt.value} id={`${field.id}-${opt.value}`} />
+                        <Label htmlFor={`${field.id}-${opt.value}`} className="font-normal cursor-pointer flex items-center gap-2">
+                             {opt.icon && <DynamicIcon name={opt.icon} fallback={Tag} className="w-4 h-4" />}
+                             {opt.label}
+                        </Label>
+                    </div>
+                ))}
+            </RadioGroup>
+        );
+    }
+
+    case 'toggle':
+      return (
+        <div className="flex items-center space-x-2">
+            <Switch checked={!!value} onCheckedChange={onChange} />
+            <span className="text-sm text-muted-foreground">{value ? 'On' : 'Off'}</span>
+        </div>
+      );
       
     default:
       return <div className="text-xs text-destructive">Unsupported field type: {field.type}</div>;

@@ -201,6 +201,7 @@ export function SettingsPanel({
       return {
         fields: metaConfig.deliverable,
         values: selectedDeliverable.meta || EMPTY_OBJECT,
+        lists: metaConfig.lists || [],
         onChange: (fieldId: string, value: any) => 
           onUpdateDeliverableMetaData(singleSelectedStep!.id, selectedDeliverable.id, fieldId, value)
       };
@@ -209,6 +210,7 @@ export function SettingsPanel({
       return {
         fields: metaConfig.group,
         values: singleSelectedStep?.data.meta || EMPTY_OBJECT,
+        lists: metaConfig.lists || [],
         onChange: (fieldId: string, value: any) => 
           onUpdateMetaData(singleSelectedStep!.id, fieldId, value)
       };
@@ -217,6 +219,7 @@ export function SettingsPanel({
       return {
         fields: metaConfig.step,
         values: singleSelectedStep?.data.meta || EMPTY_OBJECT,
+        lists: metaConfig.lists || [],
         onChange: (fieldId: string, value: any) => 
           onUpdateMetaData(singleSelectedStep!.id, fieldId, value)
       };
@@ -225,6 +228,7 @@ export function SettingsPanel({
         return {
             fields: metaConfig.edge || [],
             values: activeSelectedEdge?.data?.meta || EMPTY_OBJECT,
+            lists: metaConfig.lists || [],
             onChange: (fieldId: string, value: any) =>
                 onUpdateEdgeMetaData(activeSelectedEdge.id, fieldId, value)
         }
@@ -274,6 +278,7 @@ export function SettingsPanel({
                       <MetadataSection
                           fields={metaConfig.step || []}
                           values={getCommonValues(selectionGroups.steps, metaConfig.step || [], (item) => item.data.meta)}
+                          lists={metaConfig.lists || []}
                           onChange={(fieldId, val) => {
                               selectionGroups.steps.forEach(node => {
                                   onUpdateMetaData(node.id, fieldId, val);
@@ -307,6 +312,7 @@ export function SettingsPanel({
                       <MetadataSection
                           fields={metaConfig.group || []}
                           values={getCommonValues(selectionGroups.groups, metaConfig.group || [], (item) => item.data.meta)}
+                          lists={metaConfig.lists || []}
                           onChange={(fieldId, val) => {
                               selectionGroups.groups.forEach(node => {
                                   onUpdateMetaData(node.id, fieldId, val);
@@ -340,6 +346,7 @@ export function SettingsPanel({
                       <MetadataSection
                           fields={metaConfig.edge || []}
                           values={getCommonValues(selectionGroups.edges, metaConfig.edge || [], (item) => item.data?.meta)}
+                          lists={metaConfig.lists || []}
                           onChange={(fieldId, val) => {
                               selectionGroups.edges.forEach(edge => {
                                   onUpdateEdgeMetaData(edge.id, fieldId, val);

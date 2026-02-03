@@ -1,5 +1,5 @@
 import * as React from 'react';
-import { Plus, Trash2, Settings2, X, Grip, LayoutTemplate, Palette, Search } from 'lucide-react';
+import { Plus, Trash2, Settings2, X, Grip, LayoutTemplate, Palette, Search, List as ListIcon, ChevronDown, ChevronRight } from 'lucide-react';
 import { Button } from '@/components/ui/forms/button';
 import { Input } from '@/components/ui/forms/input';
 import { Label } from '@/components/ui/forms/label';
@@ -23,6 +23,9 @@ import { SelectOptionEditor } from '@/components/editors/select-option-editor';
 import { NumberConfigEditor } from '@/components/editors/number-config-editor';
 import { normalizeOptions } from '@/lib/metadata-utils';
 import { VisualRulesEditor } from './visual-rules-editor';
+import { ListsManager } from './lists-manager';
+import { ListDefinition } from '@/types';
+import { cn } from '@/lib/utils';
 
 interface MetaConfigEditorProps {
   config: MetaConfig;
@@ -30,7 +33,8 @@ interface MetaConfigEditorProps {
 }
 
 export function MetaConfigEditor({ config, onUpdate }: MetaConfigEditorProps) {
-  const [activeSection, setActiveSection] = React.useState<'structure' | 'visuals'>('structure');
+  const [activeSection, setActiveSection] = React.useState<'structure' | 'visuals' | 'lists'>('structure');
+  const [activeFieldId, setActiveFieldId] = React.useState<string | null>(null); // For collapsible sections
   const [searchQuery, setSearchQuery] = React.useState('');
   const [targetFilter, setTargetFilter] = React.useState<UnifiedTarget | 'all'>('all');
 
@@ -41,6 +45,7 @@ export function MetaConfigEditor({ config, onUpdate }: MetaConfigEditorProps) {
     (['step', 'deliverable', 'group', 'edge'] as const).forEach(scope => {
         const fields = (config[scope] as FieldDefinition[]) || [];
         fields.forEach(f => {
+            if (!f) return;
             if (!unified.has(f.id)) {
                 unified.set(f.id, { ...f, targets: [scope] });
             } else {
@@ -76,23 +81,25 @@ export function MetaConfigEditor({ config, onUpdate }: MetaConfigEditorProps) {
           label: updates.label ?? field.label,
           type: updates.type ?? field.type,
           options: updates.options ?? field.options,
-          numberConfig: updates.numberConfig ?? field.numberConfig
+          numberConfig: updates.numberConfig ?? field.numberConfig,
+          optionsSource: updates.optionsSource ?? field.optionsSource,
+          listId: updates.listId ?? field.listId,
       };
 
       (['step', 'deliverable', 'group', 'edge'] as const).forEach(scope => {
           const shouldHave = newTargets.includes(scope);
           const currentList = (config[scope] as FieldDefinition[]) || [];
-          const exists = currentList.find(f => f.id === field.id);
+          const exists = currentList.find(f => f && f.id === field.id);
 
           if (shouldHave) {
               if (exists) {
-                  onUpdate(scope, currentList.map(f => f.id === field.id ? newFieldDef : f));
+                  onUpdate(scope, currentList.map(f => (f && f.id === field.id) ? newFieldDef : f));
               } else {
                   onUpdate(scope, [...currentList, newFieldDef]);
               }
           } else {
               if (exists) {
-                  onUpdate(scope, currentList.filter(f => f.id !== field.id));
+                  onUpdate(scope, currentList.filter(f => f && f.id !== field.id));
               }
           }
       });
@@ -101,8 +108,8 @@ export function MetaConfigEditor({ config, onUpdate }: MetaConfigEditorProps) {
   const deleteUnifiedField = (id: string) => {
        (['step', 'deliverable', 'group', 'edge'] as const).forEach(scope => {
            const currentList = (config[scope] as FieldDefinition[]) || [];
-           if (currentList.find(f => f.id === id)) {
-               onUpdate(scope, currentList.filter(f => f.id !== id));
+           if (currentList.find(f => f && f.id === id)) {
+               onUpdate(scope, currentList.filter(f => f && f.id !== id));
            }
        });
   };
@@ -150,6 +157,13 @@ export function MetaConfigEditor({ config, onUpdate }: MetaConfigEditorProps) {
                     onClick={() => setActiveSection('visuals')}
                 >
                     <Palette className="w-4 h-4" /> Visual Rules
+                </Button>
+                <Button 
+                    variant={activeSection === 'lists' ? 'secondary' : 'ghost'} 
+                    className="w-full justify-start gap-2 h-9" 
+                    onClick={() => setActiveSection('lists')}
+                >
+                    <ListIcon className="w-4 h-4" /> Lists
                 </Button>
             </div>
 
@@ -241,6 +255,9 @@ export function MetaConfigEditor({ config, onUpdate }: MetaConfigEditorProps) {
                                                         <SelectItem value="slider">Slider</SelectItem>
                                                         <SelectItem value="select">Select</SelectItem>
                                                         <SelectItem value="multi-select">Multi-Select</SelectItem>
+                                                        <SelectItem value="checkbox-group">Checkbox Group</SelectItem>
+                                                        <SelectItem value="radio">Radio Group</SelectItem>
+                                                        <SelectItem value="toggle">Toggle</SelectItem>
                                                     </SelectContent>
                                                 </Select>
                                             </div>
@@ -289,22 +306,76 @@ export function MetaConfigEditor({ config, onUpdate }: MetaConfigEditorProps) {
                                         </Button>
                                     </div>
                 
-                                    {['number', 'hours', 'currency', 'slider'].includes(field.type) && (
-                                        <div className="bg-muted/30 p-3 rounded-md">
-                                            <NumberConfigEditor
-                                                config={field.numberConfig}
-                                                onChange={(config) => updateUnifiedField(field, { numberConfig: config })}
-                                                fieldType={field.type as any}
-                                            />
+                                    {['select', 'multi-select', 'checkbox-group', 'radio'].includes(field.type) && (
+                                        <div className="bg-muted/30 p-3 rounded-md space-y-3">
+                                            <div className="flex items-center justify-between">
+                                                <Label className="text-xs font-semibold">Options Configuration</Label>
+                                                <div className="flex bg-muted rounded p-0.5">
+                                                    <button 
+                                                        className={cn("text-[10px] px-2 py-0.5 rounded", !field.optionsSource || field.optionsSource === 'manual' ? "bg-background shadow-sm" : "")}
+                                                        onClick={() => updateUnifiedField(field, { optionsSource: 'manual' })}
+                                                    >
+                                                        Manual
+                                                    </button>
+                                                    <button 
+                                                        className={cn("text-[10px] px-2 py-0.5 rounded", field.optionsSource === 'list' ? "bg-background shadow-sm" : "")}
+                                                        onClick={() => updateUnifiedField(field, { optionsSource: 'list' })}
+                                                    >
+                                                        From List
+                                                    </button>
+                                                </div>
+                                            </div>
+
+                                            {(!field.optionsSource || field.optionsSource === 'manual') ? (
+                                                <SelectOptionEditor
+                                                    options={normalizeOptions(field.options)}
+                                                    onChange={(options) => updateUnifiedField(field, { options })}
+                                                    palette={config.visualRules?.palette || []}
+                                                />
+                                            ) : (
+                                                <div className="space-y-1.5">
+                                                    <Label className="text-xs text-muted-foreground">Select List</Label>
+                                                    <Select 
+                                                        value={field.listId || ''} 
+                                                        onValueChange={(val) => updateUnifiedField(field, { listId: val })}
+                                                    >
+                                                        <SelectTrigger>
+                                                            <SelectValue placeholder="Choose a list..." />
+                                                        </SelectTrigger>
+                                                        <SelectContent>
+                                                            {(config.lists || []).map(list => (
+                                                                <SelectItem key={list.id} value={list.id}>{list.name}</SelectItem>
+                                                            ))}
+                                                        </SelectContent>
+                                                    </Select>
+                                                    {(config.lists || []).length === 0 && (
+                                                        <p className="text-[10px] text-destructive">No lists available. Create one in the "Lists" tab.</p>
+                                                    )}
+                                                </div>
+                                            )}
                                         </div>
                                     )}
-                
-                                    {['select', 'multi-select'].includes(field.type) && (
-                                        <div className="bg-muted/30 p-3 rounded-md">
-                                            <SelectOptionEditor
-                                                options={normalizeOptions(field.options)}
-                                                onChange={(options) => updateUnifiedField(field, { options })}
-                                            />
+
+                                    {/* Advanced Configuration Collapsible - for Number/Slider types */}
+                                    {['number', 'hours', 'currency', 'slider'].includes(field.type) && (
+                                        <div className="border rounded-md">
+                                            <button 
+                                                className="flex items-center justify-between w-full p-2 text-xs font-medium hover:bg-muted/50 text-left"
+                                                onClick={() => setActiveFieldId(activeFieldId === field.id ? null : field.id)}
+                                            >
+                                                <span>Advanced Configuration</span>
+                                                {activeFieldId === field.id ? <ChevronDown className="h-3 w-3" /> : <ChevronRight className="h-3 w-3" />}
+                                            </button>
+                                            
+                                            {activeFieldId === field.id && (
+                                                <div className="p-3 border-t bg-muted/30">
+                                                    <NumberConfigEditor
+                                                        config={field.numberConfig}
+                                                        onChange={(config) => updateUnifiedField(field, { numberConfig: config })}
+                                                        fieldType={field.type as any}
+                                                    />
+                                                </div>
+                                            )}
                                         </div>
                                     )}
                                 </div>
@@ -323,12 +394,20 @@ export function MetaConfigEditor({ config, onUpdate }: MetaConfigEditorProps) {
                             </Button>
                         </div>
                     </div>
-                ) : (
+                ) : activeSection === 'visuals' ? (
                     <div className="flex-1 p-6 overflow-hidden">
                         <VisualRulesEditor 
                             rules={config.visualRules || { palette: [], icons: [], autoStyle: [] }} 
                             metaConfig={config}
                             onChange={(newRules) => onUpdate('visualRules', newRules)} 
+                        />
+                    </div>
+                ) : (
+                    <div className="flex-1 overflow-hidden">
+                        <ListsManager 
+                            lists={config.lists || []}
+                            onChange={(lists) => onUpdate('lists', lists)}
+                            palette={config.visualRules?.palette || []}
                         />
                     </div>
                 )}

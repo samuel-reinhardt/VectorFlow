@@ -2,11 +2,12 @@
 
 import { Tags } from 'lucide-react';
 import { MetaValueEditor } from '@/components/editors/meta-value-editor';
-import type { FieldDefinition } from '@/types';
+import type { FieldDefinition, ListDefinition } from '@/types';
 
 interface MetadataSectionProps {
   fields: FieldDefinition[];
   values: Record<string, any>;
+  lists: ListDefinition[];
   onChange: (fieldId: string, value: any) => void;
 }
 
@@ -14,7 +15,7 @@ interface MetadataSectionProps {
  * Metadata section for editing custom fields on entities.
  * Displays the metadata editor with configured fields.
  */
-export function MetadataSection({ fields, values, onChange }: MetadataSectionProps) {
+export function MetadataSection({ fields, values, lists, onChange }: MetadataSectionProps) {
   return (
     <div className="pt-4 border-t space-y-4">
       <div className="flex items-center gap-2 text-sm font-semibold text-muted-foreground uppercase tracking-wider">
@@ -24,6 +25,7 @@ export function MetadataSection({ fields, values, onChange }: MetadataSectionPro
       <MetaValueEditor 
         fields={fields} 
         values={values} 
+        lists={lists}
         onChange={onChange}
       />
     </div>

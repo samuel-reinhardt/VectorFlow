@@ -1,5 +1,6 @@
-import { FieldDefinition, MetaConfig, FieldType, NumberConfig } from '@/types';
-import { getOptionByValue, getOptionsByValues } from '@/lib/metadata-utils';
+import { cn, getTextColorForBackground, hexToRgba } from '@/lib/utils';
+import { FieldDefinition, MetaConfig, FieldType, NumberConfig, ListDefinition } from '@/types';
+import { getOptionByValue, getOptionsByValues, normalizeOptions } from '@/lib/metadata-utils';
 import { DynamicIcon } from '@/components/common/dynamic-icon';
 import { Tag } from 'lucide-react';
 import { Node } from 'reactflow';
@@ -13,10 +14,18 @@ interface ReadOnlyPropertiesPanelProps {
 }
 
 // Format value based on field type
-function formatValue(value: any, field: FieldDefinition): React.ReactNode {
+function formatValue(value: any, field: FieldDefinition, lists: ListDefinition[] = []): React.ReactNode {
   if (value === undefined || value === null || value === '') {
     return <span className="text-muted-foreground italic">Not set</span>;
   }
+
+  const getOptions = () => {
+     if (field.optionsSource === 'list' && field.listId) {
+         const list = lists.find(l => l.id === field.listId);
+         return list ? list.items : [];
+     }
+     return normalizeOptions(field.options);
+  };
 
   switch (field.type) {
     case 'date':
@@ -63,16 +72,27 @@ function formatValue(value: any, field: FieldDefinition): React.ReactNode {
       );
     }
 
-    case 'select': {
-      const option = getOptionByValue(field.options, String(value));
+    case 'select': 
+    case 'radio': {
+      const options = getOptions();
+      const option = options.find(o => o.value === String(value));
+      
       if (!option) return <span>{String(value)}</span>;
       
+      const color = option.color;
+      const isDark = color ? getTextColorForBackground(color) === '#FFFFFF' : true;
+      const textColor = isDark ? color : '#1f2937';
+
       return (
         <span 
-          className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-md text-sm font-medium"
-          style={{
-            backgroundColor: option.color ? `${option.color}20` : 'hsl(var(--primary) / 0.1)',
-            color: option.color || 'hsl(var(--primary))',
+          className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-md text-sm font-medium border"
+          style={color ? {
+            backgroundColor: hexToRgba(color, 0.15),
+            borderColor: hexToRgba(color, 0.3),
+            color: textColor,
+          } : {
+             backgroundColor: 'hsl(var(--primary) / 0.1)',
+             color: 'hsl(var(--primary))'
           }}
         >
           {option.icon && <DynamicIcon name={option.icon} fallback={Tag} className="w-3.5 h-3.5" />}
@@ -81,28 +101,47 @@ function formatValue(value: any, field: FieldDefinition): React.ReactNode {
       );
     }
 
-    case 'multi-select': {
+    case 'multi-select':
+    case 'checkbox-group': {
       const values = Array.isArray(value) ? value : [value];
-      const options = getOptionsByValues(field.options, values);
+      const options = getOptions();
+      const selectedOptions = values
+        .map(v => options.find(o => o.value === v))
+        .filter((o): o is NonNullable<typeof o> => !!o);
       
+      if (selectedOptions.length === 0) return <span>{values.join(', ')}</span>;
+
       return (
         <div className="flex flex-wrap gap-1">
-          {options.map((option, i) => (
-            <span 
-              key={i}
-              className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-xs font-medium"
-              style={{
-                backgroundColor: option.color ? `${option.color}20` : 'hsl(var(--primary) / 0.1)',
-                color: option.color || 'hsl(var(--primary))',
-              }}
-            >
-              {option.icon && <DynamicIcon name={option.icon} fallback={Tag} className="w-3 h-3" />}
-              {option.label}
-            </span>
-          ))}
+          {selectedOptions.map((option, i) => {
+             const color = option.color;
+             const isDark = color ? getTextColorForBackground(color) === '#FFFFFF' : true;
+             const textColor = isDark ? color : '#1f2937';
+             
+             return (
+                <span 
+                  key={i}
+                  className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-xs font-medium border"
+                  style={color ? {
+                    backgroundColor: hexToRgba(color, 0.15),
+                    borderColor: hexToRgba(color, 0.3),
+                    color: textColor,
+                  } : {
+                    backgroundColor: 'hsl(var(--primary) / 0.1)',
+                    color: 'hsl(var(--primary))'
+                  }}
+                >
+                  {option.icon && <DynamicIcon name={option.icon} fallback={Tag} className="w-3 h-3" />}
+                  {option.label}
+                </span>
+             );
+          })}
         </div>
       );
     }
+    
+    case 'toggle':
+        return <span className="font-medium">{value ? 'Yes' : 'No'}</span>;
 
     case 'long-text':
       return (
@@ -147,6 +186,7 @@ export function ReadOnlyPropertiesPanel({
 
         // Filter fields that have values
         const fieldsWithValues = metaFields.filter((field: FieldDefinition) => {
+          if (!field) return false;
           const value = metadata[field.id];
           return value !== undefined && value !== null && value !== '';
         });
@@ -178,7 +218,7 @@ export function ReadOnlyPropertiesPanel({
                           {field.label}
                         </dt>
                         <dd className="text-sm">
-                          {formatValue(value, field)}
+                          {formatValue(value, field, metaConfig.lists || [])}
                         </dd>
                       </div>
                     );
@@ -212,6 +252,7 @@ export function ReadOnlyPropertiesPanel({
 
     // Filter fields that have values
     const fieldsWithValues = metaFields.filter((field: FieldDefinition) => {
+      if (!field) return false;
       const value = metadata[field.id];
       return value !== undefined && value !== null && value !== '';
     });
@@ -257,7 +298,7 @@ export function ReadOnlyPropertiesPanel({
                       {field.label}
                     </dt>
                     <dd className="text-sm">
-                      {formatValue(value, field)}
+                      {formatValue(value, field, metaConfig.lists || [])}
                     </dd>
                   </div>
                 );
