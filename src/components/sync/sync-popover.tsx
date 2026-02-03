@@ -194,33 +194,6 @@ export function SyncPopover({
         )}
       </div>
 
-      {/* Actions */}
-      <div className="flex gap-2 pt-2 border-t">
-        <Button variant="outline" size="sm" className="flex-1 text-xs" onClick={onBrowseDrive}>
-          Open New File
-        </Button>
-        <Button variant="outline" size="sm" className="flex-1 text-xs" onClick={onUnlink}>
-          Disconnect Auto Save
-        </Button>
-      </div>
-      
-      {/* Share Section */}
-      <div className="pt-2 border-t">
-        <Button 
-            className="w-full gap-2 bg-blue-50 text-blue-600 hover:bg-blue-100 hover:text-blue-700 border-blue-200" 
-            size="sm" 
-            variant="outline"
-            onClick={() => {
-                const url = `${window.location.origin}${window.location.pathname}?driveId=${googleDriveFileId}`;
-                navigator.clipboard.writeText(url);
-                onCopyLink();
-            }}
-        >
-            <Share2 className="w-4 h-4" />
-            Copy Share Link
-        </Button>
-      </div>
-
       {/* Error Message */}
       {syncState.errorMessage && (
         <div className="p-2 rounded bg-red-50 border border-red-100 text-red-700 text-[10px] leading-relaxed">

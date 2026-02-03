@@ -14,6 +14,10 @@ interface IconPickerProps {
   value: string;
   onChange: (value: string) => void;
   fallbackIcon?: React.ComponentType<any>;
+  placeholder?: string;
+  readOnly?: boolean;
+  projectIcons?: string[];
+  modal?: boolean;
 }
 
 // Error Boundary to catch render errors for specific icons
@@ -45,28 +49,22 @@ class SafeIcon extends React.Component<{ icon: any, name: string, className?: st
     }
 }
 
-export function IconPicker({ value, onChange, fallbackIcon: Fallback = Square }: IconPickerProps) {
+import { useIconList } from '@/hooks/use-icon-list';
+
+export function IconPicker({ 
+    value, 
+    onChange, 
+    fallbackIcon: Fallback = Square, 
+    placeholder = "Select icon...", 
+    readOnly = false,
+    projectIcons = [],
+    modal = false
+}: IconPickerProps) {
   const [open, setOpen] = React.useState(false);
   const [search, setSearch] = React.useState('');
 
   // Get all icon names from Lucide
-  const iconNames = React.useMemo(() => {
-    const filters = ['lucide', 'createLucideIcon', 'Icon'];
-    const allExports = Object.keys(Icons);
-    const exportSet = new Set(allExports);
-    
-    return allExports.filter(
-      (name) => 
-        // Likely an icon if it starts with uppercase and is a component
-        /^[A-Z]/.test(name) && 
-        !filters.includes(name) &&
-        (typeof (Icons as any)[name] === 'function' || (Icons as any)[name]?.render) &&
-        // Deduplicate: If name ends with "Icon" and the base name exists, skip it
-        !(name.endsWith('Icon') && exportSet.has(name.slice(0, -4))) &&
-        // Deduplicate: If name starts with "Lucide" and the base name exists, skip it
-        !(name.startsWith('Lucide') && exportSet.has(name.slice(6)))
-    );
-  }, []);
+  const iconNames = useIconList();
 
   const filteredIcons = React.useMemo(() => {
     const searchLower = search.toLowerCase();
@@ -76,8 +74,23 @@ export function IconPicker({ value, onChange, fallbackIcon: Fallback = Square }:
       .slice(0, 100); // Limit results for performance
   }, [search, iconNames]);
 
+  if (readOnly) {
+     return (
+        <Button 
+            variant="outline" 
+            disabled 
+            className="w-full justify-between h-9 px-3 font-normal opacity-100 bg-muted/30 cursor-default"
+        >
+           <div className="flex items-center gap-2 overflow-hidden">
+            {value && <DynamicIcon name={value} fallback={Fallback} className="w-4 h-4 shrink-0" />}
+            <span className={cn("truncate", !value && "text-muted-foreground")}>{value || placeholder}</span>
+          </div>
+        </Button>
+     );
+  }
+
   return (
-    <Popover open={open} onOpenChange={setOpen}>
+    <Popover open={open} onOpenChange={setOpen} modal={modal}>
       <PopoverTrigger asChild>
         <Button
           variant="outline"
@@ -87,7 +100,7 @@ export function IconPicker({ value, onChange, fallbackIcon: Fallback = Square }:
         >
           <div className="flex items-center gap-2 overflow-hidden">
             <DynamicIcon name={value} fallback={Fallback} className="w-4 h-4 shrink-0" />
-            <span className="truncate">{value || 'Default Icon'}</span>
+            <span className={cn("truncate", !value && "text-muted-foreground")}>{value || placeholder}</span>
           </div>
           <ChevronDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
         </Button>
@@ -101,10 +114,53 @@ export function IconPicker({ value, onChange, fallbackIcon: Fallback = Square }:
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               className="h-9 border-none focus-visible:ring-0 p-0 text-sm"
-              autoFocus
             />
           </div>
           <ScrollArea className="flex-1 p-2">
+             {/* Project Icons Section */}
+             {projectIcons.length > 0 && search === '' && (
+                <div className="mb-4">
+                     <div className="text-[10px] text-muted-foreground uppercase tracking-wider font-semibold mb-2 px-1">Project Icons</div>
+                     <div className="grid grid-cols-4 gap-1">
+                        {projectIcons.map(name => {
+                            const Icon = (Icons as any)[name];
+                            if (!Icon) return null;
+                            const isSelected = value === name;
+                             return (
+                                <button
+                                  key={name}
+                                  onClick={() => {
+                                    onChange(name);
+                                    setOpen(false);
+                                    setSearch('');
+                                  }}
+                                  title={name}
+                                  className={cn(
+                                    "flex flex-col items-center justify-center p-2 rounded-md transition-colors hover:bg-muted relative group h-[60px]",
+                                    isSelected && "bg-primary/10 ring-1 ring-primary/30"
+                                  )}
+                                >
+                                  <SafeIcon icon={Icon} name={name} className={cn(
+                                    "w-5 h-5 mb-1",
+                                    isSelected ? "text-primary" : "text-muted-foreground group-hover:text-foreground"
+                                  )} />
+                                  <span className="text-[9px] truncate w-full text-center text-muted-foreground px-1">
+                                    {name}
+                                  </span>
+                                  {isSelected && (
+                                    <div className="absolute top-0.5 right-0.5">
+                                      <Check className="w-2.5 h-2.5 text-primary" />
+                                    </div>
+                                  )}
+                                </button>
+                              );
+                        })}
+                     </div>
+                     <div className="my-2 border-b" />
+                </div>
+             )}
+
+             {/* Search Results */}
             {filteredIcons.length > 0 ? (
               <div className="grid grid-cols-4 gap-1">
                 {filteredIcons.map((name) => {

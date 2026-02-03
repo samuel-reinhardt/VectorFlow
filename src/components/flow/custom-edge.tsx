@@ -6,6 +6,8 @@ import { cn } from '@/lib/utils';
 import { DynamicIcon } from '@/components/common/dynamic-icon';
 import { Share2 } from 'lucide-react';
 
+import { useAutoStyle } from '@/hooks/use-auto-style';
+
 export function CustomEdge({
   id,
   sourceX,
@@ -20,6 +22,13 @@ export function CustomEdge({
   data,
   selected,
 }: EdgeProps) {
+  const { color, icon } = useAutoStyle({ 
+      type: 'edge', 
+      data, 
+      explicitColor: style.stroke as string, 
+      explicitIcon: data?.icon 
+  });
+
   const [edgePath, labelX, labelY] = getBezierPath({
     sourceX,
     sourceY,
@@ -32,7 +41,7 @@ export function CustomEdge({
   const [isLabelHovered, setIsLabelHovered] = React.useState(false);
 
   const edgeStyle = React.useMemo(() => {
-    const originalStroke = (style.stroke as string) || 'hsl(var(--muted-foreground) / 0.5)';
+    const originalStroke = color || 'hsl(var(--muted-foreground) / 0.5)';
     
     return {
       ...style,
@@ -42,7 +51,7 @@ export function CustomEdge({
       animation: 'dashdraw 0.5s linear infinite',
       transition: 'stroke-width 0.2s ease-in-out',
     };
-  }, [style, selected]);
+  }, [style, selected, color]);
 
   return (
     <>
@@ -58,14 +67,14 @@ export function CustomEdge({
         style={edgeStyle}
         interactionWidth={30}
       />
-      {(label || data?.icon) && (
+      {(label || icon) && (
         <EdgeLabelRenderer>
           <div
             style={{
               position: 'absolute',
               transform: `translate(-50%, -50%) translate(${labelX}px,${labelY}px)`,
               pointerEvents: 'all',
-              borderColor: selected ? (style.stroke as string) || 'hsl(var(--border))' : (style.stroke as string) || 'inherit',
+              borderColor: selected ? color || 'hsl(var(--border))' : color || 'inherit',
               backgroundColor: 'white',
               zIndex: 15,
             }}
@@ -77,9 +86,9 @@ export function CustomEdge({
               selected ? "outline outline-ring hover:outline-ring/60" : "hover:outline-ring/30"
             )}
           >
-            {data?.icon && (
+            {icon && (
                <DynamicIcon 
-                name={data.icon} 
+                name={icon} 
                 fallback={Share2} 
                 className={cn(
                   "w-3.5 h-3.5 transition-colors",

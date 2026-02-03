@@ -10,14 +10,17 @@ interface CommonFieldsProps {
   color: string;
   icon: string;
   onLabelChange: (e: React.ChangeEvent<HTMLInputElement>) => void;
-  onColorChange: (e: React.ChangeEvent<HTMLInputElement>) => void;
+  onColorChange: (color: string) => void;
   onIconChange: (icon: string) => void;
   entityType: 'step' | 'deliverable' | 'group' | 'edge';
+  palette?: string[];
+  projectIcons?: string[];
 }
 
 /**
  * Common form fields (Label, Color, Icon) shared across all entity types.
  * Reduces duplication in the settings panel.
+ * Now supports Project Palette and Project Icons.
  */
 export function CommonFields({
   label,
@@ -27,6 +30,8 @@ export function CommonFields({
   onColorChange,
   onIconChange,
   entityType,
+  palette = [],
+  projectIcons = []
 }: CommonFieldsProps) {
   const getFallbackIcon = () => {
     switch (entityType) {
@@ -55,15 +60,32 @@ export function CommonFields({
 
       <div className="space-y-2">
         <Label htmlFor="color-input" className="font-semibold">Color</Label>
+        
+        {/* Project Palette */}
+        {palette.length > 0 && (
+            <div className="flex flex-wrap gap-1 mb-2">
+                {palette.map((c, i) => (
+                    <button
+                        key={`${c}-${i}`}
+                        type="button"
+                        className="w-6 h-6 rounded-md border shadow-sm ring-offset-background hover:scale-110 hover:shadow-md focus:ring-2 focus:ring-ring transition-all"
+                        style={{ backgroundColor: c }}
+                        onClick={() => onColorChange(c)}
+                        title={c}
+                    />
+                ))}
+            </div>
+        )}
+
         <div className="flex items-center gap-2">
           <Input
             id="color-input"
             type="color"
             value={color}
-            onChange={onColorChange}
+            onChange={(e) => onColorChange(e.target.value)}
             className="p-1 h-10 w-14 cursor-pointer"
           />
-          <Input value={color} onChange={onColorChange} placeholder="#RRGGBB" />
+          <Input value={color} onChange={(e) => onColorChange(e.target.value)} placeholder="#RRGGBB" />
         </div>
       </div>
 
@@ -84,6 +106,7 @@ export function CommonFields({
           value={icon}
           onChange={onIconChange}
           fallbackIcon={getFallbackIcon()}
+          projectIcons={projectIcons}
         />
       </div>
     </div>

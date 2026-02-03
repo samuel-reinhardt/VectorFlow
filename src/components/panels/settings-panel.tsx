@@ -173,8 +173,7 @@ export function SettingsPanel({
     else if (activeSelectedEdge) onUpdateEdgeLabel(activeSelectedEdge.id, newLabel);
   };
 
-  const handleColorChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const newColor = e.target.value;
+  const handleColorChange = (newColor: string) => {
     setColor(newColor);
     if (selectedDeliverable) onUpdateDeliverable(singleSelectedStep!.id, selectedDeliverable.id, { color: newColor });
     else if (singleSelectedStep) onUpdateStepColor(singleSelectedStep.id, newColor);
@@ -265,9 +264,11 @@ export function SettingsPanel({
                           color={selectionGroups.steps.every(n => n.data.color === selectionGroups.steps[0].data.color) ? selectionGroups.steps[0].data.color : '#E5E7EB'}
                           icon={selectionGroups.steps.every(n => n.data.icon === selectionGroups.steps[0].data.icon) ? selectionGroups.steps[0].data.icon : ''}
                           onLabelChange={(e) => selectionGroups.steps.forEach(n => onUpdateStepLabel(n.id, e.target.value))}
-                          onColorChange={(e) => selectionGroups.steps.forEach(n => onUpdateStepColor(n.id, e.target.value))}
+                          onColorChange={(color) => selectionGroups.steps.forEach(n => onUpdateStepColor(n.id, color))}
                           onIconChange={(icon) => selectionGroups.steps.forEach(n => onUpdateStepIcon(n.id, icon))}
                           entityType="step"
+                          palette={metaConfig?.visualRules?.palette}
+                          projectIcons={metaConfig?.visualRules?.icons}
                       />
 
                       <MetadataSection
@@ -296,9 +297,11 @@ export function SettingsPanel({
                           color={selectionGroups.groups.every(n => n.data.color === selectionGroups.groups[0].data.color) ? selectionGroups.groups[0].data.color : '#E5E7EB'}
                           icon={selectionGroups.groups.every(n => n.data.icon === selectionGroups.groups[0].data.icon) ? selectionGroups.groups[0].data.icon : ''}
                           onLabelChange={(e) => selectionGroups.groups.forEach(n => onUpdateStepLabel(n.id, e.target.value))}
-                          onColorChange={(e) => selectionGroups.groups.forEach(n => onUpdateStepColor(n.id, e.target.value))}
+                          onColorChange={(color) => selectionGroups.groups.forEach(n => onUpdateStepColor(n.id, color))}
                           onIconChange={(icon) => selectionGroups.groups.forEach(n => onUpdateStepIcon(n.id, icon))}
                           entityType="group"
+                          palette={metaConfig?.visualRules?.palette}
+                          projectIcons={metaConfig?.visualRules?.icons}
                       />
 
                       <MetadataSection
@@ -327,9 +330,11 @@ export function SettingsPanel({
                           color={selectionGroups.edges.every(e => e.style?.stroke === selectionGroups.edges[0].style?.stroke) ? (selectionGroups.edges[0].style?.stroke as string) || '#6B7280' : '#6B7280'}
                           icon={selectionGroups.edges.every(e => e.data?.icon === selectionGroups.edges[0].data?.icon) ? selectionGroups.edges[0].data?.icon : ''}
                           onLabelChange={(e) => selectionGroups.edges.forEach(edge => onUpdateEdgeLabel(edge.id, e.target.value))}
-                          onColorChange={(e) => selectionGroups.edges.forEach(edge => onUpdateEdgeColor(edge.id, e.target.value))}
+                          onColorChange={(color) => selectionGroups.edges.forEach(edge => onUpdateEdgeColor(edge.id, color))}
                           onIconChange={(icon) => selectionGroups.edges.forEach(edge => onUpdateEdgeIcon(edge.id, icon))}
                           entityType="edge"
+                          palette={metaConfig?.visualRules?.palette}
+                          projectIcons={metaConfig?.visualRules?.icons}
                       />
 
                       <MetadataSection
@@ -368,6 +373,8 @@ export function SettingsPanel({
                 onColorChange={handleColorChange}
                 onIconChange={handleIconChange}
                 entityType={entityType}
+                palette={metaConfig?.visualRules?.palette}
+                projectIcons={metaConfig?.visualRules?.icons}
             />
             
             {metadataProps && (

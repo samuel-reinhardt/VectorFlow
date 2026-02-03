@@ -270,6 +270,112 @@ export class GoogleDriveService {
   }
 
   /**
+   * Creates a new folder.
+   */
+  static async createFolder(name: string, parentId?: string): Promise<string> {
+    const token = this.getAccessToken();
+    if (!token) throw new Error('Not authenticated with Google Drive');
+
+    const metadata: any = {
+      name,
+      mimeType: 'application/vnd.google-apps.folder',
+    };
+
+    if (parentId) {
+      metadata.parents = [parentId];
+    }
+
+    const response = await fetch(`${DRIVE_API_URL}/files?supportsAllDrives=true`, {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${token}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(metadata),
+    });
+
+    if (!response.ok) {
+        const error = await response.json();
+        throw new Error(`Failed to create folder: ${error.error?.message || response.statusText}`);
+    }
+
+    const result = await response.json();
+    return result.id;
+  }
+
+  /**
+   * Lists files and folders within a specific folder.
+   */
+  static async listContents(folderId: string = 'root', allowedMimeTypes?: string[]): Promise<DriveFile[]> {
+    const token = this.getAccessToken();
+    if (!token) throw new Error('Not authenticated with Google Drive');
+
+    // Query for children of the folder, not trashed
+    let query = `'${folderId}' in parents and trashed = false`;
+    
+    if (allowedMimeTypes && allowedMimeTypes.length > 0) {
+        const typeQuery = allowedMimeTypes.map(t => `mimeType = '${t}'`).join(' or ');
+        query += ` and (${typeQuery})`;
+    }
+    
+    const encodedQuery = encodeURIComponent(query);
+    
+    // orderBy=folder,name ensures folders appear first
+    const response = await fetch(
+      `${DRIVE_API_URL}/files?q=${encodedQuery}&fields=files(id, name, mimeType, modifiedTime)&orderBy=folder,name&supportsAllDrives=true&includeItemsFromAllDrives=true&pageSize=1000`, 
+      {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      }
+    );
+
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(`Failed to list contents: ${error.error?.message || response.statusText}`);
+    }
+
+    const result = await response.json();
+    return result.files;
+  }
+
+  /**
+   * Searches for files by name.
+   */
+  static async searchFiles(term: string, allowedMimeTypes?: string[]): Promise<DriveFile[]> {
+    const token = this.getAccessToken();
+    if (!token) throw new Error('Not authenticated with Google Drive');
+    
+    // Escape single quotes in search term
+    const safeTerm = term.replace(/'/g, "\\'");
+    let query = `name contains '${safeTerm}' and trashed = false`;
+    
+    if (allowedMimeTypes && allowedMimeTypes.length > 0) {
+        const typeQuery = allowedMimeTypes.map(t => `mimeType = '${t}'`).join(' or ');
+        query += ` and (${typeQuery})`;
+    }
+
+    const encodedQuery = encodeURIComponent(query);
+
+    const response = await fetch(
+      `${DRIVE_API_URL}/files?q=${encodedQuery}&fields=files(id, name, mimeType, modifiedTime)&orderBy=folder,name&supportsAllDrives=true&includeItemsFromAllDrives=true&pageSize=50`, 
+      {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      }
+    );
+    
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(`Failed to search files: ${error.error?.message || response.statusText}`);
+    }
+    
+    const result = await response.json();
+    return result.files;
+  }
+
+  /**
    * Checks if the current token is valid by performing a lightweight request.
    */
   static async validateToken(): Promise<boolean> {

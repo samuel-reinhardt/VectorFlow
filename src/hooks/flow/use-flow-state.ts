@@ -55,13 +55,15 @@ export function useFlowState(
   const addFlow = useCallback(() => {
     saveCurrentFlowState();
     
+    const currentConfig = flows[0]?.metaConfig || EMPTY_META_CONFIG;
+
     const newId = `flow_${Date.now()}`;
     const newFlow: Flow = {
       id: newId,
       title: `Flow ${flows.length + 1}`,
       nodes: [],
       edges: [],
-      metaConfig: EMPTY_META_CONFIG
+      metaConfig: currentConfig
     };
 
     setFlows(prev => [...prev, newFlow]);
@@ -69,7 +71,7 @@ export function useFlowState(
     setEdges([]);
     setActiveFlowId(newId);
     setSelectedDeliverableId(null);
-  }, [flows.length, saveCurrentFlowState, setNodes, setEdges, setActiveFlowId, setSelectedDeliverableId]);
+  }, [flows, saveCurrentFlowState, setNodes, setEdges, setActiveFlowId, setSelectedDeliverableId]);
 
   const updateFlowTitle = useCallback((flowId: string, newTitle: string) => {
     setFlows(prev => prev.map(f => f.id === flowId ? { ...f, title: newTitle } : f));
@@ -126,11 +128,12 @@ export function useFlowState(
     });
   }, []);
 
-  const updateMetaConfig = useCallback((type: keyof MetaConfig, config: any[]) => {
-    setFlows(prev => prev.map(f => 
-      f.id === activeFlowId ? { ...f, metaConfig: { ...f.metaConfig, [type]: config } } : f
-    ));
-  }, [activeFlowId]);
+  const updateMetaConfig = useCallback((type: keyof MetaConfig, config: any) => {
+    setFlows(prev => prev.map(f => ({
+      ...f,
+      metaConfig: { ...f.metaConfig, [type]: config }
+    })));
+  }, []);
 
   return {
     flows,

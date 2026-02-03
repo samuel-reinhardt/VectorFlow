@@ -13,6 +13,7 @@ import ReactFlow, {
 } from 'reactflow';
 import 'reactflow/dist/style.css';
 import { Plus, Settings2, X, Grip, LayoutGrid, Square, FileText, Layers, Boxes, Share2 } from 'lucide-react';
+import { FlowProvider } from '@/components/flow/flow-context';
 
 import { Sidebar, SidebarHeader, SidebarContent } from '@/components/ui/layout/sidebar';
 import { SettingsPanel } from '@/components/panels/settings-panel';
@@ -30,14 +31,17 @@ import { SyncIndicator } from '@/components/sync/sync-indicator';
 import { useDriveSync } from '@/hooks/use-drive-sync';
 import { useGoogleDriveToken } from '@/hooks/use-google-drive';
 import { GoogleDriveService } from '@/lib/google-drive/service';
-import { useDrivePicker } from '@/lib/google-drive/picker';
 import { useUser } from '@/firebase/auth/use-user';
 import { useToast } from '@/hooks/use-toast';
-import { ExportImportService } from '@/lib/export-import';
+import { useAuthActions } from '@/hooks/use-auth-actions';
+import { useDriveFileActions } from '@/hooks/use-drive-file-actions';
+import { useLocalFileActions } from '@/hooks/use-local-file-actions';
+import { useFileNameDialog, FileNameDialog } from '@/hooks/use-file-name-dialog';
+import { DriveBrowserDialog } from '@/components/drive/drive-browser-dialog';
 
 import { ReadOnlyPropertiesPanel } from '@/components/panels/read-only-properties-panel';
-import { FlowContextMenu, ContextMenuAction } from '@/components/ui/flow-context-menu'; // Import custom menu using absolute path if possible or relative
-import { Copy, Trash2, ClipboardPaste, Group, Ungroup, CopyPlus } from 'lucide-react'; // Icons for menu
+import { FlowContextMenu, ContextMenuAction } from '@/components/ui/flow-context-menu';
+import { Copy, Trash2, ClipboardPaste, Group, Ungroup, CopyPlus } from 'lucide-react';
 
 import { demoNodes } from './data/demo-nodes';
 import { demoEdges } from './data/demo-edges';
@@ -114,13 +118,13 @@ export function VectorFlow() {
         pasteSelection,
         duplicateSelection
     } = useVectorFlow(initialNodes, initialEdges);
-
+    // ... existing hooks ...
     const { user } = useUser();
     const { toast } = useToast();
     const accessToken = useGoogleDriveToken();
-    const { openPicker } = useDrivePicker(accessToken);
 
-    const { syncState, toggleSync } = useDriveSync({
+
+    const { syncState, toggleSync, manualSync } = useDriveSync({
         fileId: googleDriveFileId,
         projectId,
         projectName,
@@ -128,14 +132,61 @@ export function VectorFlow() {
         activeFlowId,
         onImport: loadProject,
         onPermissionsChange: (shouldBeReadOnly) => {
-            // Only force read-only if permissions require it
             if (shouldBeReadOnly) {
                 setIsReadOnly(true);
             }
-            // Don't automatically disable read-only when permissions allow editing
-            // Let the user control it manually
         },
     });
+
+    // ... existing code ...
+
+    // Consolidated Actions
+    const { handleSignIn } = useAuthActions();
+    const { requestFileName, fileNameDialogProps } = useFileNameDialog();
+    
+    const { handleNewLocal, handleExport, handleImport } = useLocalFileActions({
+        projectId,
+        projectName,
+        flows,
+        activeFlowId,
+        loadProject,
+        setGoogleDriveFileId,
+        requestFileName,
+    });
+
+    const handleShareLink = useCallback(() => {
+        if (!googleDriveFileId) return;
+        const url = `${window.location.origin}${window.location.pathname}?driveId=${googleDriveFileId}`;
+        navigator.clipboard.writeText(url);
+        toast({
+            title: "Link Copied",
+            description: "Share link copied. End user must have appropriate permissions to access.",
+        });
+    }, [googleDriveFileId, toast]);
+
+    const handleUnlinkDrive = useCallback(() => {
+        setGoogleDriveFileId(undefined);
+        toast({
+            title: "Unlinked",
+            description: "Project disconnected from Google Drive.",
+        });
+    }, [setGoogleDriveFileId, toast]);
+
+    const { handleBrowseDrive, handleCreateDriveFile, driveBrowserProps } = useDriveFileActions({
+        user,
+        accessToken,
+        projectId,
+        projectName,
+        flows,
+        activeFlowId,
+        loadProject,
+        setGoogleDriveFileId,
+        requestFileName,
+    });
+    
+    // ... handleBrowseDrive, handleCreateDriveFile ...
+
+    // ... existing code ...
 
     // View Only Toast Logic
     useEffect(() => {
@@ -483,167 +534,7 @@ export function VectorFlow() {
 
     const selectedStepId = useMemo(() => selectedNodes.length === 1 ? selectedNodes[0].id : null, [selectedNodes]);
 
-    const handleBrowseDrive = async () => {
-        if (!user || !accessToken) {
-            toast({
-                title: "Login Required",
-                description: "Please sign in with Google to browse Drive.",
-            });
-            return;
-        }
-
-        try {
-            await openPicker(
-                async (file) => {
-                    const data = await GoogleDriveService.getFileContent(file.id);
-                    loadProject(data.flows, data.activeFlowId, data.projectId, data.projectName, file.id);
-                    toast({
-                        title: "Project Loaded",
-                        description: `Successfully imported "${file.name}" from Google Drive.`,
-                    });
-                },
-                () => console.log('Picker cancelled')
-            );
-        } catch (error: any) {
-            console.error('Picker error:', error);
-            toast({
-                variant: "destructive",
-                title: "Drive Error",
-                description: "Failed to open Drive picker.",
-            });
-        }
-    };
-
-    const handleCreateDriveFile = async () => {
-        if (!user || !accessToken) {
-            toast({
-                title: "Login Required",
-                description: "Please sign in with Google to create a file.",
-            });
-            return;
-        }
-
-        try {
-            await openPicker(
-                async (folder) => {
-                    const data = {
-                        version: '1.0.0',
-                        timestamp: new Date().toISOString(),
-                        projectId,
-                        projectName,
-                        flows,
-                        activeFlowId,
-                    };
-
-                    try {
-                        const fileId = await GoogleDriveService.createFile(
-                            `${projectName || 'vectorflow-project'}.json`,
-                            data,
-                            folder.id
-                        );
-                        
-                        setGoogleDriveFileId(fileId);
-                        
-                        toast({
-                            title: "File Created",
-                            description: `Successfully created project file in Google Drive.`,
-                        });
-                    } catch (err: any) {
-                         console.error('File creation error:', err);
-                         toast({
-                            variant: "destructive",
-                            title: "Creation Failed",
-                            description: err.message || "Failed to create file.",
-                        });
-                    }
-                },
-                () => console.log('Picker cancelled'),
-                'folder'
-            );
-        } catch (error: any) {
-            console.error('Picker error:', error);
-            toast({
-                variant: "destructive",
-                title: "Drive Error",
-                description: "Failed to open Drive picker.",
-            });
-        }
-    };
-
-    const handleUnlinkDrive = () => {
-        setGoogleDriveFileId(undefined);
-        toast({
-            title: "Unlinked",
-            description: "Project disconnected from Google Drive.",
-        });
-    };
-
-    const handleExport = async () => {
-        try {
-            const data = {
-                version: '1.0.0',
-                timestamp: new Date().toISOString(),
-                projectId,
-                projectName,
-                flows,
-                activeFlowId,
-            };
-
-            const exportResult = await ExportImportService.export('json', data);
-            const blob = new Blob([exportResult.content], { type: exportResult.mimeType });
-            const url = URL.createObjectURL(blob);
-            const a = document.createElement('a');
-            a.href = url;
-            const safeName = (projectName || 'project').replace(/[^a-z0-9]/gi, '-').toLowerCase();
-            a.download = `vectorflow-${safeName}-${new Date().toISOString().split('T')[0]}.json`;
-            document.body.appendChild(a);
-            a.click();
-            document.body.removeChild(a);
-            URL.revokeObjectURL(url);
-
-            toast({
-                title: "Project Exported",
-                description: "Downloaded to your computer.",
-            });
-        } catch (error: any) {
-            console.error('Export failed:', error);
-            toast({
-                variant: "destructive",
-                title: "Export Failed",
-                description: error.message || "Failed to export project.",
-            });
-        }
-    };
-
-    const handleImport = () => {
-        const input = document.createElement('input');
-        input.type = 'file';
-        input.accept = '.json';
-        input.onchange = async (e: Event) => {
-            const file = (e.target as HTMLInputElement).files?.[0];
-            if (!file) return;
-
-            try {
-                const extension = file.name.split('.').pop() || 'json';
-                const data = await ExportImportService.import(extension, file);
-                
-                loadProject(data.flows, data.activeFlowId, data.projectId, data.projectName);
-
-                toast({
-                    title: "Project Imported",
-                    description: `Loaded ${data.flows.length} flow(s) from file.`,
-                });
-            } catch (error: any) {
-                console.error('Import failed:', error);
-                toast({
-                    variant: "destructive",
-                    title: "Import Failed",
-                    description: error.message || "Failed to import project.",
-                });
-            }
-        };
-        input.click();
-    };
+    // Handlers managed by hooks (useDriveFileActions, useLocalFileActions)
 
     // Keyboard Shortcuts for Undo/Redo
     useEffect(() => {
@@ -702,248 +593,265 @@ export function VectorFlow() {
     }, [copySelection, pasteSelection, isReadOnly, toast]);
 
     return (
-        <div className="flex flex-col h-screen w-screen bg-background text-foreground font-body">
-            <Header 
-                projectName={projectName} 
-                onNameChange={setProjectName}
-                isReadOnly={isReadOnly}
-                syncIndicator={
-                    <SyncIndicator
-                        user={user}
-                        syncState={syncState}
-                        googleDriveFileId={googleDriveFileId}
-                        projectId={projectId}
-                        projectName={projectName}
-                        onToggleSync={toggleSync}
-                        onBrowseDrive={handleBrowseDrive}
-                        onCreateFile={handleCreateDriveFile}
-                        onUnlink={handleUnlinkDrive}
-                        onCopyLink={() => {
-                            toast({
-                                title: "Link Copied",
-                                description: "Shareable link copied to clipboard.",
-                            });
-                        }}
-                    />
-                }
-            />
-            
-            <Toolbar 
-                onLeftSidebarToggle={handleLeftSidebarToggle}
-                onRightSidebarToggle={handleRightSidebarToggle}
-                onAutoLayout={() => handleAutoLayout({ silent: false })}
-                metaConfig={metaConfig}
-                onUpdateMetaConfig={updateMetaConfig}
-                leftSidebarOpen={leftSidebarOpen}
-                rightSidebarOpen={rightSidebarOpen}
-                onExport={handleExport}
-                onImport={handleImport}
-                isReadOnly={isReadOnly}
-                onToggleReadOnly={() => {
-                    if (!syncState.isReadOnlyDueToPermissions) {
-                        setIsReadOnly(!isReadOnly);
-                    }
-                }}
-                isReadOnlyForced={syncState.isReadOnlyDueToPermissions}
-                onUndo={undo}
-                onRedo={redo}
-                canUndo={canUndo}
-                canRedo={canRedo}
-            />
-
-            <div className="flex flex-1 overflow-hidden">
-                {/* Left Sidebar - Outline */}
-                <Sidebar side="left" open={leftSidebarOpen} onOpenChange={handleLeftSidebarChange} isDesktop={isDesktop}>
-                    <Outline 
-                        nodes={nodes} 
-                        selectedStepIds={selectedNodes.map(n => n.id)} 
-                        onStepSelect={handleStepsSelect}
-                        onDeliverableSelect={(nodeId, deliverableId) => {
-                            handleStepsSelect([nodeId]);
-                            selectDeliverable(nodeId, deliverableId); // Both arguments needed
-                        }} 
-                    />
-                </Sidebar>
-
-                <main className="relative flex-1 h-full">
-                    <ReactFlow
-                        nodes={nodes}
-                        edges={edges}
-                        onNodesChange={onNodesChange}
-                        onEdgesChange={onEdgesChange}
-                        onConnect={onConnect}
-                        onConnectStart={onConnectStart}
-                        onConnectEnd={onConnectEnd}
-                        onSelectionChange={onSelectionChange}
-                        onNodeDragStart={takeSnapshot}
-                        onNodeContextMenu={onNodeContextMenu}
-                        onPaneContextMenu={onPaneContextMenu}
-                        onEdgeContextMenu={onEdgeContextMenu}
-                        onSelectionContextMenu={onSelectionContextMenu}
-                        onPaneClick={onPaneClick}
-                        nodeTypes={nodeTypes}
-                        edgeTypes={edgeTypes}
-                        defaultEdgeOptions={{ type: 'custom', zIndex: 10 }}
-                        nodesDraggable={!isReadOnly}
-                        nodesConnectable={!isReadOnly}
-                        elementsSelectable={true}
-                        deleteKeyCode={isReadOnly ? null : 'Delete'}
-                        multiSelectionKeyCode="Shift"
-                        fitView
-                        minZoom={0.1}
-                        maxZoom={4}
-                        className="bg-background"
-                        selectionOnDrag={true}
-                        panOnDrag={[1, 2]} // Middle and Right click to pan
-                        selectionMode={SelectionMode.Partial}
-                    >
-                        <Controls />
-                        <Background variant={BackgroundVariant.Dots} gap={16} size={1} />
-                        
-                        {contextMenu && (
-                            <FlowContextMenu
-                                x={contextMenu.x}
-                                y={contextMenu.y}
-                                onClose={() => setContextMenu(null)}
-                                actions={[
-                                    // Node Actions
-                                    ...((contextMenu.type === 'node' || contextMenu.type === 'selection') ? [
-                                        {
-                                            label: 'Copy',
-                                            icon: Copy,
-                                            shortcut: '⌘C',
-                                            action: () => {
-                                                copySelection();
-                                                toast({ title: "Copied", description: "Selection copied to clipboard." });
-                                            }
-                                        },
-                                        {
-                                            label: 'Duplicate',
-                                            icon: CopyPlus,
-                                            action: () => {
-                                                duplicateSelection();
-                                                toast({ title: "Duplicated", description: "Selection duplicated." });
-                                            }
-                                        }
-                                    ] : []),
-
-                                    // Group Actions (Single Group or Multi-Select)
-                                    ...((contextMenu.type === 'node' && contextMenu.data?.type === 'group') ? [
-                                        {
-                                            label: 'Ungroup',
-                                            icon: Ungroup,
-                                            action: ungroupSelection
-                                        }
-                                    ] : []),
-                                    
-                                    // Grouping via Multi-Select
-                                    ...((contextMenu.type === 'selection') ? [
-                                        {
-                                            label: 'Group',
-                                            icon: Group,
-                                            action: groupSelection
-                                        }
-                                    ] : []),
-
-                                    // Pane Actions
-                                    ...(contextMenu.type === 'pane' ? [
-                                        {
-                                            label: 'Paste',
-                                            icon: ClipboardPaste,
-                                            shortcut: '⌘V',
-                                            action: () => {
-                                                pasteSelection();
-                                            }
-                                        }
-                                    ] : []),
-                                    
-                                    // Delete Action (Common for all except pane)
-                                    ...(contextMenu.type !== 'pane' ? [
-                                        {
-                                            label: 'Delete',
-                                            icon: Trash2,
-                                            shortcut: 'Del',
-                                            destructive: true,
-                                            action: deleteSelection
-                                        }
-                                    ] : [])
-                                ]}
-                            />
-                        )}
-                    </ReactFlow>
-                </main>
-                
-                {/* Right Sidebar - Settings/Properties */}
-                <Sidebar side="right" open={rightSidebarOpen} onOpenChange={handleRightSidebarChange} isDesktop={isDesktop}>
-                    {isReadOnly ? (
-                        <ReadOnlyPropertiesPanel
-                            selectedNodes={selectedNodes}
-                            selectedEdge={selectedEdges.length === 1 ? selectedEdges[0] : null}
-                            selectedDeliverableId={selectedDeliverableId}
-                            nodes={nodes}
-                            metaConfig={metaConfig}
+        <FlowProvider value={{ metaConfig }}>
+            <div className="flex flex-col h-screen w-screen bg-background text-foreground font-body">
+                <Header 
+                    projectName={projectName} 
+                    onNameChange={setProjectName}
+                    isReadOnly={isReadOnly}
+                    syncIndicator={
+                        <SyncIndicator
+                            user={user}
+                            syncState={syncState}
+                            googleDriveFileId={googleDriveFileId}
+                            projectId={projectId}
+                            projectName={projectName}
+                            onToggleSync={toggleSync}
+                            onBrowseDrive={handleBrowseDrive}
+                            onCreateFile={handleCreateDriveFile}
+                            onUnlink={handleUnlinkDrive}
+                            onCopyLink={() => {
+                                toast({
+                                    title: "Link Copied",
+                                    description: "Shareable link copied to clipboard.",
+                                });
+                            }}
                         />
-                    ) : (
-                        <>
-                            <SidebarHeader>
-                                <div className="flex items-center gap-3">
-                                    <div className="p-2 rounded-md bg-muted shrink-0">
-                                        {rightSidebarInfo.type === 'step' && <DynamicIcon name={rightSidebarInfo.icon} fallback={Square} className="w-5 h-5" />}
-                                        {rightSidebarInfo.type === 'deliverable' && <DynamicIcon name={rightSidebarInfo.icon} fallback={FileText} className="w-5 h-5" />}
-                                        {rightSidebarInfo.type === 'group' && <DynamicIcon name={rightSidebarInfo.icon} fallback={Layers} className="w-5 h-5" />}
-                                        {rightSidebarInfo.type === 'edge' && <DynamicIcon name={rightSidebarInfo.icon} fallback={Share2} className="w-5 h-5" />}
-                                        {rightSidebarInfo.type === 'multi' && <Boxes className="w-5 h-5" />}
-                                        {rightSidebarInfo.type === 'none' && <LayoutGrid className="w-5 h-5" />}
-                                    </div>
-                                    <div className="flex flex-col">
-                                        <h2 className="text-lg font-semibold leading-none">{rightSidebarInfo.title}</h2>
-                                        <p className="text-xs text-muted-foreground mt-1">{rightSidebarInfo.description}</p>
-                                    </div>
-                                </div>
-                            </SidebarHeader>
-                            <SidebarContent className="p-4">
-                                <SettingsPanel 
-                                    selectedSteps={selectedNodes}
-                                    selectedEdges={selectedEdges}
-                                    selectedEdge={selectedEdges.length === 1 ? selectedEdges[0] : null}
-                                    selectedDeliverableId={selectedDeliverableId}
-                                    onAddStep={addStep}
-                                    onAddDeliverable={addDeliverable}
-                                    onUpdateStepLabel={updateStepLabel}
-                                    onUpdateStepColor={updateStepColor}
-                                    onUpdateStepIcon={updateStepIcon}
-                                    onUpdateEdgeLabel={updateEdgeLabel}
-                                    onUpdateEdgeColor={updateEdgeColor}
-                                    onUpdateEdgeIcon={updateEdgeIcon}
-                                    onUpdateDeliverable={updateDeliverable}
-                                    onDeleteSelection={deleteSelection}
-                                    onGroupSelection={groupSelection}
-                                    onUngroup={ungroupSelection}
-                                    onTitleChange={handleSettingsPanelTitleChange}
-                                    metaConfig={metaConfig}
-                                    onUpdateMetaData={updateMetaData}
-                                    onUpdateDeliverableMetaData={updateDeliverableMetaData}
-                                    onUpdateEdgeMetaData={updateEdgeMetaData} 
-                                />
-                            </SidebarContent>
-                        </>
-                    )}
-                </Sidebar>
-            </div>
-            
-            <FlowTabs
-                flows={flows}
-                activeFlowId={activeFlowId}
-                onSwitchFlow={switchFlow}
-                onAddFlow={addFlow}
-                onUpdateFlowTitle={updateFlowTitle}
-                onDeleteFlow={deleteFlow}
-                onDuplicateFlow={duplicateFlow}
-                onReorderFlow={reorderFlow}
-                isReadOnly={isReadOnly}
-            />
-            
+                    }
+                />
+                
+                <Toolbar 
+                    onLeftSidebarToggle={handleLeftSidebarToggle}
+                    onRightSidebarToggle={handleRightSidebarToggle}
+                    onAutoLayout={() => handleAutoLayout({ silent: false })}
+                    metaConfig={metaConfig}
+                    onUpdateMetaConfig={updateMetaConfig}
+                    leftSidebarOpen={leftSidebarOpen}
+                    rightSidebarOpen={rightSidebarOpen}
+                    onExport={handleExport}
+                    onImport={handleImport}
+                    isReadOnly={isReadOnly}
+                    onToggleReadOnly={() => {
+                        if (!syncState.isReadOnlyDueToPermissions) {
+                            setIsReadOnly(!isReadOnly);
+                        }
+                    }}
+                    isReadOnlyForced={syncState.isReadOnlyDueToPermissions}
+                    onUndo={undo}
+                    onRedo={redo}
+                    canUndo={canUndo}
+                    canRedo={canRedo}
 
-        </div>
+                    onNewLocal={handleNewLocal}
+                    
+                    user={user}
+                    syncState={syncState}
+                    googleDriveFileId={googleDriveFileId}
+                    onNewCloud={handleCreateDriveFile}
+                    onOpenCloud={handleBrowseDrive}
+                    onSaveCloud={manualSync}
+                    onSaveAsCloud={handleCreateDriveFile}
+                    onToggleAutoSave={toggleSync}
+                    onSignIn={handleSignIn}
+                    onShareLink={handleShareLink}
+                />
+
+                <div className="flex flex-1 overflow-hidden">
+                    {/* Left Sidebar - Outline */}
+                    <Sidebar side="left" open={leftSidebarOpen} onOpenChange={handleLeftSidebarChange} isDesktop={isDesktop}>
+                        <Outline 
+                            nodes={nodes} 
+                            selectedStepIds={selectedNodes.map(n => n.id)} 
+                            onStepSelect={handleStepsSelect}
+                            onDeliverableSelect={(nodeId, deliverableId) => {
+                                handleStepsSelect([nodeId]);
+                                selectDeliverable(nodeId, deliverableId); // Both arguments needed
+                            }} 
+                        />
+                    </Sidebar>
+
+                    <main className="relative flex-1 h-full">
+                        <ReactFlow
+                            nodes={nodes}
+                            edges={edges}
+                            onNodesChange={onNodesChange}
+                            onEdgesChange={onEdgesChange}
+                            onConnect={onConnect}
+                            onConnectStart={onConnectStart}
+                            onConnectEnd={onConnectEnd}
+                            onSelectionChange={onSelectionChange}
+                            onNodeDragStart={takeSnapshot}
+                            onNodeContextMenu={onNodeContextMenu}
+                            onPaneContextMenu={onPaneContextMenu}
+                            onEdgeContextMenu={onEdgeContextMenu}
+                            onSelectionContextMenu={onSelectionContextMenu}
+                            onPaneClick={onPaneClick}
+                            nodeTypes={nodeTypes}
+                            edgeTypes={edgeTypes}
+                            defaultEdgeOptions={{ type: 'custom', zIndex: 10 }}
+                            nodesDraggable={!isReadOnly}
+                            nodesConnectable={!isReadOnly}
+                            elementsSelectable={true}
+                            deleteKeyCode={isReadOnly ? null : 'Delete'}
+                            multiSelectionKeyCode="Shift"
+                            fitView
+                            minZoom={0.1}
+                            maxZoom={4}
+                            className="bg-background"
+                            selectionOnDrag={true}
+                            panOnDrag={[1, 2]} // Middle and Right click to pan
+                            selectionMode={SelectionMode.Partial}
+                        >
+                            <Controls />
+                            <Background variant={BackgroundVariant.Dots} gap={16} size={1} />
+                            
+                            {contextMenu && (
+                                <FlowContextMenu
+                                    x={contextMenu.x}
+                                    y={contextMenu.y}
+                                    onClose={() => setContextMenu(null)}
+                                    actions={[
+                                        // Node Actions
+                                        ...((contextMenu.type === 'node' || contextMenu.type === 'selection') ? [
+                                            {
+                                                label: 'Copy',
+                                                icon: Copy,
+                                                shortcut: '⌘C',
+                                                action: () => {
+                                                    copySelection();
+                                                    toast({ title: "Copied", description: "Selection copied to clipboard." });
+                                                }
+                                            },
+                                            {
+                                                label: 'Duplicate',
+                                                icon: CopyPlus,
+                                                action: () => {
+                                                    duplicateSelection();
+                                                    toast({ title: "Duplicated", description: "Selection duplicated." });
+                                                }
+                                            }
+                                        ] : []),
+
+                                        // Group Actions (Single Group or Multi-Select)
+                                        ...((contextMenu.type === 'node' && contextMenu.data?.type === 'group') ? [
+                                            {
+                                                label: 'Ungroup',
+                                                icon: Ungroup,
+                                                action: ungroupSelection
+                                            }
+                                        ] : []),
+                                        
+                                        // Grouping via Multi-Select
+                                        ...((contextMenu.type === 'selection') ? [
+                                            {
+                                                label: 'Group',
+                                                icon: Group,
+                                                action: groupSelection
+                                            }
+                                        ] : []),
+
+                                        // Pane Actions
+                                        ...(contextMenu.type === 'pane' ? [
+                                            {
+                                                label: 'Paste',
+                                                icon: ClipboardPaste,
+                                                shortcut: '⌘V',
+                                                action: () => {
+                                                    pasteSelection();
+                                                }
+                                            }
+                                        ] : []),
+                                        
+                                        // Delete Action (Common for all except pane)
+                                        ...(contextMenu.type !== 'pane' ? [
+                                            {
+                                                label: 'Delete',
+                                                icon: Trash2,
+                                                shortcut: 'Del',
+                                                destructive: true,
+                                                action: deleteSelection
+                                            }
+                                        ] : [])
+                                    ]}
+                                />
+                            )}
+                        </ReactFlow>
+                    </main>
+                    
+                    {/* Right Sidebar - Settings/Properties */}
+                    <Sidebar side="right" open={rightSidebarOpen} onOpenChange={handleRightSidebarChange} isDesktop={isDesktop}>
+                        {isReadOnly ? (
+                            <ReadOnlyPropertiesPanel
+                                selectedNodes={selectedNodes}
+                                selectedEdge={selectedEdges.length === 1 ? selectedEdges[0] : null}
+                                selectedDeliverableId={selectedDeliverableId}
+                                nodes={nodes}
+                                metaConfig={metaConfig}
+                            />
+                        ) : (
+                            <>
+                                <SidebarHeader>
+                                    <div className="flex items-center gap-3">
+                                        <div className="p-2 rounded-md bg-muted shrink-0">
+                                            {rightSidebarInfo.type === 'step' && <DynamicIcon name={rightSidebarInfo.icon} fallback={Square} className="w-5 h-5" />}
+                                            {rightSidebarInfo.type === 'deliverable' && <DynamicIcon name={rightSidebarInfo.icon} fallback={FileText} className="w-5 h-5" />}
+                                            {rightSidebarInfo.type === 'group' && <DynamicIcon name={rightSidebarInfo.icon} fallback={Layers} className="w-5 h-5" />}
+                                            {rightSidebarInfo.type === 'edge' && <DynamicIcon name={rightSidebarInfo.icon} fallback={Share2} className="w-5 h-5" />}
+                                            {rightSidebarInfo.type === 'multi' && <Boxes className="w-5 h-5" />}
+                                            {rightSidebarInfo.type === 'none' && <LayoutGrid className="w-5 h-5" />}
+                                        </div>
+                                        <div className="flex flex-col">
+                                            <h2 className="text-lg font-semibold leading-none">{rightSidebarInfo.title}</h2>
+                                            <p className="text-xs text-muted-foreground mt-1">{rightSidebarInfo.description}</p>
+                                        </div>
+                                    </div>
+                                </SidebarHeader>
+                                <SidebarContent className="p-4">
+                                    <SettingsPanel 
+                                        selectedSteps={selectedNodes}
+                                        selectedEdges={selectedEdges}
+                                        selectedEdge={selectedEdges.length === 1 ? selectedEdges[0] : null}
+                                        selectedDeliverableId={selectedDeliverableId}
+                                        onAddStep={addStep}
+                                        onAddDeliverable={addDeliverable}
+                                        onUpdateStepLabel={updateStepLabel}
+                                        onUpdateStepColor={updateStepColor}
+                                        onUpdateStepIcon={updateStepIcon}
+                                        onUpdateEdgeLabel={updateEdgeLabel}
+                                        onUpdateEdgeColor={updateEdgeColor}
+                                        onUpdateEdgeIcon={updateEdgeIcon}
+                                        onUpdateDeliverable={updateDeliverable}
+                                        onDeleteSelection={deleteSelection}
+                                        onGroupSelection={groupSelection}
+                                        onUngroup={ungroupSelection}
+                                        onTitleChange={handleSettingsPanelTitleChange}
+                                        metaConfig={metaConfig}
+                                        onUpdateMetaData={updateMetaData}
+                                        onUpdateDeliverableMetaData={updateDeliverableMetaData}
+                                        onUpdateEdgeMetaData={updateEdgeMetaData} 
+                                    />
+                                </SidebarContent>
+                            </>
+                        )}
+                    </Sidebar>
+                </div>
+                
+                <FlowTabs
+                    flows={flows}
+                    activeFlowId={activeFlowId}
+                    onSwitchFlow={switchFlow}
+                    onAddFlow={addFlow}
+                    onUpdateFlowTitle={updateFlowTitle}
+                    onDeleteFlow={deleteFlow}
+                    onDuplicateFlow={duplicateFlow}
+                    onReorderFlow={reorderFlow}
+                    isReadOnly={isReadOnly}
+                />
+                
+
+                <FileNameDialog {...fileNameDialogProps} />
+                <DriveBrowserDialog {...driveBrowserProps} />
+            </div>
+        </FlowProvider>
     );
 }

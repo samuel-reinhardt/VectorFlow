@@ -191,7 +191,14 @@ export const useVectorFlow = (initialNodes: Node[], initialEdges: Edge[]) => {
 
   // 9. Persistence Hook
   const handleOnLoad = useCallback((loadedFlows: any[], loadedActiveId: string, loadedProjectId?: string, loadedProjectName?: string, loadedDriveId?: string) => {
-    setFlows(loadedFlows);
+    // Project-level config: Normalize loaded flows to share the same configuration
+    // We use the first flow's config as the project source of truth
+    const projectConfig = loadedFlows[0]?.metaConfig;
+    const normalizedFlows = projectConfig 
+        ? loadedFlows.map(f => ({ ...f, metaConfig: projectConfig }))
+        : loadedFlows;
+
+    setFlows(normalizedFlows);
     setActiveFlowId(loadedActiveId);
     if (loadedProjectId) setProjectId(loadedProjectId);
     if (loadedProjectName) setProjectName(loadedProjectName);

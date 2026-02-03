@@ -32,16 +32,40 @@ export type FieldDefinition = {
   numberConfig?: NumberConfig;
 };
 
+export type AutoStyleRule = {
+    id: string;
+    target: 'step' | 'edge' | 'group' | 'deliverable';
+    fieldId: string;
+    condition: 'equals' | 'contains' | 'not_equals' | 'greater_than' | 'less_than' | 'is_set' | 'is_not_set';
+    value: any;
+    apply: {
+        color?: string;
+        icon?: string;
+    };
+};
+
+export type VisualRules = {
+    palette: string[];
+    icons: string[];
+    autoStyle: AutoStyleRule[];
+};
+
 export type MetaConfig = {
   step: FieldDefinition[];
   deliverable: FieldDefinition[];
   group: FieldDefinition[];
   edge: FieldDefinition[];
+  visualRules: VisualRules;
 };
 
 export const EMPTY_META_CONFIG: MetaConfig = {
   step: [],
   deliverable: [],
   group: [],
-  edge: []
+  edge: [],
+  visualRules: {
+    palette: [],
+    icons: [],
+    autoStyle: []
+  }
 };

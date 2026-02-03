@@ -7,6 +7,7 @@ import { cn, getTextColorForBackground } from '@/lib/utils';
 
 import { Square } from 'lucide-react';
 import { DynamicIcon } from '@/components/common/dynamic-icon';
+import { useAutoStyle } from '@/hooks/use-auto-style';
 import { DeliverableItem } from '@/components/common/deliverable-item';
 
 const CustomNode = ({ id, data, selected }: NodeProps<{ 
@@ -20,8 +21,15 @@ const CustomNode = ({ id, data, selected }: NodeProps<{
   selectedDeliverableId?: string | null;
 }>) => {
 
+  const { color, icon } = useAutoStyle({ 
+      type: 'step', 
+      data, 
+      explicitColor: data.color, 
+      explicitIcon: data.icon 
+  });
+
   // Render for Step
-  const textColor = getTextColorForBackground(data.color);
+  const textColor = getTextColorForBackground(color || '#ffffff');
   const deliverables = Array.isArray(data.deliverables) ? data.deliverables : [];
 
   const handleDragStart = (e: React.DragEvent, index: number) => {
@@ -61,11 +69,11 @@ const CustomNode = ({ id, data, selected }: NodeProps<{
           "outline outline-none hover:outline transition-[outline] duration-200 outline-offset-1",
           selected ? "outline outline-ring hover:outline-ring/60" : "hover:outline-ring/30"
         )}
-        style={{ borderColor: data.color, height: 'auto', minHeight: '60px' }}
+        style={{ borderColor: color, height: 'auto', minHeight: '60px' }}
       >
         <CardHeader
           className="p-3 flex-shrink-0"
-          style={{ backgroundColor: data.color }}
+          style={{ backgroundColor: color }}
           onClick={(e) => {
                // If clicking header, select the node but deselect specific deliverable
                // But React Flow handles node selection automatically on click.
@@ -76,7 +84,7 @@ const CustomNode = ({ id, data, selected }: NodeProps<{
           }}
         >
           <CardTitle className="text-base break-words flex items-center gap-2" style={{ color: textColor }}>
-            <DynamicIcon name={data.icon} fallback={Square} className="w-4 h-4 shrink-0" />
+            <DynamicIcon name={icon} fallback={Square} className="w-4 h-4 shrink-0" />
             {data.label}
           </CardTitle>
         </CardHeader>
@@ -85,7 +93,7 @@ const CustomNode = ({ id, data, selected }: NodeProps<{
         <CardContent className="p-2 flex flex-col gap-2 bg-background flex-grow">
             {deliverables.length > 0 ? (
                 deliverables.map((item: any, index: number) => (
-                  <DeliverableItem
+                    <DeliverableItem
                     key={item.id}
                     item={item}
                     index={index}
@@ -94,7 +102,7 @@ const CustomNode = ({ id, data, selected }: NodeProps<{
                     onDragOver={handleDragOver}
                     onDrop={handleDrop}
                     onClick={handleDeliverableClick}
-                  />
+                    />
                 ))
             ) : (
                 <div className="text-xs text-muted-foreground text-center py-2 italic opacity-50">

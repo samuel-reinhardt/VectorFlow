@@ -1,4 +1,4 @@
-'use client';
+import { useAuthActions } from '@/hooks/use-auth-actions';
 
 import { useUser } from '@/firebase/auth/use-user';
 import { useGoogleDriveToken } from '@/hooks/use-google-drive';
@@ -21,48 +21,7 @@ export function UserProfile() {
   const { user, isLoading } = useUser();
   const accessToken = useGoogleDriveToken();
   const { toast } = useToast();
-
-  const handleSignIn = async () => {
-    try {
-      const result = await signInWithGoogle();
-      if (result) {
-        const credential = GoogleAuthProvider.credentialFromResult(result);
-        const token = credential?.accessToken;
-        if (token) {
-          GoogleDriveService.setAccessToken(token);
-        }
-      }
-      toast({
-        title: "Welcome!",
-        description: "Successfully signed in with Google.",
-      });
-    } catch (error) {
-      console.error("Error signing in:", error);
-      toast({
-        variant: "destructive",
-        title: "Login Failed",
-        description: "Could not authenticate with Google.",
-      });
-    }
-  };
-
-  const handleSignOut = async () => {
-    try {
-      await signOut();
-      GoogleDriveService.clearAccessToken(); // Clear local storage token
-      toast({
-        title: "Logged out",
-        description: "You have been signed out of your account.",
-      });
-    } catch (error) {
-      console.error("Error signing out:", error);
-      toast({
-        variant: "destructive",
-        title: "Error",
-        description: "Failed to sign out. Please try again.",
-      });
-    }
-  };
+  const { handleSignIn, handleSignOut } = useAuthActions();
 
   if (isLoading) {
     return <div className="h-8 w-8 rounded-full bg-muted animate-pulse" />;

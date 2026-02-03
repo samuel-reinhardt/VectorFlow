@@ -6,9 +6,18 @@ import { cn, hexToRgba } from '@/lib/utils';
 import { Layers } from 'lucide-react';
 import { DynamicIcon } from '@/components/common/dynamic-icon';
 
+import { useAutoStyle } from '@/hooks/use-auto-style';
+
 const GroupNode = ({ data, selected }: NodeProps<{ label: string; color: string; icon?: string }>) => {
-  const borderColor = data.color || 'hsl(var(--muted-foreground))';
-  const backgroundColor = hexToRgba(data.color || '#E5E7EB', selected ? 0.3 : 0.1);
+  const { color, icon } = useAutoStyle({ 
+     type: 'group', 
+     data, 
+     explicitColor: data.color, 
+     explicitIcon: data.icon 
+  });
+
+  const borderColor = color || 'hsl(var(--muted-foreground))';
+  const backgroundColor = hexToRgba(color || '#E5E7EB', selected ? 0.3 : 0.1);
 
   return (
     <div
@@ -25,7 +34,7 @@ const GroupNode = ({ data, selected }: NodeProps<{ label: string; color: string;
     >
       <div className="transition-colors absolute top-4 left-4 flex items-center gap-1.5 cursor-pointer">
         <DynamicIcon 
-          name={data.icon} 
+          name={icon} 
           fallback={Layers} 
           className={cn(
             "w-3.5 h-3.5 transition-colors text-primary",
