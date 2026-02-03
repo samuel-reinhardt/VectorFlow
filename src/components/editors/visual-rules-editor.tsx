@@ -58,7 +58,7 @@ export function VisualRulesEditor({ rules, metaConfig, onChange }: VisualRulesEd
     const addRule = () => {
         const newRule: AutoStyleRule = {
             id: crypto.randomUUID(),
-            target: 'step',
+            target: ['step'],
             fieldId: '',
             condition: 'equals',
             value: '',
@@ -207,7 +207,14 @@ export function VisualRulesEditor({ rules, metaConfig, onChange }: VisualRulesEd
                         </div>
 
                         <div className="space-y-3">
-                            {rules.autoStyle.map((rule, index) => (
+                            {rules.autoStyle.map((rule, index) => {
+                                // Compute available fields based on selected targets
+                                const availableFields = new Map<string, string>();
+                                rule.target.forEach(t => {
+                                    (metaConfig[t] || []).forEach(f => availableFields.set(f.id, f.label));
+                                });
+                                
+                                return (
                                 <div key={rule.id} className="border rounded-md p-3 space-y-3 bg-card relative">
                                     <Button 
                                         size="icon" 
@@ -222,23 +229,32 @@ export function VisualRulesEditor({ rules, metaConfig, onChange }: VisualRulesEd
                                         {/* Target & Field */}
                                         <div className="space-y-1">
                                             <Label className="text-[10px]">If Target Is</Label>
-                                            <Select value={rule.target} onValueChange={(v: any) => updateRule(rule.id, { target: v, fieldId: '' })}>
-                                                <SelectTrigger className="h-7 text-xs"><SelectValue /></SelectTrigger>
-                                                <SelectContent>
-                                                    <SelectItem value="step">Step</SelectItem>
-                                                    <SelectItem value="deliverable">Deliverable</SelectItem>
-                                                    <SelectItem value="group">Group</SelectItem>
-                                                    <SelectItem value="edge">Edge</SelectItem>
-                                                </SelectContent>
-                                            </Select>
+                                            <div className="flex flex-wrap gap-1">
+                                                {(['step', 'deliverable', 'group', 'edge'] as const).map(t => (
+                                                    <button
+                                                        key={t}
+                                                        onClick={() => {
+                                                            const current = rule.target;
+                                                            const newTargets = current.includes(t) 
+                                                                ? current.filter(x => x !== t)
+                                                                : [...current, t];
+                                                            if (newTargets.length === 0) return; 
+                                                            updateRule(rule.id, { target: newTargets });
+                                                        }}
+                                                        className={`px-1.5 py-0.5 text-[10px] rounded border transition-colors ${rule.target.includes(t) ? 'bg-primary text-primary-foreground border-primary' : 'bg-muted text-muted-foreground hover:bg-muted/80'}`}
+                                                    >
+                                                        {t.charAt(0).toUpperCase() + t.slice(1)}
+                                                    </button>
+                                                ))}
+                                            </div>
                                         </div>
                                          <div className="space-y-1">
                                             <Label className="text-[10px]">And Field</Label>
                                              <Select value={rule.fieldId} onValueChange={(v) => updateRule(rule.id, { fieldId: v })}>
                                                 <SelectTrigger className="h-7 text-xs"><SelectValue placeholder="Select Field" /></SelectTrigger>
                                                 <SelectContent>
-                                                    {(metaConfig[rule.target] || []).map(f => (
-                                                        <SelectItem key={f.id} value={f.id}>{f.label}</SelectItem>
+                                                    {Array.from(availableFields.entries()).map(([id, label]) => (
+                                                        <SelectItem key={id} value={id}>{label}</SelectItem>
                                                     ))}
                                                 </SelectContent>
                                             </Select>
@@ -300,7 +316,7 @@ export function VisualRulesEditor({ rules, metaConfig, onChange }: VisualRulesEd
                                         </div>
                                     </div>
                                 </div>
-                            ))}
+                            )})}
                         </div>
                     </div>
                 )}

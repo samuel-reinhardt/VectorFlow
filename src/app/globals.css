@@ -83,6 +83,35 @@
   }
 }
 
+@layer utilities {
+  .no-scrollbar::-webkit-scrollbar {
+    display: none;
+  }
+  .no-scrollbar {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+
+  /* Scroll Shadows: Shows a shadow on edges when scrolling is possible */
+  .scroll-shadows {
+    background-image:
+      /* Shadow Cover LEFT */
+      linear-gradient(to right, hsl(var(--card)) 30%, transparent),
+      /* Shadow Cover RIGHT */
+      linear-gradient(to left, hsl(var(--card)) 30%, transparent),
+      
+      /* Shadow LEFT */
+      radial-gradient(farthest-side at 0 50%, rgba(0,0,0,0.2), transparent),
+      /* Shadow RIGHT */
+      radial-gradient(farthest-side at 100% 50%, rgba(0,0,0,0.2), transparent);
+    
+    background-repeat: no-repeat;
+    background-attachment: local, local, scroll, scroll;
+    background-size: 40px 100%, 40px 100%, 14px 100%, 14px 100%;
+    background-position: 0 0, 100% 0, 0 0, 100% 0;
+  }
+}
+
 .react-flow__node {
   transition: opacity 0.5s ease-in-out;
 }

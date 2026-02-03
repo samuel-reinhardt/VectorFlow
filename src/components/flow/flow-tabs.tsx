@@ -22,6 +22,7 @@ interface FlowTabsProps {
   onDuplicateFlow: (id: string) => void;
   onReorderFlow: (id: string, direction: 'left' | 'right') => void;
   isReadOnly?: boolean;
+  className?: string;
 }
 
 export function FlowTabs({
@@ -34,6 +35,7 @@ export function FlowTabs({
   onDuplicateFlow,
   onReorderFlow,
   isReadOnly = false,
+  className,
 }: FlowTabsProps) {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editValue, setEditValue] = useState('');
@@ -66,7 +68,7 @@ export function FlowTabs({
   };
 
   return (
-    <div className="flex items-center h-10 bg-muted/40 border-t border-border px-1 overflow-x-auto min-h-[40px] shrink-0">
+    <div className={cn("flex items-center h-full px-1 overflow-x-auto shrink-0 no-scrollbar scroll-shadows", className)}>
       {flows.map((flow) => (
         <div
           key={flow.id}
@@ -96,7 +98,7 @@ export function FlowTabs({
               onClick={(e) => e.stopPropagation()}
             />
           ) : (
-            <span className="text-sm font-medium truncate py-1">
+            <span className="text-sm font-medium truncate py-1" title={flow.title}>
               {flow.title}
             </span>
           )}

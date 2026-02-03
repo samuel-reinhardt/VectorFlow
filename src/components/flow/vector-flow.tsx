@@ -12,7 +12,9 @@ import ReactFlow, {
   SelectionMode,
 } from 'reactflow';
 import 'reactflow/dist/style.css';
-import { Plus, Settings2, X, Grip, LayoutGrid, Square, FileText, Layers, Boxes, Share2 } from 'lucide-react';
+import Link from 'next/link';
+import { cn } from '@/lib/utils';
+import { Plus, Settings2, X, Grip, LayoutGrid, Square, FileText, Layers, Boxes, Share2, Info } from 'lucide-react';
 import { FlowProvider } from '@/components/flow/flow-context';
 
 import { Sidebar, SidebarHeader, SidebarContent } from '@/components/ui/layout/sidebar';
@@ -362,6 +364,7 @@ export function VectorFlow() {
     const isDesktop = useMediaQuery('(min-width: 768px)');
     const [leftSidebarOpen, setLeftSidebarOpen] = useState(false);
     const [rightSidebarOpen, setRightSidebarOpen] = useState(false);
+    const [showFooter, setShowFooter] = useState(false);
     const [rightSidebarInfo, setRightSidebarInfo] = useState<{
         title: string;
         description: string;
@@ -594,7 +597,7 @@ export function VectorFlow() {
 
     return (
         <FlowProvider value={{ metaConfig }}>
-            <div className="flex flex-col h-screen w-screen bg-background text-foreground font-body">
+            <div className="flex flex-col h-full w-full bg-background text-foreground font-body">
                 <Header 
                     projectName={projectName} 
                     onNameChange={setProjectName}
@@ -836,19 +839,48 @@ export function VectorFlow() {
                     </Sidebar>
                 </div>
                 
-                <FlowTabs
-                    flows={flows}
-                    activeFlowId={activeFlowId}
-                    onSwitchFlow={switchFlow}
-                    onAddFlow={addFlow}
-                    onUpdateFlowTitle={updateFlowTitle}
-                    onDeleteFlow={deleteFlow}
-                    onDuplicateFlow={duplicateFlow}
-                    onReorderFlow={reorderFlow}
-                    isReadOnly={isReadOnly}
-                />
-                
+                <div className="flex items-center h-10 bg-muted/40 border-t border-border shrink-0 justify-between relative">
+                    <FlowTabs
+                        flows={flows}
+                        activeFlowId={activeFlowId}
+                        onSwitchFlow={switchFlow}
+                        onAddFlow={addFlow}
+                        onUpdateFlowTitle={updateFlowTitle}
+                        onDeleteFlow={deleteFlow}
+                        onDuplicateFlow={duplicateFlow}
+                        onReorderFlow={reorderFlow}
+                        isReadOnly={isReadOnly}
+                        className="flex-1 min-w-0"
+                    />
 
+                    {/* Footer / Info Toggle */}
+                    <div className="flex items-center gap-1 shrink-0 h-full border-l border-border/50 px-2 relative bg-muted/40">
+                         {/* Mobile Trigger */}
+                         <button 
+                            className="md:hidden p-1 hover:bg-muted rounded text-muted-foreground transition-colors"
+                            onClick={() => setShowFooter(!showFooter)}
+                            title="Legal & Info"
+                         >
+                            <Info size={14} />
+                         </button>
+
+                         {/* Content */}
+                         <div className={cn(
+                            "items-center text-[10px] text-muted-foreground/60 transition-all whitespace-nowrap z-50",
+                            // Mobile styling: Popover
+                            "absolute bottom-full right-2 mb-2 p-3 bg-popover/95 backdrop-blur border border-border shadow-lg rounded-md flex-col items-start gap-2 min-w-[140px]",
+                            // Desktop styling: Inline
+                            "md:static md:bg-transparent md:border-none md:p-0 md:shadow-none md:flex-row md:items-center md:gap-4 md:mb-0",
+                            // Toggle visibility on mobile
+                            !showFooter ? "hidden md:flex" : "flex"
+                         )}>
+                            <span>&copy; {new Date().getFullYear()} VectorFlow</span>
+                            <Link href="/privacy-policy" className="hover:text-muted-foreground transition-colors">Privacy</Link>
+                            <Link href="/terms-of-service" className="hover:text-muted-foreground transition-colors">Terms</Link>
+                         </div>
+                    </div>
+                </div>
+                
                 <FileNameDialog {...fileNameDialogProps} />
                 <DriveBrowserDialog {...driveBrowserProps} />
             </div>

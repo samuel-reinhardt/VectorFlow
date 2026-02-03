@@ -1,5 +1,5 @@
 import * as React from 'react';
-import { Plus, Trash2, Settings2, X, Grip, LayoutTemplate, Palette } from 'lucide-react';
+import { Plus, Trash2, Settings2, X, Grip, LayoutTemplate, Palette, Search } from 'lucide-react';
 import { Button } from '@/components/ui/forms/button';
 import { Input } from '@/components/ui/forms/input';
 import { Label } from '@/components/ui/forms/label';
@@ -18,12 +18,6 @@ import {
   DialogTitle,
   DialogTrigger,
 } from '@/components/ui/overlay/dialog';
-import {
-  Tabs,
-  TabsContent,
-  TabsList,
-  TabsTrigger,
-} from '@/components/ui/layout/tabs';
 import type { FieldDefinition, MetaConfig, FieldType } from '@/types';
 import { SelectOptionEditor } from '@/components/editors/select-option-editor';
 import { NumberConfigEditor } from '@/components/editors/number-config-editor';
@@ -37,26 +31,80 @@ interface MetaConfigEditorProps {
 
 export function MetaConfigEditor({ config, onUpdate }: MetaConfigEditorProps) {
   const [activeSection, setActiveSection] = React.useState<'structure' | 'visuals'>('structure');
-  const [activeTab, setActiveTab] = React.useState<'step' | 'deliverable' | 'group'>('step');
+  const [searchQuery, setSearchQuery] = React.useState('');
+  const [targetFilter, setTargetFilter] = React.useState<UnifiedTarget | 'all'>('all');
 
-  const addField = () => {
-    const newField: FieldDefinition = {
-      id: `field_${Date.now()}`,
-      label: 'New Field',
-      type: 'text',
-    };
-    onUpdate(activeTab, [...(config[activeTab] as FieldDefinition[]), newField]);
+  // Virtual Schema Logic: Unify fields across scopes
+  const getUnifiedFields = (config: MetaConfig) => {
+    const unified = new Map<string, FieldDefinition & { targets: ('step' | 'deliverable' | 'group' | 'edge')[] }>();
+    
+    (['step', 'deliverable', 'group', 'edge'] as const).forEach(scope => {
+        const fields = (config[scope] as FieldDefinition[]) || [];
+        fields.forEach(f => {
+            if (!unified.has(f.id)) {
+                unified.set(f.id, { ...f, targets: [scope] });
+            } else {
+                const existing = unified.get(f.id)!;
+                if (!existing.targets.includes(scope)) existing.targets.push(scope);
+            }
+        });
+    });
+
+    return Array.from(unified.values());
   };
 
-  const updateField = (id: string, updates: Partial<FieldDefinition>) => {
-    const nextFields = (config[activeTab] as FieldDefinition[]).map(f => 
-      f.id === id ? { ...f, ...updates } : f
-    );
-    onUpdate(activeTab, nextFields);
+  const addUnifiedField = () => {
+      const newField: FieldDefinition = {
+          id: `field_${Date.now()}`,
+          label: 'New Field',
+          type: 'text'
+      };
+      
+      // Default to 'step' target
+      onUpdate('step', [...(config.step || []), newField]);
   };
 
-  const deleteField = (id: string) => {
-    onUpdate(activeTab, (config[activeTab] as FieldDefinition[]).filter(f => f.id !== id));
+  type UnifiedTarget = 'step' | 'deliverable' | 'group' | 'edge';
+
+  const updateUnifiedField = (
+      field: FieldDefinition & { targets: UnifiedTarget[] }, 
+      updates: Partial<FieldDefinition> & { targets?: UnifiedTarget[] }
+  ) => {
+      const newTargets = updates.targets || field.targets;
+      const newFieldDef: FieldDefinition = {
+          id: field.id,
+          label: updates.label ?? field.label,
+          type: updates.type ?? field.type,
+          options: updates.options ?? field.options,
+          numberConfig: updates.numberConfig ?? field.numberConfig
+      };
+
+      (['step', 'deliverable', 'group', 'edge'] as const).forEach(scope => {
+          const shouldHave = newTargets.includes(scope);
+          const currentList = (config[scope] as FieldDefinition[]) || [];
+          const exists = currentList.find(f => f.id === field.id);
+
+          if (shouldHave) {
+              if (exists) {
+                  onUpdate(scope, currentList.map(f => f.id === field.id ? newFieldDef : f));
+              } else {
+                  onUpdate(scope, [...currentList, newFieldDef]);
+              }
+          } else {
+              if (exists) {
+                  onUpdate(scope, currentList.filter(f => f.id !== field.id));
+              }
+          }
+      });
+  };
+
+  const deleteUnifiedField = (id: string) => {
+       (['step', 'deliverable', 'group', 'edge'] as const).forEach(scope => {
+           const currentList = (config[scope] as FieldDefinition[]) || [];
+           if (currentList.find(f => f.id === id)) {
+               onUpdate(scope, currentList.filter(f => f.id !== id));
+           }
+       });
   };
 
   const isNumberType = (type: FieldType) => 
@@ -108,104 +156,173 @@ export function MetaConfigEditor({ config, onUpdate }: MetaConfigEditorProps) {
             {/* Main Content Area */}
             <div className="flex-1 flex flex-col h-full overflow-hidden bg-background">
                 {activeSection === 'structure' ? (
-                     <Tabs 
-                        value={activeTab} 
-                        onValueChange={(v) => setActiveTab(v as any)} 
-                        className="flex-1 flex flex-col h-full"
-                    >
-                        <div className="px-6 py-4 border-b">
-                          <TabsList className="w-full grid grid-cols-3">
-                            <TabsTrigger value="step">Steps</TabsTrigger>
-                            <TabsTrigger value="deliverable">Deliverables</TabsTrigger>
-                            <TabsTrigger value="group">Groups</TabsTrigger>
-                          </TabsList>
+                    <div className="flex-1 flex flex-col h-full overflow-hidden">
+                        <div className="px-6 py-4 border-b bg-muted/5">
+                            <h3 className="text-sm font-medium mb-1">Custom Fields</h3>
+                            <p className="text-xs text-muted-foreground">Define fields and assign them to one or multiple entity types.</p>
                         </div>
               
-                        <TabsContent value={activeTab} className="flex-1 overflow-y-auto p-6 m-0 space-y-6">
-                            <div className="space-y-4">
-                              {(config[activeTab] as FieldDefinition[]).map((field) => (
-                                <div key={field.id} className="p-4 border rounded-lg bg-card shadow-sm space-y-4">
-                                  <div className="flex items-start justify-between gap-4">
-                                    <div className="grid flex-1 gap-4 sm:grid-cols-2">
-                                      <div className="space-y-1.5">
-                                        <Label className="text-xs text-muted-foreground">Label</Label>
-                                        <Input 
-                                          value={field.label} 
-                                          onChange={(e) => updateField(field.id, { label: e.target.value })}
-                                        />
-                                      </div>
-                                      <div className="space-y-1.5">
-                                        <Label className="text-xs text-muted-foreground">Type</Label>
-                                        <Select 
-                                          value={field.type} 
-                                          onValueChange={(val: FieldType) => {
-                                            const updates: Partial<FieldDefinition> = { type: val };
-                                            if (!isNumberType(val)) updates.numberConfig = undefined;
-                                            if (!isSelectType(val)) updates.options = undefined;
-                                            updateField(field.id, updates);
-                                          }}
-                                        >
-                                          <SelectTrigger>
-                                            <SelectValue />
-                                          </SelectTrigger>
-                                          <SelectContent>
-                                            <SelectItem value="text">Text</SelectItem>
-                                            <SelectItem value="long-text">Long Text</SelectItem>
-                                            <SelectItem value="date">Date</SelectItem>
-                                            <SelectItem value="number">Number</SelectItem>
-                                            <SelectItem value="hours">Hours</SelectItem>
-                                            <SelectItem value="currency">Currency</SelectItem>
-                                            <SelectItem value="slider">Slider</SelectItem>
-                                            <SelectItem value="select">Select</SelectItem>
-                                            <SelectItem value="multi-select">Multi-Select</SelectItem>
-                                          </SelectContent>
-                                        </Select>
-                                      </div>
-                                    </div>
+                        <div className="flex-1 overflow-y-auto p-6 space-y-4">
+                            {/* Search and Filters */}
+                            <div className="space-y-3 mb-2">
+                                <div className="relative">
+                                    <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
+                                    <Input 
+                                        placeholder="Search fields..." 
+                                        value={searchQuery}
+                                        onChange={(e) => setSearchQuery(e.target.value)}
+                                        className="pl-8"
+                                    />
+                                </div>
+                                <div className="flex flex-wrap gap-2">
                                     <Button 
-                                      variant="ghost" 
-                                      size="icon" 
-                                      className="text-muted-foreground hover:text-destructive mt-6 h-8 w-8"
-                                      onClick={() => deleteField(field.id)}
+                                        variant={targetFilter === 'all' ? 'secondary' : 'outline'} 
+                                        size="sm" 
+                                        className="h-7 text-xs"
+                                        onClick={() => setTargetFilter('all')}
                                     >
-                                      <Trash2 className="h-4 w-4" />
+                                        All
                                     </Button>
-                                  </div>
-              
-                                  {isNumberType(field.type) && (
-                                    <div className="bg-muted/30 p-3 rounded-md">
-                                        <NumberConfigEditor
-                                          config={field.numberConfig}
-                                          onChange={(config) => updateField(field.id, { numberConfig: config })}
-                                          fieldType={field.type as any}
-                                        />
-                                    </div>
-                                  )}
-              
-                                  {isSelectType(field.type) && (
-                                    <div className="bg-muted/30 p-3 rounded-md">
-                                        <SelectOptionEditor
-                                          options={normalizeOptions(field.options)}
-                                          onChange={(options) => updateField(field.id, { options })}
-                                        />
-                                    </div>
-                                  )}
+                                    {(['step', 'deliverable', 'group', 'edge'] as const).map(t => (
+                                        <Button
+                                            key={t}
+                                            variant={targetFilter === t ? 'secondary' : 'outline'}
+                                            size="sm"
+                                            className="h-7 text-xs"
+                                            onClick={() => setTargetFilter(t)}
+                                        >
+                                            {t.charAt(0).toUpperCase() + t.slice(1)}
+                                        </Button>
+                                    ))}
                                 </div>
-                              ))}
-              
-                              {(config[activeTab] as FieldDefinition[]).length === 0 && (
-                                <div className="flex flex-col items-center justify-center py-12 text-muted-foreground border-2 border-dashed rounded-lg">
-                                  <p className="text-sm">No fields defined for {activeTab}s.</p>
-                                </div>
-                              )}
                             </div>
+
+                            {getUnifiedFields(config)
+                                .filter(f => {
+                                    const matchesSearch = f.label.toLowerCase().includes(searchQuery.toLowerCase());
+                                    const matchesFilter = targetFilter === 'all' || f.targets.includes(targetFilter);
+                                    return matchesSearch && matchesFilter;
+                                })
+                                .map((field) => (
+                                <div key={field.id} className="p-4 border rounded-lg bg-card shadow-sm space-y-4">
+                                    <div className="flex items-start justify-between gap-4">
+                                        <div className="grid flex-1 gap-4 sm:grid-cols-12">
+                                            {/* Label - spans 4 cols */}
+                                            <div className="sm:col-span-4 space-y-1.5">
+                                                <Label className="text-xs text-muted-foreground">Label</Label>
+                                                <Input 
+                                                    value={field.label} 
+                                                    onChange={(e) => updateUnifiedField(field, { label: e.target.value })}
+                                                />
+                                            </div>
+
+                                            {/* Type - spans 3 cols */}
+                                            <div className="sm:col-span-3 space-y-1.5">
+                                                <Label className="text-xs text-muted-foreground">Type</Label>
+                                                <Select 
+                                                    value={field.type} 
+                                                    onValueChange={(val: FieldType) => {
+                                                        const updates: Partial<FieldDefinition> = { type: val };
+                                                        if (!['number', 'hours', 'currency', 'slider'].includes(val)) updates.numberConfig = undefined;
+                                                        if (!['select', 'multi-select'].includes(val)) updates.options = undefined;
+                                                        updateUnifiedField(field, updates);
+                                                    }}
+                                                >
+                                                    <SelectTrigger>
+                                                        <SelectValue />
+                                                    </SelectTrigger>
+                                                    <SelectContent>
+                                                        <SelectItem value="text">Text</SelectItem>
+                                                        <SelectItem value="long-text">Long Text</SelectItem>
+                                                        <SelectItem value="date">Date</SelectItem>
+                                                        <SelectItem value="number">Number</SelectItem>
+                                                        <SelectItem value="hours">Hours</SelectItem>
+                                                        <SelectItem value="currency">Currency</SelectItem>
+                                                        <SelectItem value="slider">Slider</SelectItem>
+                                                        <SelectItem value="select">Select</SelectItem>
+                                                        <SelectItem value="multi-select">Multi-Select</SelectItem>
+                                                    </SelectContent>
+                                                </Select>
+                                            </div>
+
+                                            {/* Targets - spans 5 cols */}
+                                            <div className="sm:col-span-5 space-y-1.5">
+                                                <Label className="text-xs text-muted-foreground">Applies To</Label>
+                                                <div className="flex flex-wrap gap-1.5">
+                                                    {(['step', 'deliverable', 'group', 'edge'] as const).map(target => {
+                                                        const isActive = field.targets.includes(target);
+                                                        return (
+                                                            <button
+                                                                key={target}
+                                                                onClick={() => {
+                                                                    if (isActive && field.targets.length === 1) return; // Prevent deselecting last
+
+                                                                    const newTargets = isActive 
+                                                                        ? field.targets.filter(t => t !== target)
+                                                                        : [...field.targets, target];
+                                                                    updateUnifiedField(field, { targets: newTargets });
+                                                                }}
+                                                                className={`
+                                                                    px-2 py-1 text-[10px] rounded border transition-colors
+                                                                    ${isActive 
+                                                                        ? 'bg-primary text-primary-foreground border-primary' 
+                                                                        : 'bg-muted text-muted-foreground hover:bg-muted/80 border-transparent'}
+                                                                    ${isActive && field.targets.length === 1 ? 'opacity-50 cursor-not-allowed' : ''}
+                                                                `}
+                                                                title={isActive && field.targets.length === 1 ? "Cannot deselect text target (delete field instead)" : ""}
+                                                            >
+                                                                {target.charAt(0).toUpperCase() + target.slice(1)}
+                                                            </button>
+                                                        );
+                                                    })}
+                                                </div>
+                                            </div>
+                                        </div>
+                                        
+                                        <Button 
+                                            variant="ghost" 
+                                            size="icon" 
+                                            className="text-muted-foreground hover:text-destructive mt-6 h-8 w-8"
+                                            onClick={() => deleteUnifiedField(field.id)}
+                                        >
+                                            <Trash2 className="h-4 w-4" />
+                                        </Button>
+                                    </div>
+                
+                                    {['number', 'hours', 'currency', 'slider'].includes(field.type) && (
+                                        <div className="bg-muted/30 p-3 rounded-md">
+                                            <NumberConfigEditor
+                                                config={field.numberConfig}
+                                                onChange={(config) => updateUnifiedField(field, { numberConfig: config })}
+                                                fieldType={field.type as any}
+                                            />
+                                        </div>
+                                    )}
+                
+                                    {['select', 'multi-select'].includes(field.type) && (
+                                        <div className="bg-muted/30 p-3 rounded-md">
+                                            <SelectOptionEditor
+                                                options={normalizeOptions(field.options)}
+                                                onChange={(options) => updateUnifiedField(field, { options })}
+                                            />
+                                        </div>
+                                    )}
+                                </div>
+                            ))}
+
+                            {getUnifiedFields(config).length === 0 && (
+                                <div className="flex flex-col items-center justify-center py-12 text-muted-foreground border-2 border-dashed rounded-lg">
+                                    <p className="text-sm">No custom fields defined.</p>
+                                    <p className="text-xs text-muted-foreground mt-1">Add a field to track extra data on your items.</p>
+                                </div>
+                            )}
                             
-                            <Button onClick={addField} variant="outline" className="w-full border-dashed">
+                            <Button onClick={addUnifiedField} variant="outline" className="w-full border-dashed">
                                 <Plus className="mr-2 h-4 w-4" />
-                                Add Field
+                                Add Custom Field
                             </Button>
-                        </TabsContent>
-                    </Tabs>
+                        </div>
+                    </div>
                 ) : (
                     <div className="flex-1 p-6 overflow-hidden">
                         <VisualRulesEditor 

@@ -79,9 +79,9 @@ export function Toolbar({
   onShareLink,
 }: ToolbarProps) {
   return (
-    <div className="flex items-center justify-between px-4 py-2 border-b border-border bg-card shrink-0">
+    <div className="flex items-center justify-between px-4 py-2 border-b border-border bg-card shrink-0 overflow-x-auto gap-4 no-scrollbar scroll-shadows">
       {/* Left Section - Sidebar Toggles */}
-      <div className="flex items-center gap-2">
+      <div className="flex items-center gap-2 shrink-0">
         <Button
           variant={leftSidebarOpen ? "default" : "ghost"}
           size="sm"
@@ -106,7 +106,7 @@ export function Toolbar({
       </div>
       
       {/* Center Section - Actions */}
-      <div className="flex items-center gap-2">
+      <div className="flex items-center gap-2 shrink-0">
 
         {/* Undo/Redo */}
         <div className="flex items-center gap-1 border-r border-border pr-2 mr-2">
@@ -255,7 +255,7 @@ export function Toolbar({
       </div>
       
       {/* Right Section - View Only Toggle */}
-      <div className="flex items-center">
+      <div className="flex items-center shrink-0">
         <Button
           variant={isReadOnly ? "default" : "ghost"}
           size="sm"

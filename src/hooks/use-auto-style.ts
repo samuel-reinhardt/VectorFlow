@@ -29,7 +29,7 @@ export function useAutoStyle({ type, data, explicitColor, explicitIcon }: AutoSt
     }
 
     const rules = metaConfig?.visualRules?.autoStyle || [];
-    const entityRules = rules.filter(r => r.target === type);
+    const entityRules = rules.filter(r => r.target.includes(type));
 
     let derivedColor = effectiveColor;
     let derivedIcon = effectiveIcon;

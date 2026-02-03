@@ -37,10 +37,14 @@ export default function RootLayout({
           }}
         />
       </head>
-      <body className="font-body antialiased">
+      <body className="font-body antialiased flex flex-col h-[100dvh] overflow-hidden">
         <FirebaseClientProvider>
           <AuthGate>
-            {children}
+            <div className="flex-1 relative overflow-hidden flex flex-col">
+               <main className="flex-1 w-full h-full overflow-auto">
+                 {children}
+               </main>
+            </div>
           </AuthGate>
         </FirebaseClientProvider>
         <Toaster />

@@ -34,7 +34,7 @@ export type FieldDefinition = {
 
 export type AutoStyleRule = {
     id: string;
-    target: 'step' | 'edge' | 'group' | 'deliverable';
+    target: ('step' | 'edge' | 'group' | 'deliverable')[];
     fieldId: string;
     condition: 'equals' | 'contains' | 'not_equals' | 'greater_than' | 'less_than' | 'is_set' | 'is_not_set';
     value: any;
