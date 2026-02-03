@@ -353,14 +353,16 @@ export function VectorFlow() {
         setRightSidebarInfo({ title, description, type: type || 'none', icon });
     }, []);
 
-    const handleStepSelect = useCallback((nodeId: string) => {
-        const nodeToSelect = getNode(nodeId);
-        if (nodeToSelect) {
-            setNodesState((nds) => nds.map((n) => ({ ...n, selected: n.id === nodeId })));
-            setEdges((eds) => eds.map((e) => ({ ...e, selected: false })));
-            fitView({ nodes: [{id: nodeId}], duration: 300, maxZoom: 1.2 });
+    const handleStepsSelect = useCallback((nodeIds: string[]) => {
+        setNodesState((nds) => nds.map((n) => ({ ...n, selected: nodeIds.includes(n.id) })));
+        setEdges((eds) => eds.map((e) => ({ ...e, selected: false })));
+        
+        // Optional: Fit view to selected nodes if only one or specific count? 
+        // Let's keep fit view behavior only for single select to avoid jumping around on multiselect
+        if (nodeIds.length === 1) {
+            fitView({ nodes: [{id: nodeIds[0]}], duration: 300, maxZoom: 1.2 });
         }
-    }, [getNode, setNodesState, setEdges, fitView]);
+    }, [setNodesState, setEdges, fitView]);
 
     const nodesInitialized = useNodesInitialized();
     const [initialFitDone, setInitialFitDone] = useState(false);
@@ -386,7 +388,7 @@ export function VectorFlow() {
                 // but we need access to it. It IS defined above though, at line ~349.
                 // Ah, the lint error was because I pasted the definition BEFORE handleStepSelect was defined.
                 // Now I am pasting it at the end (before return), so it should be fine.
-                handleStepSelect(node.id);
+                handleStepsSelect([node.id]);
             }
             
             setContextMenu({
@@ -396,7 +398,7 @@ export function VectorFlow() {
                 data: node
             });
         },
-        [isReadOnly, selectedNodes, handleStepSelect]
+        [isReadOnly, selectedNodes, handleStepsSelect]
     );
 
     const onPaneContextMenu = useCallback(
@@ -753,10 +755,10 @@ export function VectorFlow() {
                 <Sidebar side="left" open={leftSidebarOpen} onOpenChange={handleLeftSidebarChange} isDesktop={isDesktop}>
                     <Outline 
                         nodes={nodes} 
-                        selectedStepId={selectedStepId} 
-                        onStepSelect={handleStepSelect}
+                        selectedStepIds={selectedNodes.map(n => n.id)} 
+                        onStepSelect={handleStepsSelect}
                         onDeliverableSelect={(nodeId, deliverableId) => {
-                            handleStepSelect(nodeId);
+                            handleStepsSelect([nodeId]);
                             selectDeliverable(nodeId, deliverableId); // Both arguments needed
                         }} 
                     />
@@ -785,6 +787,7 @@ export function VectorFlow() {
                         nodesConnectable={!isReadOnly}
                         elementsSelectable={true}
                         deleteKeyCode={isReadOnly ? null : 'Delete'}
+                        multiSelectionKeyCode="Shift"
                         fitView
                         minZoom={0.1}
                         maxZoom={4}

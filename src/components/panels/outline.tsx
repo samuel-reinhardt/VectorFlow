@@ -31,14 +31,15 @@ interface FlatNode {
 
 interface OutlineProps {
   nodes: Node[];
-  selectedStepId: string | null;
-  onStepSelect: (nodeId: string) => void;
+  selectedStepIds: string[];
+  onStepSelect: (nodeIds: string[]) => void;
   onDeliverableSelect: (nodeId: string, deliverableId: string) => void;
 }
 
-export function Outline({ nodes, selectedStepId, onStepSelect, onDeliverableSelect }: OutlineProps) {
+export function Outline({ nodes, selectedStepIds, onStepSelect, onDeliverableSelect }: OutlineProps) {
   const [searchTerm, setSearchTerm] = useState('');
   const [collapsedIds, setCollapsedIds] = useState<Set<string>>(new Set());
+  const [lastClickedId, setLastClickedId] = useState<string | null>(null);
 
   // 1. Build the Hierarchical Tree Structure (independent of UI state like collapse/search)
   const treeRoots = useMemo(() => {
@@ -219,6 +220,47 @@ export function Outline({ nodes, selectedStepId, onStepSelect, onDeliverableSele
 
   const areAllCollapsed = collapsedIds.size > 0;
 
+  const handleItemClick = (e: React.MouseEvent, item: FlatNode) => {
+      if (item.type === 'deliverable') {
+          onDeliverableSelect(item.parentId!, item.id);
+          return;
+      }
+      
+      // Step Selection Logic (Shift/Cmd)
+      let newSelection = [item.id];
+      
+      if (e.shiftKey && lastClickedId) {
+          // Range Selection
+          const lastIdx = visibleItems.findIndex(i => i.id === lastClickedId);
+          const currIdx = visibleItems.findIndex(i => i.id === item.id);
+          
+          if (lastIdx !== -1 && currIdx !== -1) {
+              const start = Math.min(lastIdx, currIdx);
+              const end = Math.max(lastIdx, currIdx);
+              const range = visibleItems.slice(start, end + 1);
+              
+              // Filter to only steps (exclude deliverables if any got in range, assuming mixed list)
+              newSelection = range
+                  .filter(i => i.type !== 'deliverable')
+                  .map(i => i.id);
+                  
+              // If Ctrl/Cmd also held, maybe merge? Usually Shift overrides or extends.
+              // Standard behavior: Shift implies range relative to anchor.
+              // We will just send this new range.
+          }
+      } else if (e.metaKey || e.ctrlKey) {
+          // Toggle / Additive
+          if (selectedStepIds.includes(item.id)) {
+              newSelection = selectedStepIds.filter(id => id !== item.id);
+          } else {
+              newSelection = [...selectedStepIds, item.id];
+          }
+      }
+      
+      setLastClickedId(item.id);
+      onStepSelect(newSelection);
+  };
+
   return (
     <div className="flex flex-col h-full bg-background">
       <SidebarHeader className="border-b px-4 py-3">
@@ -255,11 +297,8 @@ export function Outline({ nodes, selectedStepId, onStepSelect, onDeliverableSele
           <div className="py-1">
             {visibleItems.map((item) => {
                 const isSelected = item.type === 'deliverable' 
-                    ? false // Logic for highlighting deliverable is complicated without parent context in some selection modes, check parent comp
-                    // Just assume normal selection for now
-                    : item.id === selectedStepId;
-                // Deliverable highlighting hack: passing selection logic via props would be better
-                // But generally, the user wants to see what's active.
+                    ? false // Deliverable selection visualization not fully supported in outline yet
+                    : selectedStepIds?.includes(item.id);
 
                 return (
                   <div key={item.id} className="relative group">
@@ -280,13 +319,7 @@ export function Outline({ nodes, selectedStepId, onStepSelect, onDeliverableSele
                         item.type === 'deliverable' ? 'text-muted-foreground' : 'font-medium'
                       )}
                       style={{ paddingLeft: `${0.375 + item.level * 0.875}rem` }}
-                      onClick={() => {
-                          if (item.type === 'deliverable') {
-                              onDeliverableSelect(item.parentId!, item.id);
-                          } else {
-                              onStepSelect(item.id);
-                          }
-                      }}
+                      onClick={(e) => handleItemClick(e, item)}
                     >
                       {/* Collapse Toggle */}
                       <span
