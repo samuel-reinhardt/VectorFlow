@@ -29,7 +29,35 @@ export const DeliverableItem = React.memo(({
   onDrop,
   onClick,
 }: DeliverableItemProps) => {
-  const itemTextColor = getTextColorForBackground(item.color);
+  // Determine icon color based on background (item.color) luminance.
+  // If the background is dark, use light icon.
+  // If the background is light, use dark icon.
+  
+  const getIconColor = (hexColor: string) => {
+      if (!hexColor || !/^#([A-Fa-f0-9]{6}|[A-Fa-f0-9]{3})$/.test(hexColor)) {
+          return '#000000'; // Default black for invalid/missing colors
+      }
+      
+      let r: number, g: number, b: number;
+      if (hexColor.length === 4) {
+          r = parseInt(hexColor[1] + hexColor[1], 16);
+          g = parseInt(hexColor[2] + hexColor[2], 16);
+          b = parseInt(hexColor[3] + hexColor[3], 16);
+      } else {
+          r = parseInt(hexColor.slice(1, 3), 16);
+          g = parseInt(hexColor.slice(3, 5), 16);
+          b = parseInt(hexColor.slice(5, 7), 16);
+      }
+
+      // Calculate luminance of the BACKGROUND (item.color)
+      const luminance = (0.2126 * r + 0.7152 * g + 0.0722 * b) / 255;
+
+      // If background is bright, use dark icon.
+      // If background is dark, use bright icon.
+      return luminance > 0.5 ? '#000000' : '#ffffff';
+  };
+
+  const iconColor = getIconColor(item.color);
 
   return (
     <div
@@ -41,13 +69,23 @@ export const DeliverableItem = React.memo(({
       onMouseDown={(e) => e.stopPropagation()}
       onPointerDown={(e) => e.stopPropagation()}
       className={cn(
-        "nodrag p-2 rounded-md text-sm font-medium cursor-pointer flex items-center gap-2",
-        "active:scale-[0.97] outline outline-none hover:outline transition-[outline,scale] duration-200 outline-offset-1",
-        isSelected ? "outline outline-ring hover:outline-ring/60" : "hover:outline-ring/30"
+        "nodrag p-2 rounded-md text-sm font-medium cursor-pointer flex items-center gap-2 border",
+        "active:scale-[0.97] transition-[outline,scale] duration-200",
+        isSelected ? "ring-2 ring-offset-1 ring-black" : "hover:ring-2 hover:ring-offset-1 hover:ring-[var(--ring-color)]/60"
       )}
-      style={{ backgroundColor: item.color, color: itemTextColor, position: 'relative', zIndex: 40 }}
+      style={{ 
+        backgroundColor: '#edf2f7', 
+        borderColor: item.color,
+        color: 'black',
+        '--ring-color': item.color,
+      } as React.CSSProperties}
     >
-      <DynamicIcon name={item.icon} fallback={FileText} className="w-3.5 h-3.5 shrink-0" />
+      <div 
+        className="w-5 h-5 rounded-full flex items-center justify-center shrink-0 transition-colors shadow-sm"
+        style={{ backgroundColor: item.color }}
+      >
+        <DynamicIcon name={item.icon} fallback={FileText} className="w-3 h-3 shrink-0" style={{ color: iconColor }} />
+      </div>
       <span className="truncate">{item.label}</span>
     </div>
   );
