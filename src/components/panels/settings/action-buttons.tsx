@@ -28,7 +28,7 @@ export function ActionButtons({
         Actions
       </div>
       
-      {isStepSelected && onAddDeliverable && (
+      {onAddDeliverable && (
         <Button onClick={onAddDeliverable} className="w-full" variant="outline" size="sm">
           <Plus className="mr-2 h-3.5 w-3.5" />
           Add Deliverable

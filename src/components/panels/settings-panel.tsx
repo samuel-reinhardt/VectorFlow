@@ -13,7 +13,7 @@ interface SettingsPanelProps {
   selectedEdge: Edge | null; // Keep for backward compat/single edge check usage
   selectedDeliverableId?: string | null;
   onAddStep: () => void;
-  onAddDeliverable: (stepId: string) => void;
+  onAddDeliverable: (stepId: string, afterDeliverableId?: string) => void;
   onUpdateStepLabel: (stepId: string, label: string) => void;
   onUpdateStepColor: (stepId: string, color: string) => void;
   onUpdateStepIcon: (stepId: string, icon: string) => void;
@@ -391,7 +391,13 @@ export function SettingsPanel({
             <ActionButtons
                 isStepSelected={!!isStepSelected}
                 isGroupSelected={!!isGroupSelected}
-                onAddDeliverable={isStepSelected ? () => onAddDeliverable(singleSelectedStep!.id) : undefined}
+                onAddDeliverable={
+                  isStepSelected 
+                    ? () => onAddDeliverable(singleSelectedStep!.id)
+                    : selectedDeliverable 
+                      ? () => onAddDeliverable(singleSelectedStep!.id, selectedDeliverable.id)
+                      : undefined
+                }
                 onUngroup={isGroupSelected ? onUngroup : undefined}
                 onDeleteSelection={onDeleteSelection}
             />

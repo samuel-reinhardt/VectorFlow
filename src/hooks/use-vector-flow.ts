@@ -142,9 +142,9 @@ export const useVectorFlow = (initialNodes: Node[], initialEdges: Edge[]) => {
   const deliverableOps = useDeliverableOperations(setNodesState, setSelectedDeliverableId);
   
   // Wrap addDeliverable
-  const addDeliverableWithSnapshot = useCallback((stepId: string) => {
+  const addDeliverableWithSnapshot = useCallback((stepId: string, afterDeliverableId?: string) => {
       takeSnapshot();
-      return deliverableOps.addDeliverable(stepId);
+      return deliverableOps.addDeliverable(stepId, afterDeliverableId);
   }, [deliverableOps.addDeliverable, takeSnapshot]);
 
 

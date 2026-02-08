@@ -11,7 +11,7 @@ export function useDeliverableOperations(
   setNodes: (value: Node[] | ((prev: Node[]) => Node[])) => void,
   setSelectedDeliverableId: (id: string | null) => void
 ) {
-  const handleAddDeliverable = useCallback((stepId: string) => {
+  const handleAddDeliverable = useCallback((stepId: string, afterDeliverableId?: string) => {
     const newId = `del_${Date.now()}`;
     setNodes(nds => {
       const next = nds.map(n => {
@@ -22,11 +22,24 @@ export function useDeliverableOperations(
             label: 'New Deliverable',
             color: DEFAULT_COLORS.DELIVERABLE,
           };
+
+          let newDeliverables = [...deliverables];
+          if (afterDeliverableId) {
+            const index = deliverables.findIndex((d: Deliverable) => d.id === afterDeliverableId);
+            if (index !== -1) {
+              newDeliverables.splice(index + 1, 0, newDeliverable);
+            } else {
+              newDeliverables.push(newDeliverable);
+            }
+          } else {
+            newDeliverables.push(newDeliverable);
+          }
+
           return {
             ...n,
             data: {
               ...n.data,
-              deliverables: [...deliverables, newDeliverable]
+              deliverables: newDeliverables
             }
           };
         }
