@@ -56,8 +56,13 @@ const CustomNode = ({ id, data, selected }: NodeProps<{
     }
   };
 
-  const handleDeliverableClick = (_e: React.MouseEvent, deliverableId: string) => {
-    data.onSelectDeliverable?.(id, deliverableId);
+  const handleDeliverableClick = (e: React.MouseEvent, deliverableId: string) => {
+    e.stopPropagation();
+    // Wrap in setTimeout to ensure this runs after any React Flow internal processing
+    // that might try to select the node alone.
+    setTimeout(() => {
+        data.onSelectDeliverable?.(id, deliverableId);
+    }, 0);
   };
 
   return (

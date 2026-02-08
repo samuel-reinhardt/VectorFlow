@@ -26,10 +26,10 @@ export function useSelectionManagement(
   const onSelectionChange = useCallback(({ nodes, edges }: { nodes: Node[], edges: Edge[] }) => {
     setSelectedNodes(nodes);
     setSelectedEdges(edges);
-    if (nodes.length === 0) {
-        setSelectedDeliverableId(null);
-    }
-  }, [setSelectedNodes, setSelectedEdges, setSelectedDeliverableId]);
+    // Removed automatic clearing of selectedDeliverableId here to prevent race conditions.
+    // Derived state in useVectorFlow (enrichedNodes) and SettingsPanel handles visibility
+    // of the selected deliverable based on the currently selected node.
+  }, [setSelectedNodes, setSelectedEdges]);
 
   const deleteSelection = useCallback(() => {
     if (selectedDeliverableId && selectedNodes.length === 1) {

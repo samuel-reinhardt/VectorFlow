@@ -38,6 +38,8 @@ export const DeliverableItem = React.memo(({
       onDragOver={onDragOver}
       onDrop={(e) => onDrop(e, index)}
       onClick={(e) => onClick(e, item.id)}
+      onMouseDown={(e) => e.stopPropagation()}
+      onPointerDown={(e) => e.stopPropagation()}
       className={cn(
         "nodrag p-2 rounded-md text-sm font-medium cursor-pointer flex items-center gap-2",
         "active:scale-[0.97] outline outline-none hover:outline transition-[outline,scale] duration-200 outline-offset-1",
