@@ -75,7 +75,7 @@ const GroupNode = ({ data, selected }: NodeProps<{
         </div>
         {data.shortDescription && (
           <div className="bg-white/90 px-2 py-1 border-t w-full">
-            <p className="text-[10px] text-muted-foreground font-normal leading-tight">
+            <p className="text-[10px] text-muted-foreground font-normal leading-tight text-left">
               {data.shortDescription}
             </p>
           </div>

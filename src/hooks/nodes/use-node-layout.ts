@@ -134,121 +134,193 @@ export function useNodeLayout(
       return;
     }
 
-    const topLevelNodes = allNodes.filter(node => !node.parentNode);
-    const nodeMap = new Map(allNodes.map(n => [n.id, n]));
-    
-    const getLayoutNodeId = (nodeId: string): string => {
-        let current = nodeMap.get(nodeId);
-        while (current?.parentNode) {
-            current = nodeMap.get(current.parentNode);
-        }
-        return current?.id || nodeId;
-    };
-
-    const adj = new Map<string, Set<string>>();
-    const inDegree = new Map<string, number>();
-
-    topLevelNodes.forEach(node => {
-        adj.set(node.id, new Set());
-        inDegree.set(node.id, 0);
-    });
-
-    allEdges.forEach(edge => {
-        const sourceLayoutId = getLayoutNodeId(edge.source);
-        const targetLayoutId = getLayoutNodeId(edge.target);
-
-        if (sourceLayoutId !== targetLayoutId && adj.has(sourceLayoutId) && adj.has(targetLayoutId)) {
-             if (!adj.get(sourceLayoutId)!.has(targetLayoutId)) {
-                adj.get(sourceLayoutId)!.add(targetLayoutId);
-                inDegree.set(targetLayoutId, (inDegree.get(targetLayoutId) || 0) + 1);
-            }
-        }
-    });
-    
-    const queue: string[] = [];
-    topLevelNodes.forEach(node => {
-        if (inDegree.get(node.id) === 0) {
-            queue.push(node.id);
-        }
-    });
-
-    const columns: string[][] = [];
-    while (queue.length > 0) {
-        const levelSize = queue.length;
-        const currentColumn: string[] = [];
-        for (let i = 0; i < levelSize; i++) {
-            const u = queue.shift()!;
-            currentColumn.push(u);
-            (Array.from(adj.get(u) || [])).forEach(v => {
-                const newDegree = (inDegree.get(v) || 1) - 1;
-                inDegree.set(v, newDegree);
-                if (newDegree === 0) queue.push(v);
-            });
-        }
-        columns.push(currentColumn);
-    }
-    
-    const visitedNodes = new Set(columns.flat());
-    const remainingNodes = topLevelNodes.filter(node => !visitedNodes.has(node.id));
-    if (remainingNodes.length > 0) {
-        columns.push(remainingNodes.map(node => node.id));
-        if (!options?.silent) {
-          toast({
-              variant: "destructive",
-              title: "Cyclic Dependency Detected",
-              description: "Some steps form a loop and have been placed in the last column.",
-          });
-        }
-    }
-
     const vSpacing = 50;
-    const newNodes = allNodes.map(n => ({ ...n }));
-    let currentX = 0;
 
-    columns.forEach((column, index) => {
-        const columnWidth = Math.max(...column.map(nodeId => {
-            const node = allNodes.find(n => n.id === nodeId);
-            return node ? getNodeSize(node).width : DIMENSIONS.STEP_WIDTH;
-        }));
+    // Core layout algorithm for a set of nodes
+    const arrangeLevel = (nodesToArrange: Node[], edgesToConsider: Edge[], isTopLevel: boolean): Node[] => {
+        if (nodesToArrange.length === 0) return [];
 
-        const columnHeight = column.reduce((sum, nodeId) => {
-            const node = allNodes.find(n => n.id === nodeId);
-            return sum + (node ? getNodeSize(node).height : DIMENSIONS.STEP_INITIAL_HEIGHT) + vSpacing;
-        }, -vSpacing);
+        const nodeMap = new Map(allNodes.map(n => [n.id, n]));
+        
+        // Helper to get the ID for adjacency (only within this level)
+        const getLayoutId = (nodeId: string): string | null => {
+            let current = nodeMap.get(nodeId);
+            if (!current) return null;
+            if (!isTopLevel) return nodesToArrange.some(n => n.id === nodeId) ? nodeId : null;
+            while (current?.parentNode) {
+                const parent = nodeMap.get(current.parentNode);
+                if (!parent) break;
+                current = parent;
+            }
+            return nodesToArrange.some(n => n.id === current!.id) ? current!.id : null;
+        };
 
-        let currentY = -columnHeight / 2;
+        const getLabelWidth = (edge: Edge) => {
+            const label = edge.label || '';
+            const textWidth = typeof label === 'string' ? label.length * 6 : 0;
+            const iconWidth = edge.data?.icon ? 20 : 0;
+            return textWidth + iconWidth;
+        };
 
-        column.forEach((nodeId) => {
-            const node = newNodes.find(n => n.id === nodeId);
-            if (node) {
-                const { width: nodeWidth, height: nodeHeight } = getNodeSize(node);
-                node.position = { x: currentX + (columnWidth - nodeWidth) / 2, y: currentY };
-                currentY += nodeHeight + vSpacing;
+        const adj = new Map<string, Set<string>>();
+        const inDegree = new Map<string, number>();
+
+        nodesToArrange.forEach(node => {
+            adj.set(node.id, new Set());
+            inDegree.set(node.id, 0);
+        });
+
+        allEdges.forEach(edge => {
+            const sourceLayoutId = getLayoutId(edge.source);
+            const targetLayoutId = getLayoutId(edge.target);
+
+            if (sourceLayoutId && targetLayoutId && sourceLayoutId !== targetLayoutId && adj.has(sourceLayoutId) && adj.has(targetLayoutId)) {
+                 if (!adj.get(sourceLayoutId)!.has(targetLayoutId)) {
+                    adj.get(sourceLayoutId)!.add(targetLayoutId);
+                    inDegree.set(targetLayoutId, (inDegree.get(targetLayoutId) || 0) + 1);
+                }
+            }
+        });
+        
+        const queue: string[] = [];
+        nodesToArrange.forEach(node => {
+            if (inDegree.get(node.id) === 0) {
+                queue.push(node.id);
             }
         });
 
-        let nextHSpacing = 100;
-        if (index < columns.length - 1) {
-            const currentColumnNodes = new Set(column);
-            const nextColumnNodes = new Set(columns[index + 1]);
-            const hasEdgeContent = allEdges.some(edge => {
-                const sourceLayoutId = getLayoutNodeId(edge.source);
-                const targetLayoutId = getLayoutNodeId(edge.target);
-                return currentColumnNodes.has(sourceLayoutId) && 
-                       nextColumnNodes.has(targetLayoutId) && 
-                       (edge.label || edge.data?.icon);
-            });
-            if (hasEdgeContent) nextHSpacing = 200;
+        const columns: string[][] = [];
+        while (queue.length > 0) {
+            const levelSize = queue.length;
+            const currentColumn: string[] = [];
+            for (let i = 0; i < levelSize; i++) {
+                const u = queue.shift()!;
+                currentColumn.push(u);
+                (Array.from(adj.get(u) || [])).forEach(v => {
+                    const newDegree = (inDegree.get(v) || 1) - 1;
+                    inDegree.set(v, newDegree);
+                    if (newDegree === 0) queue.push(v);
+                });
+            }
+            columns.push(currentColumn);
         }
-        currentX += columnWidth + nextHSpacing;
+        
+        const visitedNodes = new Set(columns.flat());
+        const remainingNodes = nodesToArrange.filter(node => !visitedNodes.has(node.id));
+        if (remainingNodes.length > 0) {
+            columns.push(remainingNodes.map(node => node.id));
+        }
+
+        const resultNodes = nodesToArrange.map(n => ({ ...n }));
+        let currentX = 0;
+
+        columns.forEach((column, index) => {
+            const columnWidth = Math.max(...column.map(nodeId => {
+                const node = nodesToArrange.find(n => n.id === nodeId);
+                return node ? getNodeSize(node).width : DIMENSIONS.STEP_WIDTH;
+            }));
+
+            const columnHeight = column.reduce((sum, nodeId) => {
+                const node = nodesToArrange.find(n => n.id === nodeId);
+                return sum + (node ? getNodeSize(node).height : DIMENSIONS.STEP_INITIAL_HEIGHT) + vSpacing;
+            }, -vSpacing);
+
+            let currentY = -columnHeight / 2;
+
+            column.forEach((nodeId) => {
+                const node = resultNodes.find(n => n.id === nodeId);
+                if (node) {
+                    const { width: nodeWidth, height: nodeHeight } = getNodeSize(node);
+                    
+                    let yOffset = 0;
+                    if (node.type === 'group') {
+                        const topPadding = getGroupHeaderHeight(node);
+                        const bottomPadding = 32; 
+                        yOffset = (bottomPadding - topPadding) / 2;
+                    }
+
+                    node.position = { 
+                        x: currentX + (columnWidth - nodeWidth) / 2, 
+                        y: currentY + yOffset 
+                    };
+                    currentY += nodeHeight + vSpacing;
+                }
+            });
+
+            if (index < columns.length - 1) {
+                const currentColumnNodes = new Set(column);
+                const nextColumnNodes = new Set(columns[index + 1]);
+                
+                let maxLabelWidth = 0;
+                allEdges.forEach(edge => {
+                    const s = getLayoutId(edge.source);
+                    const t = getLayoutId(edge.target);
+                    if (s && t && currentColumnNodes.has(s) && nextColumnNodes.has(t)) {
+                        maxLabelWidth = Math.max(maxLabelWidth, getLabelWidth(edge));
+                    }
+                });
+
+                const baseHSpacing = isTopLevel ? 100 : 60;
+                const labelPadding = maxLabelWidth > 0 ? 100 : 0;
+                const nextHSpacing = Math.max(baseHSpacing, maxLabelWidth + labelPadding);
+                
+                currentX += columnWidth + nextHSpacing;
+            }
+        });
+
+        return resultNodes;
+    };
+
+    let processedNodes = [...allNodes];
+
+    // 1. Recursive child arrangement
+    const layoutGroups = (parentId: string | undefined) => {
+        const children = processedNodes.filter(n => n.parentNode === parentId);
+        const groups = children.filter(n => n.type === 'group');
+
+        // Recursively handle nested groups first (bottom-up)
+        groups.forEach(g => layoutGroups(g.id));
+
+        // Arrange children of this level
+        if (parentId) {
+            const levelNodes = processedNodes.filter(n => n.parentNode === parentId);
+            
+            // For internal group layout, we only care about edges between these children
+            const levelNodeIds = new Set(levelNodes.map(n => n.id));
+            const levelEdges = allEdges.filter(e => levelNodeIds.has(e.source) && levelNodeIds.has(e.target));
+            
+            const arrangedChildren = arrangeLevel(levelNodes, levelEdges, false);
+            
+            // Merge back
+            processedNodes = processedNodes.map(n => {
+                const arranged = arrangedChildren.find(ac => ac.id === n.id);
+                return arranged || n;
+            });
+
+            // Resize the parent group to fit its newly arranged children
+            processedNodes = autoResizeGroups(processedNodes);
+        }
+    };
+
+    // Find all top-level groups and start recursion
+    allNodes.filter(n => n.type === 'group' && !n.parentNode).forEach(g => layoutGroups(g.id));
+
+    // 2. Finally, arrange top-level elements
+    const topLevelNodes = processedNodes.filter(n => !n.parentNode);
+    const arrangedTopLevel = arrangeLevel(topLevelNodes, allEdges, true);
+
+    // Merge everything together
+    const finalNodes = processedNodes.map(n => {
+        const arranged = arrangedTopLevel.find(atl => atl.id === n.id);
+        return arranged || n;
     });
 
-    setNodes(newNodes);
+    setNodes(finalNodes);
     if (!options?.silent) {
-      toast({ title: "Layout Arranged", description: "Steps have been arranged from left to right." });
+      toast({ title: "Layout Arranged", description: "Entire flow and group contents have been organized." });
       setTimeout(() => fitView({ duration: 500 }), 100);
     }
-  }, [getNodes, getEdges, setNodes, fitView, toast, getNodeSize]);
+  }, [getNodes, getEdges, setNodes, fitView, toast, getNodeSize, autoResizeGroups]);
 
   return {
     getNodeSize,
