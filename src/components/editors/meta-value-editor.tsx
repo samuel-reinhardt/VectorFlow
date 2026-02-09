@@ -23,6 +23,7 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from '@/components/ui/overlay/popover';
+import { SearchableSelect } from '@/components/ui/forms/searchable-select';
 import { Calendar } from '@/components/ui/data-display/calendar';
 import { Badge } from '@/components/ui/data-display/badge';
 import type { FieldDefinition, FieldType, ListDefinition } from '@/types';
@@ -214,29 +215,12 @@ function RenderField({
     case 'select': {
       const options = getOptions();
       return (
-        <Select value={value || ''} onValueChange={onChange}>
-          <SelectTrigger className="w-full">
-            <SelectValue placeholder="Select an option" />
-          </SelectTrigger>
-          <SelectContent>
-            {options
-              .filter(opt => opt.value !== '')
-              .map((opt, i) => (
-              <SelectItem key={`${opt.value}-${i}`} value={opt.value}>
-                <div className="flex items-center gap-2">
-                  {opt.icon && <DynamicIcon name={opt.icon} fallback={Tag} className="w-4 h-4" />}
-                  <span>{opt.label}</span>
-                  {opt.color && (
-                    <div 
-                      className="w-3 h-3 rounded-full border" 
-                      style={{backgroundColor: opt.color}}
-                    />
-                  )}
-                </div>
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
+        <SearchableSelect 
+          options={options} 
+          value={value || ''} 
+          onChange={onChange}
+          placeholder="Select an option"
+        />
       );
     }
       
@@ -246,47 +230,29 @@ function RenderField({
       
       return (
         <div className="space-y-2">
-          <Select 
+          <SearchableSelect 
+            options={options.filter(opt => !currentValues.includes(opt.value) && opt.value !== '')} 
             value="" 
-            onValueChange={(val) => {
+            onChange={(val: string) => {
               if (!currentValues.includes(val)) {
                 onChange([...currentValues, val]);
               }
             }}
-          >
-            <SelectTrigger className="w-full">
-              <SelectValue placeholder="Add option..." />
-            </SelectTrigger>
-            <SelectContent>
-              {options
-                .filter(opt => !currentValues.includes(opt.value) && opt.value !== '')
-                .map((opt, i) => (
-                  <SelectItem key={`${opt.value}-${i}`} value={opt.value}>
-                    <div className="flex items-center gap-2">
-                      {opt.icon && <DynamicIcon name={opt.icon} fallback={Tag} className="w-4 h-4" />}
-                      <span>{opt.label}</span>
-                      {opt.color && (
-                        <div 
-                          className="w-3 h-3 rounded-full border" 
-                          style={{backgroundColor: opt.color}}
-                        />
-                      )}
-                    </div>
-                  </SelectItem>
-                ))}
-            </SelectContent>
-          </Select>
+            placeholder="Add option..."
+            isMulti
+          />
           {currentValues.length > 0 && (
             <div className="flex flex-wrap gap-1 mt-2">
-              {currentValues.map((val: string) => {
+              {currentValues.map((val: any, i: number) => {
                 const opt = options.find(o => o.value === val);
                 const color = opt?.color;
                 const isDark = color ? getTextColorForBackground(color) === '#FFFFFF' : true;
                 const textColor = isDark ? color : '#1f2937';
+                const itemKey = typeof val === 'string' ? val : (Array.isArray(val) ? val[0] : String(val));
 
                 return (
                   <Badge 
-                    key={val} 
+                    key={`${itemKey}-${i}`} 
                     variant="secondary" 
                     className="gap-1 px-1.5 py-0.5 h-6 border"
                     style={color ? {
