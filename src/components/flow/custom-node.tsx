@@ -14,6 +14,7 @@ const CustomNode = ({ id, data, selected }: NodeProps<{
   label: string; 
   color: string; 
   icon?: string;
+  shortDescription?: string;
   isGroup?: boolean; 
   deliverables?: any[]; 
   onSelectDeliverable?: (nodeId: string, id: string | null) => void;
@@ -77,7 +78,7 @@ const CustomNode = ({ id, data, selected }: NodeProps<{
         style={{ borderColor: color, height: 'auto', minHeight: '60px' }}
       >
         <CardHeader
-          className="p-3 flex-shrink-0"
+          className="p-0 flex-shrink-0"
           style={{ backgroundColor: color }}
           onClick={(e) => {
                // If clicking header, select the node but deselect specific deliverable
@@ -88,10 +89,19 @@ const CustomNode = ({ id, data, selected }: NodeProps<{
                }
           }}
         >
-          <CardTitle className="text-base break-words flex items-center gap-2" style={{ color: textColor }}>
-            <DynamicIcon name={icon} fallback={Square} className="w-4 h-4 shrink-0" />
-            {data.label}
-          </CardTitle>
+          <div className="p-3">
+            <CardTitle className="text-base break-words flex items-center gap-2" style={{ color: textColor }}>
+              <DynamicIcon name={icon} fallback={Square} className="w-4 h-4 shrink-0" />
+              {data.label}
+            </CardTitle>
+          </div>
+          {data.shortDescription && (
+            <div className="bg-white/90 border-t px-3 py-1.5 backdrop-blur-sm">
+              <p className="text-[10px] text-muted-foreground leading-tight">
+                {data.shortDescription}
+              </p>
+            </div>
+          )}
         </CardHeader>
         
         {/* Deliverables List */}

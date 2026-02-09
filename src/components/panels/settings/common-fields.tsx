@@ -10,6 +10,8 @@ interface CommonFieldsProps {
   color: string;
   icon: string;
   onLabelChange: (e: React.ChangeEvent<HTMLInputElement>) => void;
+  shortDescription?: string;
+  onShortDescriptionChange: (e: React.ChangeEvent<HTMLTextAreaElement>) => void;
   onColorChange: (color: string) => void;
   onIconChange: (icon: string) => void;
   entityType: 'step' | 'deliverable' | 'group' | 'edge';
@@ -24,9 +26,11 @@ interface CommonFieldsProps {
  */
 export function CommonFields({
   label,
+  shortDescription,
   color,
   icon,
   onLabelChange,
+  onShortDescriptionChange,
   onColorChange,
   onIconChange,
   entityType,
@@ -55,6 +59,17 @@ export function CommonFields({
           value={label}
           onChange={onLabelChange}
           placeholder="Enter label"
+        />
+      </div>
+
+      <div className="space-y-2">
+        <Label htmlFor="short-desc-input" className="font-semibold text-xs text-muted-foreground">Short Description</Label>
+        <textarea
+          id="short-desc-input"
+          value={shortDescription || ''}
+          onChange={onShortDescriptionChange}
+          placeholder="Enter a short description..."
+          className="flex min-h-[60px] w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
         />
       </div>
 

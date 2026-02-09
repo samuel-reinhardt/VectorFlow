@@ -24,6 +24,27 @@ export function useNodeLayout(
     return { width, height };
   }, []);
 
+  const getGroupHeaderHeight = useCallback((node: Node) => {
+    // If we have a measured height from the DOM, use it!
+    if (node.data.headerHeight) {
+        return node.data.headerHeight + 12; // 12px gap below header
+    }
+
+    const label = node.data.label || 'Group';
+    const desc = node.data.shortDescription || '';
+    
+    // Fallback: top spacing (12px) + label row (approx 24px)
+    let height = 36; 
+    
+    if (desc) {
+      const charsPerLine = 40; 
+      const lines = Math.max(1, Math.ceil(desc.length / charsPerLine));
+      height += 2 + (lines * 14) + 12;
+    }
+    
+    return height;
+  }, []);
+
   const autoResizeGroups = useCallback((currentNodes: Node[]): Node[] => {
     const groups = currentNodes.filter(n => n.type === 'group');
     if (groups.length === 0) return currentNodes;
@@ -34,7 +55,10 @@ export function useNodeLayout(
     groups.forEach(group => {
       const children = nextNodes.filter(c => c.parentNode === group.id);
       if (children.length > 0) {
-        const padding = 60;
+        const sidePadding = 40;
+        const topPadding = getGroupHeaderHeight(group);
+        const bottomPadding = 32;
+
         const bounds = children.reduce(
           (acc, child) => {
             const { width, height } = getNodeSize(child);
@@ -49,11 +73,11 @@ export function useNodeLayout(
         );
 
         // Calculate how much we need to shift the parent relative to current (0,0)
-        const shiftX = bounds.minX - padding;
-        const shiftY = bounds.minY - padding;
+        const shiftX = bounds.minX - sidePadding;
+        const shiftY = bounds.minY - topPadding;
 
-        const newWidth = (bounds.maxX - bounds.minX) + padding * 2;
-        const newHeight = (bounds.maxY - bounds.minY) + padding * 2;
+        const newWidth = (bounds.maxX - bounds.minX) + sidePadding * 2;
+        const newHeight = (bounds.maxY - bounds.minY) + topPadding + bottomPadding;
 
         const gIdx = nextNodes.findIndex(n => n.id === group.id);
         const currentGroup = nextNodes[gIdx];

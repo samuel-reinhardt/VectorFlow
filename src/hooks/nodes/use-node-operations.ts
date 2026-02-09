@@ -8,7 +8,8 @@ import { DIMENSIONS } from '@/lib/constants';
  */
 export function useNodeOperations(
   nodes: Node[],
-  setNodes: (value: Node[] | ((prev: Node[]) => Node[])) => void
+  setNodes: (value: Node[] | ((prev: Node[]) => Node[])) => void,
+  autoResizeGroups?: (nodes: Node[]) => Node[]
 ) {
   const { project, screenToFlowPosition } = useReactFlow();
 
@@ -61,12 +62,13 @@ export function useNodeOperations(
   }, [nodes, project, setNodes]);
 
   const updateStepLabel = useCallback((stepId: string, label: string) => {
-    setNodes((nds) =>
-      nds.map((node) =>
-        node.id === stepId ? { ...node, data: { ...node.data, label } } : node
-      )
-    );
-  }, [setNodes]);
+    setNodes((nds) => {
+        const nextNodes = nds.map((node) =>
+            node.id === stepId ? { ...node, data: { ...node.data, label } } : node
+        );
+        return autoResizeGroups ? autoResizeGroups(nextNodes) : nextNodes;
+    });
+  }, [setNodes, autoResizeGroups]);
   
   const updateStepColor = useCallback((stepId: string, color: string) => {
     setNodes((nds) =>
@@ -89,5 +91,13 @@ export function useNodeOperations(
     updateStepLabel,
     updateStepColor,
     updateStepIcon,
+    updateStepShortDescription: useCallback((stepId: string, shortDescription: string) => {
+        setNodes((nds) => {
+            const nextNodes = nds.map((node) =>
+                node.id === stepId ? { ...node, data: { ...node.data, shortDescription } } : node
+            );
+            return autoResizeGroups ? autoResizeGroups(nextNodes) : nextNodes;
+        });
+    }, [setNodes, autoResizeGroups]),
   };
 }

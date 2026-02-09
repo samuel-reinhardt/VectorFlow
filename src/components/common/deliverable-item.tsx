@@ -11,6 +11,7 @@ interface DeliverableItemProps {
     label: string;
     color: string;
     icon?: string;
+    shortDescription?: string;
   };
   index: number;
   isSelected: boolean;
@@ -69,7 +70,7 @@ export const DeliverableItem = React.memo(({
       onMouseDown={(e) => e.stopPropagation()}
       onPointerDown={(e) => e.stopPropagation()}
       className={cn(
-        "nodrag p-2 rounded-md text-sm font-medium cursor-pointer flex items-center gap-2 border",
+        "nodrag rounded-md text-sm font-medium cursor-pointer flex flex-col border overflow-hidden",
         "active:scale-[0.97] transition-[outline,scale] duration-200",
         isSelected ? "ring-2 ring-offset-1 ring-black" : "hover:ring-2 hover:ring-offset-1 hover:ring-[var(--ring-color)]/60"
       )}
@@ -80,13 +81,25 @@ export const DeliverableItem = React.memo(({
         '--ring-color': item.color,
       } as React.CSSProperties}
     >
-      <div 
-        className="w-5 h-5 rounded-full flex items-center justify-center shrink-0 transition-colors shadow-sm"
-        style={{ backgroundColor: item.color }}
-      >
-        <DynamicIcon name={item.icon} fallback={FileText} className="w-3 h-3 shrink-0" style={{ color: iconColor }} />
+      <div className="flex flex-col flex-1 min-w-0">
+        <div className="flex items-center gap-2 p-2">
+          <div 
+            className="w-5 h-5 rounded-full flex items-center justify-center shrink-0 transition-colors shadow-sm"
+            style={{ backgroundColor: item.color }}
+          >
+            <DynamicIcon name={item.icon} fallback={FileText} className="w-3 h-3 shrink-0" style={{ color: iconColor }} />
+          </div>
+          <span className="break-all font-semibold">{item.label}</span>
+        </div>
+        
+        {item.shortDescription && (
+          <div className="bg-white/80 border-t px-2 py-1.5 mt-auto rounded-b-md">
+            <p className="text-[10px] text-muted-foreground leading-tight break-words font-normal">
+              {item.shortDescription}
+            </p>
+          </div>
+        )}
       </div>
-      <span className="truncate">{item.label}</span>
     </div>
   );
 });

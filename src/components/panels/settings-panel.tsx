@@ -15,9 +15,11 @@ interface SettingsPanelProps {
   onAddStep: () => void;
   onAddDeliverable: (stepId: string, afterDeliverableId?: string) => void;
   onUpdateStepLabel: (stepId: string, label: string) => void;
+  onUpdateStepShortDescription: (stepId: string, description: string) => void;
   onUpdateStepColor: (stepId: string, color: string) => void;
   onUpdateStepIcon: (stepId: string, icon: string) => void;
   onUpdateEdgeLabel: (edgeId: string, label: string) => void;
+  onUpdateEdgeShortDescription: (edgeId: string, description: string) => void;
   onUpdateEdgeColor: (edgeId: string, color: string) => void;
   onUpdateEdgeIcon: (edgeId: string, icon: string) => void;
   onUpdateDeliverable: (stepId: string, deliverableId: string, updates: any) => void;
@@ -61,9 +63,11 @@ export function SettingsPanel({
   onAddStep,
   onAddDeliverable,
   onUpdateStepLabel,
+  onUpdateStepShortDescription,
   onUpdateStepColor,
   onUpdateStepIcon,
   onUpdateEdgeLabel,
+  onUpdateEdgeShortDescription,
   onUpdateEdgeColor,
   onUpdateEdgeIcon,
   onUpdateDeliverable,
@@ -77,6 +81,7 @@ export function SettingsPanel({
   onUpdateEdgeMetaData,
 }: SettingsPanelProps) {
   const [label, setLabel] = useState('');
+  const [shortDescription, setShortDescription] = useState('');
   const [color, setColor] = useState('#E5E7EB');
   const [icon, setIcon] = useState('');
 
@@ -124,14 +129,17 @@ export function SettingsPanel({
     if (!isMultiSelection) {
         if (selectedDeliverable) {
             setLabel(selectedDeliverable.label || '');
+            setShortDescription(selectedDeliverable.shortDescription || '');
             setColor(selectedDeliverable.color || '#E0E7FF');
             setIcon(selectedDeliverable.icon || '');
         } else if (singleSelectedStep) {
             setLabel(singleSelectedStep.data.label || '');
+            setShortDescription(singleSelectedStep.data.shortDescription || '');
             setColor(singleSelectedStep.data.color || '#E5E7EB');
             setIcon(singleSelectedStep.data.icon || '');
         } else if (activeSelectedEdge) {
             setLabel(activeSelectedEdge.label?.toString() || '');
+            setShortDescription(activeSelectedEdge.data?.shortDescription || '');
             setColor((activeSelectedEdge.style?.stroke as string) || '#6B7280');
             setIcon(activeSelectedEdge.data?.icon || '');
         }
@@ -171,6 +179,19 @@ export function SettingsPanel({
     if (selectedDeliverable) onUpdateDeliverable(singleSelectedStep!.id, selectedDeliverable.id, { label: newLabel });
     else if (singleSelectedStep) onUpdateStepLabel(singleSelectedStep.id, newLabel);
     else if (activeSelectedEdge) onUpdateEdgeLabel(activeSelectedEdge.id, newLabel);
+  };
+
+  const handleShortDescriptionChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
+    const newDesc = e.target.value;
+    setShortDescription(newDesc);
+    if (selectedDeliverable) {
+        onUpdateDeliverable(singleSelectedStep!.id, selectedDeliverable.id, { shortDescription: newDesc });
+    } else if (singleSelectedStep) {
+        // We'll need access to onUpdateStepShortDescription which we should add to props
+        (onUpdateStepShortDescription as any)?.(singleSelectedStep.id, newDesc);
+    } else if (activeSelectedEdge) {
+        (onUpdateEdgeShortDescription as any)?.(activeSelectedEdge.id, newDesc);
+    }
   };
 
   const handleColorChange = (newColor: string) => {
@@ -265,9 +286,11 @@ export function SettingsPanel({
                       {/* Common Fields for Steps */}
                       <CommonFields
                           label={selectionGroups.steps.every(n => n.data.label === selectionGroups.steps[0].data.label) ? selectionGroups.steps[0].data.label : ''}
+                          shortDescription={selectionGroups.steps.every(n => n.data.shortDescription === selectionGroups.steps[0].data.shortDescription) ? selectionGroups.steps[0].data.shortDescription : ''}
                           color={selectionGroups.steps.every(n => n.data.color === selectionGroups.steps[0].data.color) ? selectionGroups.steps[0].data.color : '#E5E7EB'}
                           icon={selectionGroups.steps.every(n => n.data.icon === selectionGroups.steps[0].data.icon) ? selectionGroups.steps[0].data.icon : ''}
                           onLabelChange={(e) => selectionGroups.steps.forEach(n => onUpdateStepLabel(n.id, e.target.value))}
+                          onShortDescriptionChange={(e) => selectionGroups.steps.forEach(n => onUpdateStepShortDescription(n.id, e.target.value))}
                           onColorChange={(color) => selectionGroups.steps.forEach(n => onUpdateStepColor(n.id, color))}
                           onIconChange={(icon) => selectionGroups.steps.forEach(n => onUpdateStepIcon(n.id, icon))}
                           entityType="step"
@@ -297,11 +320,13 @@ export function SettingsPanel({
                       </div>
 
                       {/* Common Fields for Groups */}
-                      <CommonFields
+                       <CommonFields
                           label={selectionGroups.groups.every(n => n.data.label === selectionGroups.groups[0].data.label) ? selectionGroups.groups[0].data.label : ''}
+                          shortDescription={selectionGroups.groups.every(n => n.data.shortDescription === selectionGroups.groups[0].data.shortDescription) ? selectionGroups.groups[0].data.shortDescription : ''}
                           color={selectionGroups.groups.every(n => n.data.color === selectionGroups.groups[0].data.color) ? selectionGroups.groups[0].data.color : '#E5E7EB'}
                           icon={selectionGroups.groups.every(n => n.data.icon === selectionGroups.groups[0].data.icon) ? selectionGroups.groups[0].data.icon : ''}
                           onLabelChange={(e) => selectionGroups.groups.forEach(n => onUpdateStepLabel(n.id, e.target.value))}
+                          onShortDescriptionChange={(e) => selectionGroups.groups.forEach(n => onUpdateStepShortDescription(n.id, e.target.value))}
                           onColorChange={(color) => selectionGroups.groups.forEach(n => onUpdateStepColor(n.id, color))}
                           onIconChange={(icon) => selectionGroups.groups.forEach(n => onUpdateStepIcon(n.id, icon))}
                           entityType="group"
@@ -331,11 +356,13 @@ export function SettingsPanel({
                       </div>
 
                       {/* Common Fields for Edges */}
-                      <CommonFields
+                       <CommonFields
                           label={selectionGroups.edges.every(e => e.label === selectionGroups.edges[0].label) ? (selectionGroups.edges[0].label as string) || '' : ''}
+                          shortDescription={selectionGroups.edges.every(e => e.data?.shortDescription === selectionGroups.edges[0].data?.shortDescription) ? selectionGroups.edges[0].data?.shortDescription : ''}
                           color={selectionGroups.edges.every(e => e.style?.stroke === selectionGroups.edges[0].style?.stroke) ? (selectionGroups.edges[0].style?.stroke as string) || '#6B7280' : '#6B7280'}
                           icon={selectionGroups.edges.every(e => e.data?.icon === selectionGroups.edges[0].data?.icon) ? selectionGroups.edges[0].data?.icon : ''}
                           onLabelChange={(e) => selectionGroups.edges.forEach(edge => onUpdateEdgeLabel(edge.id, e.target.value))}
+                          onShortDescriptionChange={(e) => selectionGroups.edges.forEach(edge => onUpdateEdgeShortDescription(edge.id, e.target.value))}
                           onColorChange={(color) => selectionGroups.edges.forEach(edge => onUpdateEdgeColor(edge.id, color))}
                           onIconChange={(icon) => selectionGroups.edges.forEach(edge => onUpdateEdgeIcon(edge.id, icon))}
                           entityType="edge"
@@ -374,9 +401,11 @@ export function SettingsPanel({
             <div className="space-y-4">
             <CommonFields
                 label={label}
+                shortDescription={shortDescription}
                 color={color}
                 icon={icon}
                 onLabelChange={handleLabelChange}
+                onShortDescriptionChange={handleShortDescriptionChange}
                 onColorChange={handleColorChange}
                 onIconChange={handleIconChange}
                 entityType={entityType}

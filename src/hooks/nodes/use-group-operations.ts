@@ -33,7 +33,7 @@ export function useGroupOperations(
         return;
     }
 
-    const padding = 60;
+    const padding = 40;
     const { minX, maxX, minY, maxY } = currentSelectedNodes.reduce(
       (acc, node) => ({
         minX: Math.min(acc.minX, node.position.x),

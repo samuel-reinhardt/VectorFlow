@@ -121,7 +121,7 @@ export const useVectorFlow = (initialNodes: Node[], initialEdges: Edge[]) => {
   );
 
   // 3. Node Operations
-  const nodeOps = useNodeOperations(nodes, setNodesState);
+  const nodeOps = useNodeOperations(nodes, setNodesState, autoResizeGroups);
   
   // Wrap addStep
   const addStepWithSnapshot = useCallback((position?: { x: number; y: number }) => {
@@ -223,6 +223,19 @@ export const useVectorFlow = (initialNodes: Node[], initialEdges: Edge[]) => {
     handleOnLoad
   );
 
+  const updateNodeData = useCallback((nodeId: string, newData: any) => {
+    setNodesState((nds) => {
+      const next = nds.map((node) =>
+        node.id === nodeId ? { ...node, data: { ...node.data, ...newData } } : node
+      );
+      // If we are updating headerHeight, we need to trigger auto-resizing immediately
+      if (newData.headerHeight !== undefined) {
+          return autoResizeGroups(next);
+      }
+      return next;
+    });
+  }, [setNodesState, autoResizeGroups]);
+
   // Enrichment logic
   const enrichedNodes = useMemo(() => nodes.map(node => ({
     ...node,
@@ -233,9 +246,10 @@ export const useVectorFlow = (initialNodes: Node[], initialEdges: Edge[]) => {
           takeSnapshot(); // Snapshot before reorder? Or maybe debounce this... for now snapshot is safer
           deliverableOps.reorderDeliverables(node.id, newDels);
       },
+      onUpdateData: (newData: any) => updateNodeData(node.id, newData),
       selectedDeliverableId: selectedNodes.length === 1 && selectedNodes[0].id === node.id ? selectedDeliverableId : null
     }
-  })), [nodes, deliverableOps.selectDeliverable, deliverableOps.reorderDeliverables, selectedNodes, selectedDeliverableId, takeSnapshot]);
+  })), [nodes, deliverableOps.selectDeliverable, deliverableOps.reorderDeliverables, updateNodeData, selectedNodes, selectedDeliverableId, takeSnapshot]);
   
   // 10. Clipboard Hook
   const { copy, paste } = useClipboard();
@@ -318,9 +332,11 @@ export const useVectorFlow = (initialNodes: Node[], initialEdges: Edge[]) => {
     updateStepLabel: nodeOps.updateStepLabel,
     updateStepColor: nodeOps.updateStepColor,
     updateStepIcon: nodeOps.updateStepIcon,
+    updateStepShortDescription: nodeOps.updateStepShortDescription,
     updateEdgeLabel: edgeOps.updateEdgeLabel,
     updateEdgeColor: edgeOps.updateEdgeColor,
     updateEdgeIcon: edgeOps.updateEdgeIcon,
+    updateEdgeShortDescription: edgeOps.updateEdgeShortDescription,
     updateDeliverable: deliverableOps.updateDeliverable,
     deleteSelection: deleteSelectionWithSnapshot,
     groupSelection: groupSelectionWithSnapshot,

@@ -81,22 +81,29 @@ export function CustomEdge({
             onMouseEnter={() => setIsLabelHovered(true)}
             onMouseLeave={() => setIsLabelHovered(false)}
             className={cn(
-              "nodrag nopan flex items-center gap-1.5 px-2 py-1 rounded-md border shadow-sm text-xs font-medium cursor-pointer bg-white",
+              "nodrag nopan flex flex-col items-start gap-1 p-2 rounded-md border shadow-sm text-xs font-medium cursor-pointer bg-white max-w-[200px]",
               "active:scale-[0.97] outline outline-none hover:outline transition-[outline,scale] duration-200 outline-offset-1",
               selected ? "outline outline-ring hover:outline-ring/60" : "hover:outline-ring/30"
             )}
           >
-            {icon && (
-               <DynamicIcon 
-                name={icon} 
-                fallback={Share2} 
-                className={cn(
-                  "w-3.5 h-3.5 transition-colors",
-                  selected ? "text-primary opacity-100" : "text-muted-foreground opacity-70"
-                )} 
-               />
+            <div className="flex items-center gap-1.5 w-full">
+              {icon && (
+                 <DynamicIcon 
+                  name={icon} 
+                  fallback={Share2} 
+                  className={cn(
+                    "w-3.5 h-3.5 transition-colors",
+                    selected ? "text-primary opacity-100" : "text-muted-foreground opacity-70"
+                  )} 
+                 />
+              )}
+              {label && <span className={cn("break-words", selected ? "text-primary" : "")}>{label}</span>}
+            </div>
+            {data?.shortDescription && (
+              <p className="text-[10px] text-muted-foreground w-full break-words border-t pt-1 mt-1 font-normal leading-tight">
+                {data.shortDescription}
+              </p>
             )}
-            {label && <span className={selected ? "text-primary" : ""}>{label}</span>}
           </div>
         </EdgeLabelRenderer>
       )}

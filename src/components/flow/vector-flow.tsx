@@ -81,9 +81,11 @@ export function VectorFlow() {
         addStep,
         addDeliverable,
         updateStepLabel,
+        updateStepShortDescription,
         updateStepColor,
         updateStepIcon,
         updateEdgeLabel,
+        updateEdgeShortDescription,
         updateEdgeColor,
         updateEdgeIcon,
         updateDeliverable,
@@ -818,9 +820,11 @@ export function VectorFlow() {
                                         onAddStep={addStep}
                                         onAddDeliverable={addDeliverable}
                                         onUpdateStepLabel={updateStepLabel}
+                                        onUpdateStepShortDescription={updateStepShortDescription}
                                         onUpdateStepColor={updateStepColor}
                                         onUpdateStepIcon={updateStepIcon}
                                         onUpdateEdgeLabel={updateEdgeLabel}
+                                        onUpdateEdgeShortDescription={updateEdgeShortDescription}
                                         onUpdateEdgeColor={updateEdgeColor}
                                         onUpdateEdgeIcon={updateEdgeIcon}
                                         onUpdateDeliverable={updateDeliverable}

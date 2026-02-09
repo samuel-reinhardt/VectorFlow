@@ -49,5 +49,12 @@ export function useEdgeOperations(
     updateEdgeLabel,
     updateEdgeColor,
     updateEdgeIcon,
+    updateEdgeShortDescription: useCallback((edgeId: string, shortDescription: string) => {
+        setEdges((eds) =>
+            eds.map((edge) =>
+                edge.id === edgeId ? { ...edge, data: { ...edge.data, shortDescription } } : edge
+            )
+        );
+    }, [setEdges]),
   };
 }
