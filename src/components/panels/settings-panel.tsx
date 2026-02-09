@@ -5,7 +5,8 @@ import { MetadataSection } from './settings/metadata-section';
 import { ActionButtons } from './settings/action-buttons';
 import { EmptyStatePanel } from './settings/empty-state-panel';
 import type { FieldDefinition } from '@/types';
-import { Layers, Square, Share2, FileText } from 'lucide-react';
+import { Layers, Square, Share2, FileText, LayoutGrid, Boxes } from 'lucide-react';
+import { DynamicIcon } from '@/components/common/dynamic-icon';
 
 interface SettingsPanelProps {
   selectedSteps: Node[];
@@ -31,7 +32,10 @@ interface SettingsPanelProps {
   onUpdateMetaData: (itemId: string, fieldId: string, value: any) => void;
   onUpdateDeliverableMetaData: (stepId: string, deliverableId: string, fieldId: string, value: any) => void;
   onUpdateEdgeMetaData: (edgeId: string, fieldId: string, value: any) => void;
+  onToggle?: () => void;
 }
+
+import { SidebarHeader } from '@/components/ui/layout/sidebar';
 
 const EMPTY_OBJECT = {};
 
@@ -54,6 +58,8 @@ function getCommonValues(items: any[], fields: FieldDefinition[], metadataExtrac
     });
     return commonValues;
 }
+
+import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/layout/tabs';
 
 export function SettingsPanel({
   selectedSteps,
@@ -79,7 +85,9 @@ export function SettingsPanel({
   onUpdateMetaData,
   onUpdateDeliverableMetaData,
   onUpdateEdgeMetaData,
+  onToggle,
 }: SettingsPanelProps) {
+  // ... (keep state and hooks the same)
   const [label, setLabel] = useState('');
   const [shortDescription, setShortDescription] = useState('');
   const [color, setColor] = useState('#E5E7EB');
@@ -93,9 +101,6 @@ export function SettingsPanel({
   const activeSelectedEdge = useMemo(() => 
     selectedEdges.length === 1 ? selectedEdges[0] : null
   , [selectedEdges]);
-
-  // If we have selectedEdges passed as prop (new), use it. Fallback to computing from selectedEdge if needed?
-  // VectorFlow passes selectedEdges now.
 
   const isGroupSelected = useMemo(() => 
     singleSelectedStep?.type === 'group'
@@ -187,7 +192,6 @@ export function SettingsPanel({
     if (selectedDeliverable) {
         onUpdateDeliverable(singleSelectedStep!.id, selectedDeliverable.id, { shortDescription: newDesc });
     } else if (singleSelectedStep) {
-        // We'll need access to onUpdateStepShortDescription which we should add to props
         (onUpdateStepShortDescription as any)?.(singleSelectedStep.id, newDesc);
     } else if (activeSelectedEdge) {
         (onUpdateEdgeShortDescription as any)?.(activeSelectedEdge.id, newDesc);
@@ -259,164 +263,232 @@ export function SettingsPanel({
 
 
   // Rendering Logic
+  // Derived Header Info
+  const headerInfo = useMemo(() => {
+    if (nothingSelected) return { title: 'Controls', description: '', iconName: '' };
+    
+    if (isMultiSelection) {
+      const total = selectedSteps.length + selectedEdges.length;
+      return { 
+        title: 'Bulk Selection', 
+        description: `${total} items selected`, 
+        iconName: 'Boxes' 
+      };
+    }
+    
+    if (singleSelectedStep) {
+      if (isGroupSelected) return { title: label || 'Untitled Group', description: 'Group', iconName: icon || 'Layers' };
+      if (selectedDeliverable) return { title: label || 'Untitled Deliverable', description: 'Deliverable', iconName: icon || 'FileText' };
+      return { title: label || 'Untitled Step', description: 'Step', iconName: icon || 'Square' };
+    }
+    
+    if (activeSelectedEdge) {
+      return { title: label || 'Connection', description: 'Connection', iconName: icon || 'Share2' };
+    }
+    
+    return { title: 'Controls', description: '', iconName: '' };
+  }, [nothingSelected, isMultiSelection, selectedSteps.length, selectedEdges.length, singleSelectedStep, isGroupSelected, selectedDeliverable, label, icon, activeSelectedEdge]);
+
   if (nothingSelected) {
       return (
-        <div className="flex-1 overflow-y-auto p-4 pt-0">
-             <EmptyStatePanel
-                isMultiStepSelection={false}
-                selectedStepsCount={0}
-                onAddStep={onAddStep}
-            />
+        <div className="flex flex-col h-full overflow-hidden bg-background">
+            <SidebarHeader onClose={onToggle}>
+              <div className="flex items-center gap-2">
+                <LayoutGrid className="w-4 h-4 text-muted-foreground" />
+                <span className="text-sm font-semibold">Controls</span>
+              </div>
+            </SidebarHeader>
+            <div className="flex-1 overflow-y-auto p-4">
+                 <EmptyStatePanel
+                    isMultiStepSelection={false}
+                    selectedStepsCount={0}
+                    onAddStep={onAddStep}
+                />
+            </div>
         </div>
       );
   }
 
-  // --- Bulk Selection UI ---
-  if (isMultiSelection) {
-      return (
-          <div className="flex-1 overflow-y-auto p-4 space-y-6">
-              {/* Steps Section */}
-              {selectionGroups.steps.length > 0 && (
-                  <div className="space-y-3">
-                      <div className="flex items-center gap-2 text-sm font-semibold border-b pb-2">
-                          <Square className="w-4 h-4" />
-                          Steps ({selectionGroups.steps.length})
-                      </div>
-                      
-                      {/* Common Fields for Steps */}
-                      <CommonFields
-                          label={selectionGroups.steps.every(n => n.data.label === selectionGroups.steps[0].data.label) ? selectionGroups.steps[0].data.label : ''}
-                          shortDescription={selectionGroups.steps.every(n => n.data.shortDescription === selectionGroups.steps[0].data.shortDescription) ? selectionGroups.steps[0].data.shortDescription : ''}
-                          color={selectionGroups.steps.every(n => n.data.color === selectionGroups.steps[0].data.color) ? selectionGroups.steps[0].data.color : '#E5E7EB'}
-                          icon={selectionGroups.steps.every(n => n.data.icon === selectionGroups.steps[0].data.icon) ? selectionGroups.steps[0].data.icon : ''}
-                          onLabelChange={(e) => selectionGroups.steps.forEach(n => onUpdateStepLabel(n.id, e.target.value))}
-                          onShortDescriptionChange={(e) => selectionGroups.steps.forEach(n => onUpdateStepShortDescription(n.id, e.target.value))}
-                          onColorChange={(color) => selectionGroups.steps.forEach(n => onUpdateStepColor(n.id, color))}
-                          onIconChange={(icon) => selectionGroups.steps.forEach(n => onUpdateStepIcon(n.id, icon))}
-                          entityType="step"
-                          palette={metaConfig?.visualRules?.palette}
-                          projectIcons={metaConfig?.visualRules?.icons}
-                      />
-
-                      <MetadataSection
-                          fields={metaConfig.step || []}
-                          values={getCommonValues(selectionGroups.steps, metaConfig.step || [], (item) => item.data.meta)}
-                          lists={metaConfig.lists || []}
-                          onChange={(fieldId, val) => {
-                              selectionGroups.steps.forEach(node => {
-                                  onUpdateMetaData(node.id, fieldId, val);
-                              });
-                          }}
-                      />
+  return (
+    <div className="flex flex-col h-full overflow-hidden bg-background">
+        <SidebarHeader onClose={onToggle}>
+            <div className="flex items-center gap-2.5">
+                {headerInfo.iconName && (
+                  <div className="p-1.5 rounded-md bg-muted/50 border shrink-0">
+                    <DynamicIcon name={headerInfo.iconName} fallback={LayoutGrid} className="w-4 h-4" />
                   </div>
-              )}
+                )}
+                <div className="flex flex-col min-w-0">
+                    <h3 className="text-sm font-semibold truncate leading-none mb-1" title={headerInfo.title}>
+                        {headerInfo.title}
+                    </h3>
+                    <p className="text-[9px] text-muted-foreground uppercase tracking-widest font-bold leading-none">
+                        {headerInfo.description}
+                    </p>
+                </div>
+            </div>
+        </SidebarHeader>
+        
+        <div className="flex-1 overflow-y-auto">
+            <Tabs defaultValue="properties" className="w-full flex flex-col h-full">
+                <div className="sticky top-0 bg-background z-20 px-4 pt-2 pb-4 border-b shrink-0">
+                    <TabsList className="w-full">
+                        <TabsTrigger value="properties" className="flex-1">Properties</TabsTrigger>
+                        <TabsTrigger value="data" className="flex-1">Data</TabsTrigger>
+                    </TabsList>
+                </div>
+                
+                <div className="p-4 pt-2 flex-1">
+                    <TabsContent value="properties" className="space-y-4 focus-visible:outline-none focus-visible:ring-0 m-0">
+                    {isMultiSelection ? (
+                        <div className="space-y-6">
+                            {selectionGroups.steps.length > 0 && (
+                                <div className="space-y-3">
+                                    <div className="flex items-center gap-2 text-sm font-semibold border-b pb-2">
+                                        <Square className="w-4 h-4" />
+                                        Steps ({selectionGroups.steps.length})
+                                    </div>
+                                    <CommonFields
+                                        label={selectionGroups.steps.every(n => n.data.label === selectionGroups.steps[0].data.label) ? selectionGroups.steps[0].data.label : ''}
+                                        shortDescription={selectionGroups.steps.every(n => n.data.shortDescription === selectionGroups.steps[0].data.shortDescription) ? selectionGroups.steps[0].data.shortDescription : ''}
+                                        color={selectionGroups.steps.every(n => n.data.color === selectionGroups.steps[0].data.color) ? selectionGroups.steps[0].data.color : '#E5E7EB'}
+                                        icon={selectionGroups.steps.every(n => n.data.icon === selectionGroups.steps[0].data.icon) ? selectionGroups.steps[0].data.icon : ''}
+                                        onLabelChange={(e) => selectionGroups.steps.forEach(n => onUpdateStepLabel(n.id, e.target.value))}
+                                        onShortDescriptionChange={(e) => selectionGroups.steps.forEach(n => onUpdateStepShortDescription(n.id, e.target.value))}
+                                        onColorChange={(color) => selectionGroups.steps.forEach(n => onUpdateStepColor(n.id, color))}
+                                        onIconChange={(icon) => selectionGroups.steps.forEach(n => onUpdateStepIcon(n.id, icon))}
+                                        entityType="step"
+                                        palette={metaConfig?.visualRules?.palette}
+                                        projectIcons={metaConfig?.visualRules?.icons}
+                                    />
+                                </div>
+                            )}
 
-              {/* Groups Section */}
-              {selectionGroups.groups.length > 0 && (
-                  <div className="space-y-3">
-                      <div className="flex items-center gap-2 text-sm font-semibold border-b pb-2">
-                          <Layers className="w-4 h-4" />
-                          Groups ({selectionGroups.groups.length})
-                      </div>
+                            {selectionGroups.groups.length > 0 && (
+                                <div className="space-y-3">
+                                    <div className="flex items-center gap-2 text-sm font-semibold border-b pb-2">
+                                        <Layers className="w-4 h-4" />
+                                        Groups ({selectionGroups.groups.length})
+                                    </div>
+                                    <CommonFields
+                                        label={selectionGroups.groups.every(n => n.data.label === selectionGroups.groups[0].data.label) ? selectionGroups.groups[0].data.label : ''}
+                                        shortDescription={selectionGroups.groups.every(n => n.data.shortDescription === selectionGroups.groups[0].data.shortDescription) ? selectionGroups.groups[0].data.shortDescription : ''}
+                                        color={selectionGroups.groups.every(n => n.data.color === selectionGroups.groups[0].data.color) ? selectionGroups.groups[0].data.color : '#E5E7EB'}
+                                        icon={selectionGroups.groups.every(n => n.data.icon === selectionGroups.groups[0].data.icon) ? selectionGroups.groups[0].data.icon : ''}
+                                        onLabelChange={(e) => selectionGroups.groups.forEach(n => onUpdateStepLabel(n.id, e.target.value))}
+                                        onShortDescriptionChange={(e) => selectionGroups.groups.forEach(n => onUpdateStepShortDescription(n.id, e.target.value))}
+                                        onColorChange={(color) => selectionGroups.groups.forEach(n => onUpdateStepColor(n.id, color))}
+                                        onIconChange={(icon) => selectionGroups.groups.forEach(n => onUpdateStepIcon(n.id, icon))}
+                                        entityType="group"
+                                        palette={metaConfig?.visualRules?.palette}
+                                        projectIcons={metaConfig?.visualRules?.icons}
+                                    />
+                                </div>
+                            )}
 
-                      {/* Common Fields for Groups */}
-                       <CommonFields
-                          label={selectionGroups.groups.every(n => n.data.label === selectionGroups.groups[0].data.label) ? selectionGroups.groups[0].data.label : ''}
-                          shortDescription={selectionGroups.groups.every(n => n.data.shortDescription === selectionGroups.groups[0].data.shortDescription) ? selectionGroups.groups[0].data.shortDescription : ''}
-                          color={selectionGroups.groups.every(n => n.data.color === selectionGroups.groups[0].data.color) ? selectionGroups.groups[0].data.color : '#E5E7EB'}
-                          icon={selectionGroups.groups.every(n => n.data.icon === selectionGroups.groups[0].data.icon) ? selectionGroups.groups[0].data.icon : ''}
-                          onLabelChange={(e) => selectionGroups.groups.forEach(n => onUpdateStepLabel(n.id, e.target.value))}
-                          onShortDescriptionChange={(e) => selectionGroups.groups.forEach(n => onUpdateStepShortDescription(n.id, e.target.value))}
-                          onColorChange={(color) => selectionGroups.groups.forEach(n => onUpdateStepColor(n.id, color))}
-                          onIconChange={(icon) => selectionGroups.groups.forEach(n => onUpdateStepIcon(n.id, icon))}
-                          entityType="group"
-                          palette={metaConfig?.visualRules?.palette}
-                          projectIcons={metaConfig?.visualRules?.icons}
-                      />
+                            {selectionGroups.edges.length > 0 && (
+                                <div className="space-y-3">
+                                    <div className="flex items-center gap-2 text-sm font-semibold border-b pb-2">
+                                        <Share2 className="w-4 h-4" />
+                                        Connections ({selectionGroups.edges.length})
+                                    </div>
+                                    <CommonFields
+                                        label={selectionGroups.edges.every(e => e.label === selectionGroups.edges[0].label) ? (selectionGroups.edges[0].label as string) || '' : ''}
+                                        shortDescription={selectionGroups.edges.every(e => e.data?.shortDescription === selectionGroups.edges[0].data?.shortDescription) ? selectionGroups.edges[0].data?.shortDescription : ''}
+                                        color={selectionGroups.edges.every(e => e.style?.stroke === selectionGroups.edges[0].style?.stroke) ? (selectionGroups.edges[0].style?.stroke as string) || '#6B7280' : '#6B7280'}
+                                        icon={selectionGroups.edges.every(e => e.data?.icon === selectionGroups.edges[0].data?.icon) ? selectionGroups.edges[0].data?.icon : ''}
+                                        onLabelChange={(e) => selectionGroups.edges.forEach(edge => onUpdateEdgeLabel(edge.id, e.target.value))}
+                                        onShortDescriptionChange={(e) => selectionGroups.edges.forEach(edge => onUpdateEdgeShortDescription(edge.id, e.target.value))}
+                                        onColorChange={(color) => selectionGroups.edges.forEach(edge => onUpdateEdgeColor(edge.id, color))}
+                                        onIconChange={(icon) => selectionGroups.edges.forEach(edge => onUpdateEdgeIcon(edge.id, icon))}
+                                        entityType="edge"
+                                        palette={metaConfig?.visualRules?.palette}
+                                        projectIcons={metaConfig?.visualRules?.icons}
+                                    />
+                                </div>
+                            )}
+                        </div>
+                    ) : (
+                        <CommonFields
+                            label={label}
+                            shortDescription={shortDescription}
+                            color={color}
+                            icon={icon}
+                            onLabelChange={handleLabelChange}
+                            onShortDescriptionChange={handleShortDescriptionChange}
+                            onColorChange={handleColorChange}
+                            onIconChange={handleIconChange}
+                            entityType={entityType}
+                            palette={metaConfig?.visualRules?.palette}
+                            projectIcons={metaConfig?.visualRules?.icons}
+                        />
+                    )}
+                </TabsContent>
 
-                      <MetadataSection
-                          fields={metaConfig.group || []}
-                          values={getCommonValues(selectionGroups.groups, metaConfig.group || [], (item) => item.data.meta)}
-                          lists={metaConfig.lists || []}
-                          onChange={(fieldId, val) => {
-                              selectionGroups.groups.forEach(node => {
-                                  onUpdateMetaData(node.id, fieldId, val);
-                              });
-                          }}
-                      />
-                  </div>
-              )}
+                <TabsContent value="data" className="focus-visible:outline-none focus-visible:ring-0">
+                    {isMultiSelection ? (
+                        <div className="space-y-6">
+                            {selectionGroups.steps.length > 0 && (
+                                <div className="space-y-3">
+                                    <div className="text-xs font-bold text-muted-foreground uppercase tracking-widest px-1">Step Metadata</div>
+                                    <MetadataSection
+                                        fields={metaConfig.step || []}
+                                        values={getCommonValues(selectionGroups.steps, metaConfig.step || [], (item) => item.data.meta)}
+                                        lists={metaConfig.lists || []}
+                                        onChange={(fieldId, val) => {
+                                            selectionGroups.steps.forEach(node => {
+                                                onUpdateMetaData(node.id, fieldId, val);
+                                            });
+                                        }}
+                                    />
+                                </div>
+                            )}
+                            {selectionGroups.groups.length > 0 && (
+                                <div className="space-y-3">
+                                    <div className="text-xs font-bold text-muted-foreground uppercase tracking-widest px-1">Group Metadata</div>
+                                    <MetadataSection
+                                        fields={metaConfig.group || []}
+                                        values={getCommonValues(selectionGroups.groups, metaConfig.group || [], (item) => item.data.meta)}
+                                        lists={metaConfig.lists || []}
+                                        onChange={(fieldId, val) => {
+                                            selectionGroups.groups.forEach(node => {
+                                                onUpdateMetaData(node.id, fieldId, val);
+                                            });
+                                        }}
+                                    />
+                                </div>
+                            )}
+                            {selectionGroups.edges.length > 0 && (
+                                <div className="space-y-3">
+                                    <div className="text-xs font-bold text-muted-foreground uppercase tracking-widest px-1">Connection Metadata</div>
+                                    <MetadataSection
+                                        fields={metaConfig.edge || []}
+                                        values={getCommonValues(selectionGroups.edges, metaConfig.edge || [], (item) => item.data?.meta)}
+                                        lists={metaConfig.lists || []}
+                                        onChange={(fieldId, val) => {
+                                            selectionGroups.edges.forEach(edge => {
+                                                onUpdateEdgeMetaData(edge.id, fieldId, val);
+                                            });
+                                        }}
+                                    />
+                                </div>
+                            )}
+                        </div>
+                    ) : (
+                        metadataProps ? (
+                            <MetadataSection {...metadataProps} />
+                        ) : (
+                            <div className="py-12 text-center text-muted-foreground text-sm italic">
+                                No metadata defined for this element type.
+                            </div>
+                        )
+                    )}
+                </TabsContent>
+                </div>
+            </Tabs>
+        </div>
 
-              {/* Edge Section */}
-              {selectionGroups.edges.length > 0 && (
-                  <div className="space-y-3">
-                      <div className="flex items-center gap-2 text-sm font-semibold border-b pb-2">
-                          <Share2 className="w-4 h-4" />
-                          Connections ({selectionGroups.edges.length})
-                      </div>
-
-                      {/* Common Fields for Edges */}
-                       <CommonFields
-                          label={selectionGroups.edges.every(e => e.label === selectionGroups.edges[0].label) ? (selectionGroups.edges[0].label as string) || '' : ''}
-                          shortDescription={selectionGroups.edges.every(e => e.data?.shortDescription === selectionGroups.edges[0].data?.shortDescription) ? selectionGroups.edges[0].data?.shortDescription : ''}
-                          color={selectionGroups.edges.every(e => e.style?.stroke === selectionGroups.edges[0].style?.stroke) ? (selectionGroups.edges[0].style?.stroke as string) || '#6B7280' : '#6B7280'}
-                          icon={selectionGroups.edges.every(e => e.data?.icon === selectionGroups.edges[0].data?.icon) ? selectionGroups.edges[0].data?.icon : ''}
-                          onLabelChange={(e) => selectionGroups.edges.forEach(edge => onUpdateEdgeLabel(edge.id, e.target.value))}
-                          onShortDescriptionChange={(e) => selectionGroups.edges.forEach(edge => onUpdateEdgeShortDescription(edge.id, e.target.value))}
-                          onColorChange={(color) => selectionGroups.edges.forEach(edge => onUpdateEdgeColor(edge.id, color))}
-                          onIconChange={(icon) => selectionGroups.edges.forEach(edge => onUpdateEdgeIcon(edge.id, icon))}
-                          entityType="edge"
-                          palette={metaConfig?.visualRules?.palette}
-                          projectIcons={metaConfig?.visualRules?.icons}
-                      />
-
-                      <MetadataSection
-                          fields={metaConfig.edge || []}
-                          values={getCommonValues(selectionGroups.edges, metaConfig.edge || [], (item) => item.data?.meta)}
-                          lists={metaConfig.lists || []}
-                          onChange={(fieldId, val) => {
-                              selectionGroups.edges.forEach(edge => {
-                                  onUpdateEdgeMetaData(edge.id, fieldId, val);
-                              });
-                          }}
-                      />
-                  </div>
-              )}
-
-              <ActionButtons
-                isStepSelected={false}
-                isGroupSelected={false}
-                onDeleteSelection={onDeleteSelection}
-              />
-          </div>
-      );
-  }
-
-  // --- Single Selection UI ---
-  const editingElement = singleSelectedStep || activeSelectedEdge || selectedDeliverable;
-
-  if (editingElement) {
-      return (
-        <div className="flex-1 overflow-y-auto p-4 pt-0">
-            <div className="space-y-4">
-            <CommonFields
-                label={label}
-                shortDescription={shortDescription}
-                color={color}
-                icon={icon}
-                onLabelChange={handleLabelChange}
-                onShortDescriptionChange={handleShortDescriptionChange}
-                onColorChange={handleColorChange}
-                onIconChange={handleIconChange}
-                entityType={entityType}
-                palette={metaConfig?.visualRules?.palette}
-                projectIcons={metaConfig?.visualRules?.icons}
-            />
-            
-            {metadataProps && (
-                <MetadataSection {...metadataProps} />
-            )}
-
+        <div className="p-4 border-t bg-card shrink-0 shadow-[0_-4px_12px_rgba(0,0,0,0.05)]">
             <ActionButtons
                 isStepSelected={!!isStepSelected}
                 isGroupSelected={!!isGroupSelected}
@@ -430,17 +502,7 @@ export function SettingsPanel({
                 onUngroup={isGroupSelected ? onUngroup : undefined}
                 onDeleteSelection={onDeleteSelection}
             />
-            </div>
         </div>
-      );
-  }
-
-  return (
-    <div className="flex-1 overflow-y-auto p-4 pt-0">
-        <EmptyStatePanel
-            isMultiStepSelection={false}
-            selectedStepsCount={0}
-        />
     </div>
   );
 }

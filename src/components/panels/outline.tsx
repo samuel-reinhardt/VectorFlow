@@ -34,9 +34,10 @@ interface OutlineProps {
   selectedStepIds: string[];
   onStepSelect: (nodeIds: string[]) => void;
   onDeliverableSelect: (nodeId: string, deliverableId: string) => void;
+  onToggle?: () => void;
 }
 
-export function Outline({ nodes, selectedStepIds, onStepSelect, onDeliverableSelect }: OutlineProps) {
+export function Outline({ nodes, selectedStepIds, onStepSelect, onDeliverableSelect, onToggle }: OutlineProps) {
   const [searchTerm, setSearchTerm] = useState('');
   const [collapsedIds, setCollapsedIds] = useState<Set<string>>(new Set());
   const [lastClickedId, setLastClickedId] = useState<string | null>(null);
@@ -263,35 +264,37 @@ export function Outline({ nodes, selectedStepIds, onStepSelect, onDeliverableSel
 
   return (
     <div className="flex flex-col h-full bg-background">
-      <SidebarHeader className="border-b px-4 py-3">
-        <div className="flex items-center justify-between mb-2">
-          <div className="flex items-center gap-2">
-            <ListTree className="w-4 h-4 text-muted-foreground" />
-            <h2 className="text-sm font-semibold">Outline</h2>
-          </div>
-          <TooltipProvider>
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <Button variant="ghost" size="icon" className="h-6 w-6" onClick={toggleAll}>
-                  <ChevronsUpDown className="h-3.5 w-3.5" />
-                </Button>
-              </TooltipTrigger>
-              <TooltipContent>
-                <p>{areAllCollapsed ? 'Expand All' : 'Collapse All'}</p>
-              </TooltipContent>
-            </Tooltip>
-          </TooltipProvider>
+      <SidebarHeader onClose={onToggle} className="py-2">
+        <div className="flex items-center gap-2">
+          <ListTree className="w-4 h-4 text-muted-foreground" />
+          <h2 className="text-sm font-semibold">Outline</h2>
         </div>
-        <div className="relative">
+      </SidebarHeader>
+
+      {/* Toolbar Row */}
+      <div className="flex items-center gap-2 px-3 py-2 border-b bg-muted/5 shrink-0">
+        <div className="relative flex-1">
           <Search className="absolute left-2.5 top-2.5 h-3.5 w-3.5 text-muted-foreground" />
           <Input
             placeholder="Search..."
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
-            className="w-full pl-8 h-8 text-xs"
+            className="w-full pl-8 h-8 text-xs bg-background"
           />
         </div>
-      </SidebarHeader>
+        <TooltipProvider>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button variant="ghost" size="icon" className="h-8 w-8 shrink-0 border" onClick={toggleAll}>
+                <ChevronsUpDown className="h-4 w-4" />
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent>
+              <p>{areAllCollapsed ? 'Expand All' : 'Collapse All'}</p>
+            </TooltipContent>
+          </Tooltip>
+        </TooltipProvider>
+      </div>
       <SidebarContent className="p-0">
         {visibleItems.length > 0 ? (
           <div className="py-1">

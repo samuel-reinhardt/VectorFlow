@@ -615,54 +615,52 @@ export function VectorFlow() {
                             onBrowseDrive={handleBrowseDrive}
                             onCreateFile={handleCreateDriveFile}
                             onUnlink={handleUnlinkDrive}
-                            onCopyLink={() => {
-                                toast({
-                                    title: "Link Copied",
-                                    description: "Shareable link copied to clipboard.",
-                                });
-                            }}
+                            onCopyLink={handleShareLink}
                         />
                     }
                 />
-                
-                <Toolbar 
-                    onLeftSidebarToggle={handleLeftSidebarToggle}
-                    onRightSidebarToggle={handleRightSidebarToggle}
-                    onAutoLayout={() => handleAutoLayout({ silent: false })}
-                    metaConfig={metaConfig}
-                    onUpdateMetaConfig={updateMetaConfig}
-                    leftSidebarOpen={leftSidebarOpen}
-                    rightSidebarOpen={rightSidebarOpen}
-                    onExport={handleExport}
-                    onImport={handleImport}
-                    isReadOnly={isReadOnly}
-                    onToggleReadOnly={() => {
-                        if (!syncState.isReadOnlyDueToPermissions) {
-                            setIsReadOnly(!isReadOnly);
-                        }
-                    }}
-                    isReadOnlyForced={syncState.isReadOnlyDueToPermissions}
-                    onUndo={undo}
-                    onRedo={redo}
-                    canUndo={canUndo}
-                    canRedo={canRedo}
 
-                    onNewLocal={handleNewLocal}
-                    onNewCloud={handleNewCloud}
-                    onOpenCloud={handleBrowseDrive}
-                    onSaveCloud={manualSync}
-                    onSaveAsCloud={handleCreateDriveFile}
-                    onToggleAutoSave={toggleSync}
-                    onSignIn={handleSignIn}
-                    onShareLink={handleShareLink}
-                    user={user}
-                    syncState={syncState}
-                    googleDriveFileId={googleDriveFileId}
-                />
+            <Toolbar 
+                onAutoLayout={() => handleAutoLayout({ silent: false })}
+                metaConfig={metaConfig}
+                onUpdateMetaConfig={updateMetaConfig}
+                onExport={handleExport}
+                onImport={handleImport}
+                isReadOnly={isReadOnly}
+                onToggleReadOnly={() => {
+                    if (!syncState.isReadOnlyDueToPermissions) {
+                        setIsReadOnly(!isReadOnly);
+                    }
+                }}
+                isReadOnlyForced={syncState.isReadOnlyDueToPermissions}
+                onUndo={undo}
+                onRedo={redo}
+                canUndo={canUndo}
+                canRedo={canRedo}
+
+                onNewLocal={handleNewLocal}
+                onNewCloud={handleNewCloud}
+                onOpenCloud={handleBrowseDrive}
+                onSaveCloud={manualSync}
+                onSaveAsCloud={handleCreateDriveFile}
+                onToggleAutoSave={toggleSync}
+                onSignIn={handleSignIn}
+                onShareLink={handleShareLink}
+                user={user}
+                syncState={syncState}
+                googleDriveFileId={googleDriveFileId}
+            />
 
                 <div className="flex flex-1 overflow-hidden">
                     {/* Left Sidebar - Outline */}
-                    <Sidebar side="left" open={leftSidebarOpen} onOpenChange={handleLeftSidebarChange} isDesktop={isDesktop}>
+                    <Sidebar 
+                        side="left" 
+                        open={leftSidebarOpen} 
+                        onOpenChange={handleLeftSidebarChange} 
+                        isDesktop={isDesktop}
+                        label="Outline"
+                        onToggle={handleLeftSidebarToggle}
+                    >
                         <Outline 
                             nodes={nodes} 
                             selectedStepIds={selectedNodes.map(n => n.id)} 
@@ -671,6 +669,7 @@ export function VectorFlow() {
                                 handleStepsSelect([nodeId]);
                                 selectDeliverable(nodeId, deliverableId); // Both arguments needed
                             }} 
+                            onToggle={handleLeftSidebarToggle}
                         />
                     </Sidebar>
 
@@ -783,61 +782,50 @@ export function VectorFlow() {
                     </main>
                     
                     {/* Right Sidebar - Settings/Properties */}
-                    <Sidebar side="right" open={rightSidebarOpen} onOpenChange={handleRightSidebarChange} isDesktop={isDesktop}>
+                    <Sidebar 
+                        side="right" 
+                        open={rightSidebarOpen} 
+                        onOpenChange={handleRightSidebarChange} 
+                        isDesktop={isDesktop}
+                        label="Properties"
+                        onToggle={handleRightSidebarToggle}
+                    >
                         {isReadOnly ? (
-                            <ReadOnlyPropertiesPanel
+                            <ReadOnlyPropertiesPanel 
                                 selectedNodes={selectedNodes}
                                 selectedEdge={selectedEdges.length === 1 ? selectedEdges[0] : null}
                                 selectedDeliverableId={selectedDeliverableId}
                                 nodes={nodes}
                                 metaConfig={metaConfig}
+                                onToggle={handleRightSidebarToggle}
                             />
                         ) : (
-                            <>
-                                <SidebarHeader>
-                                    <div className="flex items-center gap-3">
-                                        <div className="p-2 rounded-md bg-muted shrink-0">
-                                            {rightSidebarInfo.type === 'step' && <DynamicIcon name={rightSidebarInfo.icon} fallback={Square} className="w-5 h-5" />}
-                                            {rightSidebarInfo.type === 'deliverable' && <DynamicIcon name={rightSidebarInfo.icon} fallback={FileText} className="w-5 h-5" />}
-                                            {rightSidebarInfo.type === 'group' && <DynamicIcon name={rightSidebarInfo.icon} fallback={Layers} className="w-5 h-5" />}
-                                            {rightSidebarInfo.type === 'edge' && <DynamicIcon name={rightSidebarInfo.icon} fallback={Share2} className="w-5 h-5" />}
-                                            {rightSidebarInfo.type === 'multi' && <Boxes className="w-5 h-5" />}
-                                            {rightSidebarInfo.type === 'none' && <LayoutGrid className="w-5 h-5" />}
-                                        </div>
-                                        <div className="flex flex-col">
-                                            <h2 className="text-lg font-semibold leading-none">{rightSidebarInfo.title}</h2>
-                                            <p className="text-xs text-muted-foreground mt-1">{rightSidebarInfo.description}</p>
-                                        </div>
-                                    </div>
-                                </SidebarHeader>
-                                <SidebarContent className="p-4">
-                                    <SettingsPanel 
-                                        selectedSteps={selectedNodes}
-                                        selectedEdges={selectedEdges}
-                                        selectedEdge={selectedEdges.length === 1 ? selectedEdges[0] : null}
-                                        selectedDeliverableId={selectedDeliverableId}
-                                        onAddStep={addStep}
-                                        onAddDeliverable={addDeliverable}
-                                        onUpdateStepLabel={updateStepLabel}
-                                        onUpdateStepShortDescription={updateStepShortDescription}
-                                        onUpdateStepColor={updateStepColor}
-                                        onUpdateStepIcon={updateStepIcon}
-                                        onUpdateEdgeLabel={updateEdgeLabel}
-                                        onUpdateEdgeShortDescription={updateEdgeShortDescription}
-                                        onUpdateEdgeColor={updateEdgeColor}
-                                        onUpdateEdgeIcon={updateEdgeIcon}
-                                        onUpdateDeliverable={updateDeliverable}
-                                        onDeleteSelection={deleteSelection}
-                                        onGroupSelection={groupSelection}
-                                        onUngroup={ungroupSelection}
-                                        onTitleChange={handleSettingsPanelTitleChange}
-                                        metaConfig={metaConfig}
-                                        onUpdateMetaData={updateMetaData}
-                                        onUpdateDeliverableMetaData={updateDeliverableMetaData}
-                                        onUpdateEdgeMetaData={updateEdgeMetaData} 
-                                    />
-                                </SidebarContent>
-                            </>
+                            <SettingsPanel 
+                                selectedSteps={selectedNodes}
+                                selectedEdges={selectedEdges}
+                                selectedEdge={selectedEdges.length === 1 ? selectedEdges[0] : null}
+                                selectedDeliverableId={selectedDeliverableId}
+                                onAddStep={addStep}
+                                onAddDeliverable={addDeliverable}
+                                onUpdateStepLabel={updateStepLabel}
+                                onUpdateStepShortDescription={updateStepShortDescription}
+                                onUpdateStepColor={updateStepColor}
+                                onUpdateStepIcon={updateStepIcon}
+                                onUpdateEdgeLabel={updateEdgeLabel}
+                                onUpdateEdgeShortDescription={updateEdgeShortDescription}
+                                onUpdateEdgeColor={updateEdgeColor}
+                                onUpdateEdgeIcon={updateEdgeIcon}
+                                onUpdateDeliverable={updateDeliverable}
+                                onDeleteSelection={deleteSelection}
+                                onGroupSelection={groupSelection}
+                                onUngroup={ungroupSelection}
+                                onTitleChange={handleSettingsPanelTitleChange}
+                                metaConfig={metaConfig}
+                                onUpdateMetaData={updateMetaData}
+                                onUpdateDeliverableMetaData={updateDeliverableMetaData}
+                                onUpdateEdgeMetaData={updateEdgeMetaData}
+                                onToggle={handleRightSidebarToggle}
+                            />
                         )}
                     </Sidebar>
                 </div>

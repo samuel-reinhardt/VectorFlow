@@ -1,11 +1,7 @@
-'use client';
-
 import { Orbit, Pencil } from 'lucide-react';
 import { UserProfile } from './user-profile';
 import { useState } from 'react';
 
-// Assuming HeaderProps is defined elsewhere or will be defined.
-// For now, I'll define it based on the original inline type and the new isReadOnly prop.
 interface HeaderProps {
   projectName?: string;
   onNameChange?: (name: string) => void;
@@ -19,21 +15,21 @@ export function Header({
   onNameChange,
   syncIndicator,
   children,
-  isReadOnly = false // Added isReadOnly with default value
-}: HeaderProps) { // Changed to HeaderProps type
-  const [isEditing, setIsEditing] = useState(false); // Added state
-  const [tempName, setTempName] = useState(projectName); // Added state
+  isReadOnly = false,
+}: HeaderProps) {
+  const [isEditing, setIsEditing] = useState(false);
+  const [tempName, setTempName] = useState(projectName);
 
   return (
-    <header className="flex items-center justify-between p-4 border-b border-border shadow-sm z-10 bg-card shrink-0">
-      <div className="flex items-center gap-6 flex-1 min-w-0">
-        <div className="flex items-center gap-3 pr-6 border-r border-border/50">
-          <Orbit className="text-primary h-8 w-8" />
-          <h1 className="text-2xl font-headline font-bold hidden sm:block">VectorFlow</h1>
+    <header className="flex items-center justify-between px-4 py-3 border-b border-border shadow-sm z-10 bg-card shrink-0 gap-4">
+      <div className="flex items-center gap-4 flex-1 min-w-0">
+        <div className="flex items-center gap-3 pr-6 border-r border-border/50 shrink-0">
+          <Orbit className="text-primary h-7 w-7" />
+          <h1 className="text-xl font-headline font-bold hidden md:block">VectorFlow</h1>
         </div>
         
         {onNameChange ? (
-          <div className="flex items-center gap-2 group flex-1 min-w-0">
+          <div className="flex items-center gap-2 group flex-1 min-w-0 max-w-md">
              {isEditing && !isReadOnly ? (
                 <input
                   type="text"

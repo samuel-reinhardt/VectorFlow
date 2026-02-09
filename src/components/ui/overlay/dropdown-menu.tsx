@@ -2,7 +2,7 @@
 
 import * as React from "react"
 import * as DropdownMenuPrimitive from "@radix-ui/react-dropdown-menu"
-import { Check, ChevronRight, Circle } from "lucide-react"
+import { Check, ChevronRight, Circle, Square } from "lucide-react"
 
 import { cn } from "@/lib/utils"
 
@@ -107,8 +107,11 @@ const DropdownMenuCheckboxItem = React.forwardRef<
   >
     <span className="absolute left-2 flex h-3.5 w-3.5 items-center justify-center">
       <DropdownMenuPrimitive.ItemIndicator>
-        <Check className="h-4 w-4" />
+        <Circle className="h-3.5 w-3.5 fill-current" />
       </DropdownMenuPrimitive.ItemIndicator>
+      {!checked && (
+        <Circle className="h-3.5 w-3.5 stroke-current stroke-2" style={{ fill: 'none' }} />
+      )}
     </span>
     {children}
   </DropdownMenuPrimitive.CheckboxItem>

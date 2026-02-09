@@ -1,4 +1,4 @@
-import { Cloud, FileJson, Users, Shield, LogIn, Info, Share2, AlertTriangle } from 'lucide-react';
+import { Cloud, FileJson, Users, Shield, LogIn, Info, Share2, AlertTriangle, Check, RefreshCw } from 'lucide-react';
 import { Button } from '@/components/ui/forms/button';
 import { SyncState } from '@/hooks/use-drive-sync';
 import { useAuthActions } from '@/hooks/use-auth-actions';
@@ -135,27 +135,46 @@ export function SyncPopover({
       </div>
 
       {/* Status Indicator */}
-      <div className="p-3 rounded-lg border bg-muted/30">
-        <div className="flex items-center gap-3 mb-2">
-          <div className={`w-2 h-2 rounded-full ${
-            syncState.syncStatus === 'saving' ? 'bg-blue-500 animate-pulse' :
-            syncState.syncStatus === 'saved' ? 'bg-green-500' :
-            syncState.syncStatus === 'error' ? 'bg-red-500' :
-            'bg-gray-400'
-          }`} />
-          <div className="flex-1">
-            <div className="text-xs font-medium">
-              {syncState.syncStatus === 'saving' ? 'Saving to Drive...' :
-               syncState.syncStatus === 'saved' ? 'All changes saved' :
-               syncState.syncStatus === 'error' ? 'Auto-save error' :
-               'Auto-save enabled'}
-            </div>
-            {syncState.lastSyncTime && syncState.syncStatus === 'saved' && (
-              <div className="text-[10px] text-muted-foreground">
-                Ready to save {syncState.lastSyncTime.toLocaleTimeString()}
+      <div className="p-3 rounded-lg border bg-muted/5 flex items-center gap-4">
+        <div className="relative shrink-0">
+          {syncState.syncStatus === 'saving' ? (
+            <div className="relative">
+              <Cloud className="w-5 h-5 text-blue-400" />
+              <div className="absolute -bottom-1 -right-1 bg-background rounded-full p-0.5 shadow-sm border border-blue-100">
+                <RefreshCw className="w-2.5 h-2.5 text-blue-500 animate-spin" />
               </div>
-            )}
+            </div>
+          ) : syncState.syncStatus === 'saved' ? (
+            <div className="relative">
+              <Cloud className="w-5 h-5 text-green-400" />
+              <div className="absolute -bottom-1 -right-1 bg-background rounded-full p-0.5 shadow-sm border border-green-100">
+                <Check className="w-2.5 h-2.5 text-green-600 stroke-[3]" />
+              </div>
+            </div>
+          ) : syncState.syncStatus === 'error' ? (
+            <div className="relative">
+              <Cloud className="w-5 h-5 text-red-400" />
+              <div className="absolute -bottom-1 -right-1 bg-background rounded-full p-0.5 shadow-sm border border-red-100">
+                <AlertTriangle className="w-2.5 h-2.5 text-red-600" />
+              </div>
+            </div>
+          ) : (
+            <Cloud className="w-5 h-5 text-muted-foreground/50" />
+          )}
+        </div>
+        
+        <div className="flex-1 min-w-0">
+          <div className="text-xs font-semibold mb-0.5">
+            {syncState.syncStatus === 'saving' ? 'Saving to Drive...' :
+             syncState.syncStatus === 'saved' ? 'All changes saved' :
+             syncState.syncStatus === 'error' ? 'Auto-save error' :
+             'Cloud file linked'}
           </div>
+          {syncState.lastSyncTime && syncState.syncStatus === 'saved' && (
+            <div className="text-[10px] text-muted-foreground">
+              Last synced at {syncState.lastSyncTime.toLocaleTimeString()}
+            </div>
+          )}
         </div>
       </div>
 

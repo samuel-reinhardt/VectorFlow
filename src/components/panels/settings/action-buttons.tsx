@@ -23,11 +23,7 @@ export function ActionButtons({
   onDeleteSelection,
 }: ActionButtonsProps) {
   return (
-    <div className="pt-6 border-t flex flex-col gap-2">
-      <div className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest mb-1">
-        Actions
-      </div>
-      
+    <div className="flex flex-col gap-2">
       {onAddDeliverable && (
         <Button onClick={onAddDeliverable} className="w-full" variant="outline" size="sm">
           <Plus className="mr-2 h-3.5 w-3.5" />

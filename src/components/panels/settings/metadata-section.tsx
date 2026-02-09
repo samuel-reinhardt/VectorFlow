@@ -17,7 +17,7 @@ interface MetadataSectionProps {
  */
 export function MetadataSection({ fields, values, lists, onChange }: MetadataSectionProps) {
   return (
-    <div className="pt-4 border-t space-y-4">
+    <div className="space-y-4">
       <div className="flex items-center gap-2 text-sm font-semibold text-muted-foreground uppercase tracking-wider">
         <Tags className="w-4 h-4" />
         Custom Metadata

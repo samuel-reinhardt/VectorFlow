@@ -45,7 +45,9 @@ export function SyncIndicator({
         return (
           <div className="relative">
             <Cloud className="w-4 h-4 text-green-500" />
-            <Check className="w-2.5 h-2.5 text-green-500 absolute -bottom-0.5 -right-0.5 bg-background rounded-full" />
+            <div className="absolute -bottom-1 -right-1 bg-background rounded-full p-0.5 shadow-sm border border-green-100">
+              <Check className="w-2 h-2 text-green-600 stroke-[3]" />
+            </div>
           </div>
         );
       case 'error':
@@ -55,7 +57,9 @@ export function SyncIndicator({
         return (
           <div className="relative">
             <Cloud className="w-4 h-4 text-red-500" />
-            <AlertTriangle className="w-2.5 h-2.5 text-red-500 absolute -bottom-0.5 -right-0.5 bg-background rounded-full" />
+            <div className="absolute -bottom-1 -right-1 bg-background rounded-full p-0.5 shadow-sm border border-red-100">
+              <AlertTriangle className="w-2 h-2 text-red-600" />
+            </div>
           </div>
         );
       default:

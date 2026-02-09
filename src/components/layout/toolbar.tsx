@@ -1,6 +1,6 @@
 'use client';
 
-import { PanelLeft, LayoutGrid, Workflow, Settings2, Download, Upload, Eye, RotateCcw, RotateCw, File, Cloud, Plus, Save, FileJson, LogIn, Check, Share2 } from 'lucide-react';
+import { Workflow, Settings2, Download, Upload, Eye, RotateCcw, RotateCw, File, Cloud, Plus, Save, FileJson, LogIn, Check, Share2, RefreshCw, AlertTriangle, SaveAll } from 'lucide-react';
 import { Button } from '@/components/ui/forms/button';
 import { MetaConfigEditor } from '@/components/editors/meta-config-editor';
 import type { MetaConfig, FieldDefinition } from '@/types';
@@ -16,13 +16,9 @@ import {
 import { SyncState } from '@/hooks/use-drive-sync';
 
 interface ToolbarProps {
-  onLeftSidebarToggle: () => void;
-  onRightSidebarToggle: () => void;
   onAutoLayout: () => void;
   metaConfig: MetaConfig;
   onUpdateMetaConfig: (type: keyof MetaConfig, value: any) => void;
-  leftSidebarOpen: boolean;
-  rightSidebarOpen: boolean;
   onExport?: () => void;
   onImport?: () => void;
   isReadOnly: boolean;
@@ -50,13 +46,9 @@ interface ToolbarProps {
 }
 
 export function Toolbar({
-  onLeftSidebarToggle,
-  onRightSidebarToggle,
   onAutoLayout,
   metaConfig,
   onUpdateMetaConfig,
-  leftSidebarOpen,
-  rightSidebarOpen,
   onExport,
   onImport,
   isReadOnly,
@@ -80,31 +72,6 @@ export function Toolbar({
 }: ToolbarProps) {
   return (
     <div className="flex items-center justify-between px-4 py-2 border-b border-border bg-card shrink-0 overflow-x-auto gap-4 no-scrollbar scroll-shadows">
-      {/* Left Section - Sidebar Toggles */}
-      <div className="flex items-center gap-2 shrink-0">
-        <Button
-          variant={leftSidebarOpen ? "default" : "ghost"}
-          size="sm"
-          className="h-8 px-3 gap-2"
-          onClick={onLeftSidebarToggle}
-          aria-label="Toggle outline panel"
-        >
-          <PanelLeft className="h-4 w-4" />
-          <span className="text-xs font-medium">Outline</span>
-        </Button>
-        
-        <Button
-          variant={rightSidebarOpen ? "default" : "ghost"}
-          size="sm"
-          className="h-8 px-3 gap-2"
-          onClick={onRightSidebarToggle}
-          aria-label="Toggle properties panel"
-        >
-          <LayoutGrid className="h-4 w-4" />
-          <span className="text-xs font-medium">Properties</span>
-        </Button>
-      </div>
-      
       {/* Center Section - Actions */}
       <div className="flex items-center gap-2 shrink-0">
 
@@ -192,6 +159,7 @@ export function Toolbar({
                   <FileJson className="mr-2 h-4 w-4" />
                   <span>Open</span>
                 </DropdownMenuItem>
+                
                 <DropdownMenuSeparator />
                 <DropdownMenuItem 
                   onClick={onSaveCloud} 
@@ -204,9 +172,37 @@ export function Toolbar({
                   onClick={onSaveAsCloud} 
                   disabled={!googleDriveFileId}
                 >
-                  <Save className="mr-2 h-4 w-4" />
+                  <SaveAll className="mr-2 h-4 w-4" />
                   <span>Save As...</span>
                 </DropdownMenuItem>
+                
+                {syncState && (
+                  <DropdownMenuCheckboxItem
+                    checked={syncState.isSyncEnabled}
+                    onCheckedChange={onToggleAutoSave}
+                    disabled={!googleDriveFileId}
+                    className="flex items-center justify-between"
+                  >
+                    <div className="flex items-center">
+                      <span>Auto Save</span>
+                    </div>
+                    {syncState.isSyncEnabled && (
+                      <div className="ml-auto pointer-events-none">
+                        {syncState.syncStatus === 'saving' ? (
+                          <RefreshCw className="h-3 w-3 text-blue-500 animate-spin" />
+                        ) : syncState.syncStatus === 'saved' ? (
+                          <Check className="h-3 w-3 text-green-500 stroke-[3]" />
+                        ) : syncState.syncStatus === 'error' ? (
+                          <AlertTriangle className="h-3 w-3 text-red-500" />
+                        ) : (
+                          <div className="h-1.5 w-1.5 rounded-full bg-muted-foreground/30" />
+                        )}
+                      </div>
+                    )}
+                  </DropdownMenuCheckboxItem>
+                )}
+
+                <DropdownMenuSeparator />
                 <DropdownMenuItem 
                   onClick={onShareLink} 
                   disabled={!googleDriveFileId}
@@ -214,16 +210,6 @@ export function Toolbar({
                   <Share2 className="mr-2 h-4 w-4" />
                   <span>Share Link</span>
                 </DropdownMenuItem>
-                <DropdownMenuSeparator />
-                {syncState && (
-                  <DropdownMenuCheckboxItem
-                    checked={syncState.isSyncEnabled}
-                    onCheckedChange={onToggleAutoSave}
-                    disabled={!googleDriveFileId}
-                  >
-                    <span className="mr-2">Auto Save</span>
-                  </DropdownMenuCheckboxItem>
-                )}
               </>
             )}
           </DropdownMenuContent>

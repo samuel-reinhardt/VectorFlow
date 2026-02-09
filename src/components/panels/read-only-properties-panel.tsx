@@ -2,7 +2,7 @@ import { cn, getTextColorForBackground, hexToRgba } from '@/lib/utils';
 import { FieldDefinition, MetaConfig, FieldType, NumberConfig, ListDefinition } from '@/types';
 import { getOptionByValue, getOptionsByValues, normalizeOptions } from '@/lib/metadata-utils';
 import { DynamicIcon } from '@/components/common/dynamic-icon';
-import { Tag } from 'lucide-react';
+import { Tag, Layers, Square, Share2, FileText, LayoutGrid, Boxes } from 'lucide-react';
 import { Node } from 'reactflow';
 
 interface ReadOnlyPropertiesPanelProps {
@@ -11,7 +11,10 @@ interface ReadOnlyPropertiesPanelProps {
   selectedDeliverableId: string | null;
   nodes: Node[];
   metaConfig: MetaConfig;
+  onToggle?: () => void;
 }
+
+import { SidebarHeader } from '@/components/ui/layout/sidebar';
 
 // Format value based on field type
 function formatValue(value: any, field: FieldDefinition, lists: ListDefinition[] = []): React.ReactNode {
@@ -162,6 +165,7 @@ export function ReadOnlyPropertiesPanel({
   selectedDeliverableId,
   nodes,
   metaConfig,
+  onToggle,
 }: ReadOnlyPropertiesPanelProps) {
   // Check if a deliverable is selected
   if (selectedDeliverableId) {
@@ -193,17 +197,19 @@ export function ReadOnlyPropertiesPanel({
 
         return (
           <div className="h-full flex flex-col bg-background border-l">
-            <div className="p-4 border-b flex items-center gap-3">
-              <div className="p-2 rounded-md bg-muted shrink-0">
-                <DynamicIcon name={displayIcon} fallback={Tag} className="w-5 h-5" />
+            <SidebarHeader onClose={onToggle}>
+              <div className="flex items-center gap-2.5">
+                <div className="p-1.5 rounded-md bg-muted/50 border shrink-0">
+                  <DynamicIcon name={displayIcon} fallback={FileText} className="w-4 h-4" />
+                </div>
+                <div className="flex flex-col min-w-0">
+                  <h3 className="text-sm font-semibold truncate leading-none mb-1" title={displayName}>{displayName}</h3>
+                  <p className="text-[9px] text-muted-foreground uppercase tracking-widest font-bold leading-none">Deliverable</p>
+                </div>
               </div>
-              <div className="flex-1 min-w-0">
-                <h3 className="font-semibold text-sm truncate" title={displayName}>{displayName}</h3>
-                <p className="text-xs text-muted-foreground">Deliverable</p>
-              </div>
-            </div>
+            </SidebarHeader>
 
-            <div className="flex-1 overflow-y-auto p-4">
+            <div className="flex-1 overflow-y-auto px-4 pb-4 pt-2">
               {fieldsWithValues.length === 0 ? (
                 <div className="text-center text-muted-foreground py-8">
                   <p className="text-sm">No metadata values set</p>
@@ -259,17 +265,19 @@ export function ReadOnlyPropertiesPanel({
 
     return (
       <div className="h-full flex flex-col bg-background border-l">
-        <div className="p-4 border-b flex items-center gap-3">
-          <div className="p-2 rounded-md bg-muted shrink-0">
-            <DynamicIcon name={displayIcon} fallback={Tag} className="w-5 h-5" />
+        <SidebarHeader onClose={onToggle}>
+          <div className="flex items-center gap-2.5">
+            <div className="p-1.5 rounded-md bg-muted/50 border shrink-0">
+              <DynamicIcon name={displayIcon} fallback={nodeType === 'group' ? Layers : Square} className="w-4 h-4" />
+            </div>
+            <div className="flex-col min-w-0">
+              <h3 className="text-sm font-semibold truncate leading-none mb-1" title={displayName}>{displayName}</h3>
+              <p className="text-[9px] text-muted-foreground uppercase tracking-widest font-bold leading-none">{nodeType === 'group' ? 'Group' : 'Step'}</p>
+            </div>
           </div>
-          <div className="flex-1 min-w-0">
-            <h3 className="font-semibold text-sm truncate" title={displayName}>{displayName}</h3>
-            <p className="text-xs text-muted-foreground">{nodeType === 'group' ? 'Group' : 'Step'}</p>
-          </div>
-        </div>
+        </SidebarHeader>
 
-        <div className="flex-1 overflow-y-auto p-4">
+        <div className="flex-1 overflow-y-auto px-4 pb-4 pt-2">
           {fieldsWithValues.length === 0 ? (
             <div className="text-center text-muted-foreground py-8">
               <p className="text-sm">No metadata values set</p>
@@ -313,20 +321,38 @@ export function ReadOnlyPropertiesPanel({
   // Edge selected - edges don't have metadata in current schema
   if (selectedEdge) {
     return (
-      <div className="p-6 text-center text-muted-foreground">
-        <p className="text-sm">No metadata to display</p>
+      <div className="h-full flex flex-col bg-background border-l">
+        <SidebarHeader onClose={onToggle}>
+            <div className="flex items-center gap-2.5">
+                <div className="p-1.5 rounded-md bg-muted/50 border shrink-0">
+                    <Share2 className="w-4 h-4" />
+                </div>
+                <div className="flex flex-col min-w-0">
+                    <h3 className="text-sm font-semibold truncate leading-none mb-1" title={selectedEdge.label || 'Connection'}>
+                        {selectedEdge.label || 'Connection'}
+                    </h3>
+                    <p className="text-[9px] text-muted-foreground uppercase tracking-widest font-bold leading-none">Connection</p>
+                </div>
+            </div>
+        </SidebarHeader>
+        <div className="p-6 text-center text-muted-foreground flex-1">
+          <p className="text-sm">No metadata to display</p>
+        </div>
       </div>
     );
   }
 
   // Nothing selected or multiple items
   return (
-    <div className="p-6 text-center text-muted-foreground">
-      <p className="text-sm">
-        {selectedNodes.length > 1 
-          ? 'Multiple items selected' 
-          : 'Select an item to view metadata'}
-      </p>
+    <div className="h-full flex flex-col bg-background border-l">
+      <SidebarHeader onClose={onToggle}>Controls</SidebarHeader>
+      <div className="p-6 text-center text-muted-foreground flex-1">
+        <p className="text-sm">
+          {selectedNodes.length > 1 
+            ? 'Multiple items selected' 
+            : 'Select an item to view metadata'}
+        </p>
+      </div>
     </div>
   );
 }
