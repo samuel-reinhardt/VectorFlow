@@ -49,9 +49,24 @@ export class GoogleDriveService {
     this.listeners.forEach(l => l(this.accessToken));
   }
 
+  static isTokenExpired(): boolean {
+    if (typeof window === 'undefined') return false;
+    const expiry = window.localStorage.getItem(this.EXPIRY_KEY);
+    if (!expiry) return false; // Legacy support: keep token until 401 or first fresh login
+    return Date.now() > parseInt(expiry, 10);
+  }
+
   static getAccessToken(): string | null {
     if (typeof window !== 'undefined') {
-      this.accessToken = window.localStorage.getItem(this.STORAGE_KEY);
+      const token = window.localStorage.getItem(this.STORAGE_KEY);
+      
+      if (token && this.isTokenExpired()) {
+        console.warn('Google Drive token expired. Clearing session.');
+        this.clearAccessToken();
+        return null;
+      }
+      
+      this.accessToken = token;
     }
     return this.accessToken;
   }

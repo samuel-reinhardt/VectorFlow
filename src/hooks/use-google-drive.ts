@@ -8,12 +8,23 @@ export function useGoogleDriveToken() {
     // Sync initial value in case it changed before mount
     setAccessToken(GoogleDriveService.getAccessToken());
 
+    // Active heartbeat to check for expiration
+    const heartbeat = setInterval(() => {
+        const current = GoogleDriveService.getAccessToken(); // This will clear if expired
+        if (current !== accessToken) {
+            setAccessToken(current);
+        }
+    }, 30000); // Check every 30 seconds
+
     const unsubscribe = GoogleDriveService.subscribe((token) => {
       setAccessToken(token);
     });
 
-    return () => unsubscribe();
-  }, []);
+    return () => {
+        clearInterval(heartbeat);
+        unsubscribe();
+    };
+  }, [accessToken]);
 
   return accessToken;
 }

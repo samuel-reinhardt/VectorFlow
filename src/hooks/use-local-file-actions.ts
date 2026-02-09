@@ -1,7 +1,7 @@
 
 import { ExportImportService } from '@/lib/export-import';
 import { useToast } from '@/hooks/use-toast';
-import { Flow } from '@/types';
+import { Flow, EMPTY_META_CONFIG } from '@/types';
 
 interface UseLocalFileActionsProps {
     projectId: string;
@@ -30,7 +30,16 @@ export function useLocalFileActions({
         const name = await requestFileName("New Project Name", "Untitled Project", "Enter a name for your new project.", "Create");
         if (!name) return;
 
-        loadProject([], '', crypto.randomUUID(), name, undefined);
+        const newProjectId = crypto.randomUUID();
+        const defaultFlow: Flow = {
+            id: '1',
+            title: 'Main Flow',
+            nodes: [],
+            edges: [],
+            metaConfig: EMPTY_META_CONFIG
+        };
+
+        loadProject([defaultFlow], '1', newProjectId, name, undefined);
         setGoogleDriveFileId(undefined); // Unlink drive file
     };
 

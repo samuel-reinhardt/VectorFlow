@@ -1,6 +1,7 @@
-import { Cloud, FileJson, Users, Shield, LogIn, Info, Share2 } from 'lucide-react';
+import { Cloud, FileJson, Users, Shield, LogIn, Info, Share2, AlertTriangle } from 'lucide-react';
 import { Button } from '@/components/ui/forms/button';
 import { SyncState } from '@/hooks/use-drive-sync';
+import { useAuthActions } from '@/hooks/use-auth-actions';
 
 interface SyncPopoverProps {
   user: any;
@@ -27,6 +28,7 @@ export function SyncPopover({
   onUnlink,
   onCopyLink,
 }: SyncPopoverProps) {
+  const { handleSignIn } = useAuthActions();
   // Not signed in - show benefits
   if (!user) {
     return (
@@ -196,8 +198,31 @@ export function SyncPopover({
 
       {/* Error Message */}
       {syncState.errorMessage && (
-        <div className="p-2 rounded bg-red-50 border border-red-100 text-red-700 text-[10px] leading-relaxed">
-          <strong className="font-medium">Error:</strong> {syncState.errorMessage}
+        <div className={`p-3 rounded-lg border ${
+          syncState.errorType === 'auth' ? 'bg-amber-50 border-amber-100' : 'bg-red-50 border-red-100'
+        } space-y-2`}>
+          <div className="flex items-start gap-2">
+            <AlertTriangle className={`w-3.5 h-3.5 mt-0.5 shrink-0 ${
+              syncState.errorType === 'auth' ? 'text-amber-600' : 'text-red-600'
+            }`} />
+            <p className={`text-[10px] leading-relaxed ${
+              syncState.errorType === 'auth' ? 'text-amber-700' : 'text-red-700'
+            }`}>
+              <strong className="font-medium">Error:</strong> {syncState.errorMessage}
+            </p>
+          </div>
+          
+          {syncState.errorType === 'auth' && (
+            <Button 
+                variant="outline" 
+                size="sm" 
+                className="w-full h-7 text-[10px] bg-white border-amber-200 text-amber-700 hover:bg-amber-50 hover:text-amber-800"
+                onClick={handleSignIn}
+            >
+              <LogIn className="w-3 h-3 mr-1.5" />
+              Reconnect Now
+            </Button>
+          )}
         </div>
       )}
     </div>

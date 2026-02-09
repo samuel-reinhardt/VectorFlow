@@ -1,4 +1,4 @@
-import { Cloud, CloudOff, AlertTriangle, HelpCircle, Check, RefreshCw } from 'lucide-react';
+import { Cloud, CloudOff, AlertTriangle, HelpCircle, Check, RefreshCw, LogIn } from 'lucide-react';
 import { Button } from '@/components/ui/forms/button';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/overlay/popover';
 import { SyncPopover } from './sync-popover';
@@ -49,6 +49,9 @@ export function SyncIndicator({
           </div>
         );
       case 'error':
+        if (syncState.errorType === 'auth') {
+          return <LogIn className="w-4 h-4 text-amber-500" />;
+        }
         return (
           <div className="relative">
             <Cloud className="w-4 h-4 text-red-500" />
@@ -73,6 +76,9 @@ export function SyncIndicator({
           ? `Saved to Drive at ${syncState.lastSyncTime.toLocaleTimeString()}`
           : 'Saved to Drive';
       case 'error':
+        if (syncState.errorType === 'auth') {
+          return 'Re-authentication required';
+        }
         return syncState.errorMessage || 'Auto-save error';
       default:
         return 'Auto-save enabled';

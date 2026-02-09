@@ -48,8 +48,8 @@ import { Copy, Trash2, ClipboardPaste, Group, Ungroup, CopyPlus } from 'lucide-r
 import { demoNodes } from './data/demo-nodes';
 import { demoEdges } from './data/demo-edges';
 
-const initialNodes = demoNodes;
-const initialEdges = demoEdges;
+const initialNodes: Node[] = [];
+const initialEdges: Edge[] = [];
 
 const nodeTypes = {
   custom: CustomNode,
@@ -176,7 +176,7 @@ export function VectorFlow() {
         });
     }, [setGoogleDriveFileId, toast]);
 
-    const { handleBrowseDrive, handleCreateDriveFile, driveBrowserProps } = useDriveFileActions({
+    const { handleBrowseDrive, handleCreateDriveFile, handleNewCloud, driveBrowserProps } = useDriveFileActions({
         user,
         accessToken,
         projectId,
@@ -648,17 +648,16 @@ export function VectorFlow() {
                     canRedo={canRedo}
 
                     onNewLocal={handleNewLocal}
-                    
-                    user={user}
-                    syncState={syncState}
-                    googleDriveFileId={googleDriveFileId}
-                    onNewCloud={handleCreateDriveFile}
+                    onNewCloud={handleNewCloud}
                     onOpenCloud={handleBrowseDrive}
                     onSaveCloud={manualSync}
                     onSaveAsCloud={handleCreateDriveFile}
                     onToggleAutoSave={toggleSync}
                     onSignIn={handleSignIn}
                     onShareLink={handleShareLink}
+                    user={user}
+                    syncState={syncState}
+                    googleDriveFileId={googleDriveFileId}
                 />
 
                 <div className="flex flex-1 overflow-hidden">

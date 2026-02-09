@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState, useCallback } from 'react';
 import { GoogleDriveService } from '@/lib/google-drive/service';
 import { useUser } from '@/firebase/auth/use-user';
+import { useGoogleDriveToken } from './use-google-drive';
 import { ExportData } from '@/lib/export-import';
 import { Flow } from '@/types';
 
@@ -11,6 +12,7 @@ export interface SyncState {
   syncStatus: 'idle' | 'saving' | 'saved' | 'error';
   lastSyncTime: Date | null;
   errorMessage?: string;
+  errorType?: 'auth' | 'network' | 'generic';
   isReadOnlyDueToPermissions: boolean;
 }
 
@@ -132,6 +134,26 @@ export function useDriveSync({
     };
   }, [fileId, user]); // Clean deps
 
+  const accessToken = useGoogleDriveToken();
+
+  // Handle token recovery
+  useEffect(() => {
+    if (accessToken && syncState.syncStatus === 'error' && syncState.errorType === 'auth') {
+      setSyncState(prev => ({
+        ...prev,
+        syncStatus: 'idle',
+        errorMessage: undefined,
+        errorType: undefined
+      }));
+      
+      // Give it a moment to ensure state is clean then push
+      const timer = setTimeout(() => {
+        pushLocalChanges();
+      }, 500);
+      return () => clearTimeout(timer);
+    }
+  }, [accessToken, syncState.syncStatus, syncState.errorType]);
+
   // Push local changes to Drive (Auto-Save)
   const pushLocalChanges = useCallback(async () => {
     if (!fileId) return;
@@ -142,8 +164,9 @@ export function useDriveSync({
         setSyncState(prev => ({
           ...prev,
           syncStatus: 'error',
+          errorType: 'auth',
           errorMessage: 'Session expired. Please sign in again.',
-          isSyncEnabled: false
+          // We keep isSyncEnabled: true so it resumes once auth is back
         }));
         return;
       }
@@ -166,22 +189,31 @@ export function useDriveSync({
         ...prev,
         syncStatus: 'saved',
         lastSyncTime: new Date(),
-        errorMessage: undefined
+        errorMessage: undefined,
+        errorType: undefined
       }));
     } catch (error: any) {
       console.error('Auto-save failed:', error);
       
-      const isAuthError = error.message?.includes('authentication') || error.message?.includes('token') || error.message?.includes('401');
+      const isAuthError = error.message?.includes('authentication') || 
+                         error.message?.includes('token') || 
+                         error.message?.includes('401') ||
+                         error.message?.includes('authenticated');
+
+      const isNetworkError = error.message?.includes('fetch') || 
+                            error.message?.includes('network') || 
+                            error.message?.includes('Failed to fetch');
+
+      const errorType = isAuthError ? 'auth' : (isNetworkError ? 'network' : 'generic');
       const friendlyMessage = isAuthError 
         ? 'Session expired. Please sign in again to resume saving.'
-        : (error.message || 'Failed to auto-save to Drive');
+        : (isNetworkError ? 'Cloud connection lost. Retrying...' : (error.message || 'Failed to auto-save to Drive'));
 
       setSyncState(prev => ({
         ...prev,
         syncStatus: 'error',
+        errorType,
         errorMessage: friendlyMessage,
-        // If auth error, disable sync to prevent infinite loops/toast spam
-        isSyncEnabled: isAuthError ? false : prev.isSyncEnabled
       }));
     }
   }, [fileId, projectId, projectName, flows, activeFlowId]);

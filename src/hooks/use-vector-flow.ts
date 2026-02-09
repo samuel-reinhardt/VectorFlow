@@ -191,20 +191,35 @@ export const useVectorFlow = (initialNodes: Node[], initialEdges: Edge[]) => {
 
   // 9. Persistence Hook
   const handleOnLoad = useCallback((loadedFlows: any[], loadedActiveId: string, loadedProjectId?: string, loadedProjectName?: string, loadedDriveId?: string) => {
+    let finalFlows = loadedFlows;
+    let finalActiveId = loadedActiveId;
+
+    // Ensure at least one tab
+    if (!finalFlows || finalFlows.length === 0) {
+        finalFlows = [{
+            id: '1',
+            title: 'Main Flow',
+            nodes: [],
+            edges: [],
+            metaConfig: EMPTY_META_CONFIG
+        }];
+        finalActiveId = '1';
+    }
+
     // Project-level config: Normalize loaded flows to share the same configuration
     // We use the first flow's config as the project source of truth
-    const projectConfig = loadedFlows[0]?.metaConfig;
+    const projectConfig = finalFlows[0]?.metaConfig;
     const normalizedFlows = projectConfig 
-        ? loadedFlows.map(f => ({ ...f, metaConfig: projectConfig }))
-        : loadedFlows;
+        ? finalFlows.map(f => ({ ...f, metaConfig: projectConfig }))
+        : finalFlows;
 
     setFlows(normalizedFlows);
-    setActiveFlowId(loadedActiveId);
+    setActiveFlowId(finalActiveId);
     if (loadedProjectId) setProjectId(loadedProjectId);
     if (loadedProjectName) setProjectName(loadedProjectName);
     if (loadedDriveId) setGoogleDriveFileId(loadedDriveId);
     
-    const activeFlow = loadedFlows.find(f => f.id === loadedActiveId);
+    const activeFlow = normalizedFlows.find(f => f.id === finalActiveId);
     if (activeFlow) {
       // Create fresh state for history
       resetFlowState({
@@ -212,7 +227,7 @@ export const useVectorFlow = (initialNodes: Node[], initialEdges: Edge[]) => {
           edges: activeFlow.edges
       });
     }
-  }, [setFlows, setActiveFlowId, setGoogleDriveFileId, resetFlowState]);
+  }, [setFlows, setActiveFlowId, setGoogleDriveFileId, resetFlowState, setProjectId, setProjectName]);
 
   const { hasLoadedFromStorage } = useFlowPersistence(
     flows,
