@@ -4,6 +4,7 @@ import { Input } from '@/components/ui/forms/input';
 import { Label } from '@/components/ui/forms/label';
 import { IconPicker } from '@/components/common/icon-picker';
 import { ExternalLink, Square, FileText, Layers, Share2 } from 'lucide-react';
+import { ClearFieldButton } from '@/components/editors/meta-value-editor';
 
 interface CommonFieldsProps {
   label: string;
@@ -63,7 +64,15 @@ export function CommonFields({
       </div>
 
       <div className="space-y-2">
-        <Label htmlFor="short-desc-input" className="font-semibold text-xs text-muted-foreground">Short Description</Label>
+        <div className="flex items-center justify-between">
+          <Label htmlFor="short-desc-input" className="font-semibold text-xs text-muted-foreground">Short Description</Label>
+          {shortDescription && (
+            <ClearFieldButton onClick={() => {
+              const syntheticEvent = { target: { value: '' } } as React.ChangeEvent<HTMLTextAreaElement>;
+              onShortDescriptionChange(syntheticEvent);
+            }} />
+          )}
+        </div>
         <textarea
           id="short-desc-input"
           value={shortDescription || ''}
@@ -74,7 +83,12 @@ export function CommonFields({
       </div>
 
       <div className="space-y-2">
-        <Label htmlFor="color-input" className="font-semibold">Color</Label>
+        <div className="flex items-center justify-between">
+          <Label htmlFor="color-input" className="font-semibold">Color</Label>
+          {color && (
+            <ClearFieldButton onClick={() => onColorChange('')} />
+          )}
+        </div>
         
         {/* Project Palette */}
         {palette.length > 0 && (
@@ -107,15 +121,20 @@ export function CommonFields({
       <div className="space-y-2">
         <div className="flex items-center justify-between">
           <Label className="font-semibold text-sm">Icon</Label>
-          <a 
-            href="https://lucide.dev/icons" 
-            target="_blank" 
-            rel="noopener noreferrer"
-            className="text-[10px] text-primary hover:underline flex items-center gap-0.5"
-          >
-            Browse all icons
-            <ExternalLink className="w-2.5 h-2.5" />
-          </a>
+          <div className="flex items-center gap-1.5">
+            {icon && (
+              <ClearFieldButton onClick={() => onIconChange('')} />
+            )}
+            <a 
+              href="https://lucide.dev/icons" 
+              target="_blank" 
+              rel="noopener noreferrer"
+              className="text-[10px] text-primary hover:underline flex items-center gap-0.5"
+            >
+              Browse all icons
+              <ExternalLink className="w-2.5 h-2.5" />
+            </a>
+          </div>
         </div>
         <IconPicker
           value={icon}

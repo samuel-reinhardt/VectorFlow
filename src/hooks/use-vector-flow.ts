@@ -4,6 +4,7 @@ import { useState, useMemo, useCallback, useEffect } from 'react';
 import type { Node, Edge } from 'reactflow';
 import { useReactFlow } from 'reactflow';
 import { EMPTY_META_CONFIG } from '@/types';
+import { DIMENSIONS, DEFAULT_COLORS } from '@/lib/constants';
 import { useFlowPersistence } from './flow/use-flow-persistence';
 import { useNodeOperations } from './nodes/use-node-operations';
 import { useDeliverableOperations } from './deliverables/use-deliverable-operations';
@@ -137,6 +138,49 @@ export const useVectorFlow = (initialNodes: Node[], initialEdges: Edge[]) => {
       takeSnapshot();
       edgeOps.onConnect(params);
   }, [edgeOps.onConnect, takeSnapshot]);
+
+  // Split an edge by inserting a new node at a given screen position.
+  // A->B becomes A->C->B where C is the new node.
+  const splitEdgeWithNode = useCallback((edgeId: string, screenPosition: { x: number; y: number }) => {
+      if (isReadOnly) return;
+
+      const edge = getEdges().find(e => e.id === edgeId);
+      if (!edge) return;
+
+      takeSnapshot();
+
+      // Convert screen coords to flow coords, offset so the node centres on the click.
+      const flowPos = screenToFlowPosition(screenPosition);
+      const pos = { x: flowPos.x - DIMENSIONS.STEP_WIDTH / 2, y: flowPos.y - 30 };
+
+      // Create the new node and get its id.
+      const newNodeId = nodeOps.addStep(pos);
+
+      // Remove original edge & create two new edges.
+      // edgeAC inherits the original edge's label, style, data, etc.
+      // edgeCB is a fresh default connection.
+      setEdges(eds => {
+          const filtered = eds.filter(e => e.id !== edgeId);
+          const edgeAC: Edge = {
+              ...edge,
+              id: `e-${edge.source}-${newNodeId}`,
+              target: newNodeId,
+              targetHandle: undefined,
+          };
+          const edgeCB: Edge = {
+              id: `e-${newNodeId}-${edge.target}`,
+              source: newNodeId,
+              sourceHandle: undefined,
+              target: edge.target,
+              targetHandle: edge.targetHandle ?? undefined,
+              animated: true,
+              label: '',
+              type: 'custom',
+              style: { stroke: DEFAULT_COLORS.CONNECTION },
+          };
+          return [...filtered, edgeAC, edgeCB];
+      });
+  }, [isReadOnly, getEdges, takeSnapshot, screenToFlowPosition, nodeOps.addStep, setEdges]);
 
   // 5. Deliverable Operations
   const deliverableOps = useDeliverableOperations(setNodesState, setSelectedDeliverableId);
@@ -382,6 +426,7 @@ export const useVectorFlow = (initialNodes: Node[], initialEdges: Edge[]) => {
     screenToFlowPosition,
     copySelection,
     pasteSelection,
-    duplicateSelection
+    duplicateSelection,
+    splitEdgeWithNode
   };
 };

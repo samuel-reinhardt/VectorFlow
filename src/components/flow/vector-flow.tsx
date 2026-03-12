@@ -14,7 +14,7 @@ import ReactFlow, {
 import 'reactflow/dist/style.css';
 import Link from 'next/link';
 import { cn } from '@/lib/utils';
-import { Plus, Settings2, X, Grip, LayoutGrid, Square, FileText, Layers, Boxes, Share2, Info, Loader2 } from 'lucide-react';
+import { Plus, Settings2, X, Grip, LayoutGrid, Square, FileText, Layers, Boxes, Share2, Info, Orbit } from 'lucide-react';
 import { FlowProvider } from '@/components/flow/flow-context';
 
 import { Sidebar, SidebarHeader, SidebarContent } from '@/components/ui/layout/sidebar';
@@ -120,7 +120,8 @@ export function VectorFlow() {
         screenToFlowPosition,
         copySelection,
         pasteSelection,
-        duplicateSelection
+        duplicateSelection,
+        splitEdgeWithNode
     } = useVectorFlow(initialNodes, initialEdges);
     // ... existing hooks ...
     const { user } = useUser();
@@ -721,7 +722,7 @@ export function VectorFlow() {
                         {/* Loading overlay during flow transitions */}
                         {isTransitioning && (
                             <div className="absolute inset-0 z-50 flex items-center justify-center bg-background/80 backdrop-blur-sm">
-                                <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+                                <Orbit className="h-6 w-6 animate-spin text-primary" />
                             </div>
                         )}
                         <ReactFlow
@@ -737,6 +738,10 @@ export function VectorFlow() {
                             onNodeContextMenu={onNodeContextMenu}
                             onPaneContextMenu={onPaneContextMenu}
                             onEdgeContextMenu={onEdgeContextMenu}
+                            onEdgeDoubleClick={(event, edge) => {
+                                if (isReadOnly) return;
+                                splitEdgeWithNode(edge.id, { x: event.clientX, y: event.clientY });
+                            }}
                             onSelectionContextMenu={onSelectionContextMenu}
                             onPaneClick={onPaneClick}
                             nodeTypes={nodeTypes}

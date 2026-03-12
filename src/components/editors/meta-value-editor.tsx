@@ -31,6 +31,27 @@ import { normalizeOptions } from '@/lib/metadata-utils';
 import { DynamicIcon } from '@/components/common/dynamic-icon';
 import { Tag } from 'lucide-react';
 
+/** Small red X button for clearing a field value. */
+export function ClearFieldButton({ onClick }: { onClick: () => void }) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className="p-0.5 rounded-sm text-muted-foreground/50 hover:text-destructive hover:bg-destructive/10 transition-colors"
+      title="Clear field"
+    >
+      <X className="h-3.5 w-3.5" />
+    </button>
+  );
+}
+
+/** Returns true if the value is considered "set" (non-empty). */
+function hasValue(value: any): boolean {
+  if (value === undefined || value === null || value === '') return false;
+  if (Array.isArray(value)) return value.length > 0;
+  return true;
+}
+
 interface MetaValueEditorProps {
   fields: FieldDefinition[];
   values: Record<string, any>;
@@ -51,14 +72,20 @@ export function MetaValueEditor({ fields, values, lists, onChange }: MetaValueEd
     <div className="space-y-4">
       {fields.map((field) => {
         if (!field) return null;
+        const val = values[field.id];
         return (
           <div key={field.id} className="space-y-1.5">
-            <Label className="text-sm font-medium">{field.label}</Label>
+            <div className="flex items-center justify-between">
+              <Label className="text-sm font-medium">{field.label}</Label>
+              {hasValue(val) && (
+                <ClearFieldButton onClick={() => onChange(field.id, null)} />
+              )}
+            </div>
             <RenderField 
               field={field} 
-              value={values[field.id]} 
+              value={val} 
               lists={lists}
-              onChange={(val) => onChange(field.id, val)} 
+              onChange={(v) => onChange(field.id, v)} 
             />
           </div>
         );
