@@ -89,7 +89,7 @@ export const DeliverableItem = React.memo(({
           >
             <DynamicIcon name={item.icon} fallback={FileText} className="w-3 h-3 shrink-0" style={{ color: iconColor }} />
           </div>
-          <span className="break-all font-semibold">{item.label}</span>
+          <span className="break-words font-semibold">{item.label}</span>
         </div>
         
         {item.shortDescription && (
