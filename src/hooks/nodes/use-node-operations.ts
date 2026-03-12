@@ -49,7 +49,7 @@ export function useNodeOperations(
     const newNode: Node = {
       id: newNodeId,
       position: pos,
-      data: { label: 'New Step', color: '#E5E7EB', deliverables: [] },
+      data: { label: 'New Step', color: null, deliverables: [] },
       type: 'custom',
       style: { width: DIMENSIONS.STEP_WIDTH, height: 'auto' },
       zIndex: 30,

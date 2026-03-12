@@ -9,6 +9,7 @@ import { Square } from 'lucide-react';
 import { DynamicIcon } from '@/components/common/dynamic-icon';
 import { useAutoStyle } from '@/hooks/use-auto-style';
 import { DeliverableItem } from '@/components/common/deliverable-item';
+import { DEFAULT_COLORS } from '@/lib/constants';
 
 const CustomNode = ({ id, data, selected }: NodeProps<{ 
   label: string; 
@@ -30,7 +31,8 @@ const CustomNode = ({ id, data, selected }: NodeProps<{
   });
 
   // Render for Step
-  const textColor = getTextColorForBackground(color || '#ffffff');
+  const resolvedColor = color || DEFAULT_COLORS.STEP;
+  const textColor = getTextColorForBackground(resolvedColor);
   const deliverables = Array.isArray(data.deliverables) ? data.deliverables : [];
 
   const handleDragStart = (e: React.DragEvent, index: number) => {
@@ -75,11 +77,11 @@ const CustomNode = ({ id, data, selected }: NodeProps<{
           "outline outline-none hover:outline transition-[outline] duration-200 outline-offset-1",
           selected ? "outline outline-ring hover:outline-ring/60" : "hover:outline-ring/30"
         )}
-        style={{ borderColor: color, height: 'auto', minHeight: '60px' }}
+        style={{ borderColor: resolvedColor, height: 'auto', minHeight: '60px' }}
       >
         <CardHeader
           className="p-0 flex-shrink-0"
-          style={{ backgroundColor: color }}
+          style={{ backgroundColor: resolvedColor }}
           onClick={(e) => {
                // If clicking header, select the node but deselect specific deliverable
                // But React Flow handles node selection automatically on click.

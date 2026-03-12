@@ -3,6 +3,7 @@ import { NodeProps } from 'reactflow';
 import { cn, hexToRgba } from '@/lib/utils';
 import { Layers } from 'lucide-react';
 import { DynamicIcon } from '@/components/common/dynamic-icon';
+import { DEFAULT_COLORS } from '@/lib/constants';
 
 import { useAutoStyle } from '@/hooks/use-auto-style';
 
@@ -40,7 +41,7 @@ const GroupNode = ({ data, selected }: NodeProps<{
   }, [data.shortDescription, data.label, data.headerHeight, data.onUpdateData]);
 
   const borderColor = color || 'hsl(var(--muted-foreground))';
-  const backgroundColor = hexToRgba(color || '#E5E7EB', selected ? 0.3 : 0.1);
+  const backgroundColor = hexToRgba(color || DEFAULT_COLORS.STEP, selected ? 0.3 : 0.1);
 
   return (
     <div

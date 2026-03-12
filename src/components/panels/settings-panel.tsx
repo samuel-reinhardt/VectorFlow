@@ -6,6 +6,7 @@ import { ActionButtons } from './settings/action-buttons';
 import { EmptyStatePanel } from './settings/empty-state-panel';
 import type { FieldDefinition } from '@/types';
 import { Layers, Square, Share2, FileText, LayoutGrid, Boxes } from 'lucide-react';
+import { DEFAULT_COLORS } from '@/lib/constants';
 import { DynamicIcon } from '@/components/common/dynamic-icon';
 
 interface SettingsPanelProps {
@@ -90,7 +91,7 @@ export function SettingsPanel({
   // ... (keep state and hooks the same)
   const [label, setLabel] = useState('');
   const [shortDescription, setShortDescription] = useState('');
-  const [color, setColor] = useState('#E5E7EB');
+  const [color, setColor] = useState<string>(DEFAULT_COLORS.STEP);
   const [icon, setIcon] = useState('');
 
   // Derived Selection State
@@ -140,7 +141,7 @@ export function SettingsPanel({
         } else if (singleSelectedStep) {
             setLabel(singleSelectedStep.data.label || '');
             setShortDescription(singleSelectedStep.data.shortDescription || '');
-            setColor(singleSelectedStep.data.color || '#E5E7EB');
+            setColor(singleSelectedStep.data.color || DEFAULT_COLORS.STEP);
             setIcon(singleSelectedStep.data.icon || '');
         } else if (activeSelectedEdge) {
             setLabel(activeSelectedEdge.label?.toString() || '');
@@ -351,7 +352,7 @@ export function SettingsPanel({
                                     <CommonFields
                                         label={selectionGroups.steps.every(n => n.data.label === selectionGroups.steps[0].data.label) ? selectionGroups.steps[0].data.label : ''}
                                         shortDescription={selectionGroups.steps.every(n => n.data.shortDescription === selectionGroups.steps[0].data.shortDescription) ? selectionGroups.steps[0].data.shortDescription : ''}
-                                        color={selectionGroups.steps.every(n => n.data.color === selectionGroups.steps[0].data.color) ? selectionGroups.steps[0].data.color : '#E5E7EB'}
+                                        color={selectionGroups.steps.every(n => n.data.color === selectionGroups.steps[0].data.color) ? (selectionGroups.steps[0].data.color || DEFAULT_COLORS.STEP) : DEFAULT_COLORS.STEP}
                                         icon={selectionGroups.steps.every(n => n.data.icon === selectionGroups.steps[0].data.icon) ? selectionGroups.steps[0].data.icon : ''}
                                         onLabelChange={(e) => selectionGroups.steps.forEach(n => onUpdateStepLabel(n.id, e.target.value))}
                                         onShortDescriptionChange={(e) => selectionGroups.steps.forEach(n => onUpdateStepShortDescription(n.id, e.target.value))}
@@ -373,7 +374,7 @@ export function SettingsPanel({
                                     <CommonFields
                                         label={selectionGroups.groups.every(n => n.data.label === selectionGroups.groups[0].data.label) ? selectionGroups.groups[0].data.label : ''}
                                         shortDescription={selectionGroups.groups.every(n => n.data.shortDescription === selectionGroups.groups[0].data.shortDescription) ? selectionGroups.groups[0].data.shortDescription : ''}
-                                        color={selectionGroups.groups.every(n => n.data.color === selectionGroups.groups[0].data.color) ? selectionGroups.groups[0].data.color : '#E5E7EB'}
+                                        color={selectionGroups.groups.every(n => n.data.color === selectionGroups.groups[0].data.color) ? (selectionGroups.groups[0].data.color || DEFAULT_COLORS.STEP) : DEFAULT_COLORS.STEP}
                                         icon={selectionGroups.groups.every(n => n.data.icon === selectionGroups.groups[0].data.icon) ? selectionGroups.groups[0].data.icon : ''}
                                         onLabelChange={(e) => selectionGroups.groups.forEach(n => onUpdateStepLabel(n.id, e.target.value))}
                                         onShortDescriptionChange={(e) => selectionGroups.groups.forEach(n => onUpdateStepShortDescription(n.id, e.target.value))}

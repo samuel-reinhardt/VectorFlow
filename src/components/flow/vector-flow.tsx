@@ -14,7 +14,7 @@ import ReactFlow, {
 import 'reactflow/dist/style.css';
 import Link from 'next/link';
 import { cn } from '@/lib/utils';
-import { Plus, Settings2, X, Grip, LayoutGrid, Square, FileText, Layers, Boxes, Share2, Info } from 'lucide-react';
+import { Plus, Settings2, X, Grip, LayoutGrid, Square, FileText, Layers, Boxes, Share2, Info, Loader2 } from 'lucide-react';
 import { FlowProvider } from '@/components/flow/flow-context';
 
 import { Sidebar, SidebarHeader, SidebarContent } from '@/components/ui/layout/sidebar';
@@ -216,15 +216,59 @@ export function VectorFlow() {
     // URL Hydration Logic
     const hasAttemptedHydration = useRef(false);
 
-    // Handle initial fit view after hydration
+    // Track previous activeFlowId to detect flow changes (skip initial mount)
+    const prevActiveFlowIdRef = useRef(activeFlowId);
+
+    // Flow transition state – drives loading overlay.
+    const [isTransitioning, setIsTransitioning] = useState(false);
+
+    // Auto-center when the active flow changes (tab switch, import, delete, etc.)
+    // Hide viewport + show spinner → snap to center → fade in + gentle zoom.
     useEffect(() => {
-        if (hasAttemptedHydration.current && nodes.length > 0) {
-           const timer = setTimeout(() => {
-               fitView({ duration: 800 });
-           }, 300); // Small delay to allow react-flow to render nodes
-           return () => clearTimeout(timer);
+        if (prevActiveFlowIdRef.current === activeFlowId) return;
+        prevActiveFlowIdRef.current = activeFlowId;
+
+        // Hide viewport & show spinner immediately.
+        const viewportEl = document.querySelector('.react-flow__viewport') as HTMLElement;
+        if (viewportEl) {
+            viewportEl.style.transition = 'none';
+            viewportEl.style.opacity = '0';
         }
-    }, [hasAttemptedHydration.current, nodes.length, fitView]);
+        setIsTransitioning(true);
+
+        // Wait for ReactFlow to measure and render the new nodes (hidden).
+        const timer = setTimeout(() => {
+            // Snap to centered view (still hidden).
+            fitView({ padding: 0.2 });
+
+            // Fade viewport in with a CSS transition.
+            if (viewportEl) {
+                viewportEl.style.transition = 'opacity 250ms ease-in';
+                viewportEl.style.opacity = '1';
+            }
+            setIsTransitioning(false);
+
+            // Gentle zoom-in to the final tight fit.
+            requestAnimationFrame(() => {
+                fitView({ duration: 400, padding: 0.15 });
+            });
+
+            // Clean up inline styles after fade completes.
+            const cleanupTimer = setTimeout(() => {
+                if (viewportEl) viewportEl.style.transition = '';
+            }, 300);
+            return () => clearTimeout(cleanupTimer);
+        }, 300);
+
+        return () => {
+            clearTimeout(timer);
+            if (viewportEl) {
+                viewportEl.style.transition = '';
+                viewportEl.style.opacity = '1';
+            }
+            setIsTransitioning(false);
+        };
+    }, [activeFlowId, fitView]);
 
     useEffect(() => {
         // Only run on client
@@ -674,6 +718,12 @@ export function VectorFlow() {
                     </Sidebar>
 
                     <main className="relative flex-1 h-full">
+                        {/* Loading overlay during flow transitions */}
+                        {isTransitioning && (
+                            <div className="absolute inset-0 z-50 flex items-center justify-center bg-background/80 backdrop-blur-sm">
+                                <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+                            </div>
+                        )}
                         <ReactFlow
                             nodes={nodes}
                             edges={edges}

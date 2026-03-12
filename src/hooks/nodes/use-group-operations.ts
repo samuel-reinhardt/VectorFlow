@@ -48,7 +48,7 @@ export function useGroupOperations(
     const parentNode: Node = {
       id: parentId,
       type: 'group',
-      data: { label: 'New Group', color: '#E5E7EB' },
+      data: { label: 'New Group', color: null },
       position: { x: minX - padding, y: minY - padding },
       style: {
         width: maxX - minX + padding * 2,

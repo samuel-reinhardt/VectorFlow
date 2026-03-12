@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { StorageManager } from '@/lib/storage';
+import { DEFAULT_COLORS } from '@/lib/constants';
 import type { Flow } from '@/types';
 import type { Node } from 'reactflow';
 
@@ -23,7 +24,7 @@ export function useFlowPersistence(
     const saved = StorageManager.load();
     
     if (saved) {
-      // Normalize flows to ensure deliverables is always an array
+      // Normalize flows and migrate legacy data
       const normalizedFlows = saved.flows.map(flow => ({
         ...flow,
         nodes: flow.nodes.map(node => ({
@@ -35,7 +36,9 @@ export function useFlowPersistence(
             ...node.data,
             deliverables: Array.isArray(node.data.deliverables) 
               ? node.data.deliverables 
-              : []
+              : [],
+            // Migration: clear hardcoded default color so auto-style rules can apply.
+            color: node.data.color === DEFAULT_COLORS.STEP ? null : node.data.color,
           }
         }))
       }));
