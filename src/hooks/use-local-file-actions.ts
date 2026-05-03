@@ -9,7 +9,7 @@ interface UseLocalFileActionsProps {
     flows: Flow[];
     activeFlowId: string;
     loadProject: (flows: Flow[], activeFlowId: string, projectId: string, projectName?: string, driveId?: string | undefined) => void;
-    setGoogleDriveFileId: (id: string | undefined) => void;
+    setCloudProjectId: (id: string | undefined) => void;
     requestFileName: (title: string, defaultValue?: string, description?: string, confirmLabel?: string) => Promise<string | null>;
 }
 
@@ -19,7 +19,7 @@ export function useLocalFileActions({
     flows,
     activeFlowId,
     loadProject,
-    setGoogleDriveFileId,
+    setCloudProjectId,
     requestFileName,
 }: UseLocalFileActionsProps) {
     const { toast } = useToast();
@@ -40,7 +40,7 @@ export function useLocalFileActions({
         };
 
         loadProject([defaultFlow], '1', newProjectId, name, undefined);
-        setGoogleDriveFileId(undefined); // Unlink drive file
+        setCloudProjectId(undefined); // Unlink drive file
     };
 
     const handleExport = async () => {

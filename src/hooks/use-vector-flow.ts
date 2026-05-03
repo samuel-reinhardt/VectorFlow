@@ -107,8 +107,8 @@ export const useVectorFlow = (initialNodes: Node[], initialEdges: Edge[]) => {
     reorderFlow,
     updateMetaConfig,
     saveCurrentFlowState,
-    googleDriveFileId,
-    setGoogleDriveFileId
+    cloudProjectId,
+    setCloudProjectId
   } = useFlowState(
     initialFlows,
     activeFlowId,
@@ -261,7 +261,7 @@ export const useVectorFlow = (initialNodes: Node[], initialEdges: Edge[]) => {
     setActiveFlowId(finalActiveId);
     if (loadedProjectId) setProjectId(loadedProjectId);
     if (loadedProjectName) setProjectName(loadedProjectName);
-    if (loadedDriveId) setGoogleDriveFileId(loadedDriveId);
+    if (loadedDriveId) setCloudProjectId(loadedDriveId);
     
     const activeFlow = normalizedFlows.find(f => f.id === finalActiveId);
     if (activeFlow) {
@@ -271,14 +271,14 @@ export const useVectorFlow = (initialNodes: Node[], initialEdges: Edge[]) => {
           edges: activeFlow.edges
       });
     }
-  }, [setFlows, setActiveFlowId, setGoogleDriveFileId, resetFlowState, setProjectId, setProjectName]);
+  }, [setFlows, setActiveFlowId, setCloudProjectId, resetFlowState, setProjectId, setProjectName]);
 
   const { hasLoadedFromStorage } = useFlowPersistence(
     flows,
     activeFlowId,
     projectId,
     projectName,
-    googleDriveFileId,
+    cloudProjectId,
     handleOnLoad
   );
 
@@ -410,8 +410,8 @@ export const useVectorFlow = (initialNodes: Node[], initialEdges: Edge[]) => {
     hasLoadedFromStorage,
     loadProject: handleOnLoad,
     saveCurrentFlowState,
-    googleDriveFileId,
-    setGoogleDriveFileId,
+    cloudProjectId,
+    setCloudProjectId,
     projectId,
     setProjectId,
     projectName,

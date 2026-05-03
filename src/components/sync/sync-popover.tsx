@@ -8,7 +8,7 @@ import { useDiscovery } from '@/hooks/use-discovery';
 interface SyncPopoverProps {
   user: any;
   syncState: SyncState;
-  googleDriveFileId?: string;
+  cloudProjectId?: string;
   projectId: string;
   projectName: string;
   onToggleSync: () => void;
@@ -20,7 +20,7 @@ interface SyncPopoverProps {
 export function SyncPopover({
   user,
   syncState,
-  googleDriveFileId,
+  cloudProjectId,
   projectId,
   projectName,
   onToggleSync,
@@ -32,10 +32,10 @@ export function SyncPopover({
   const { discoverableFiles, updateDiscovery } = useDiscovery();
 
   // ── Discovery state (only needed when a file is linked & user can edit) ────
-  const canManageDiscovery = !!googleDriveFileId;
+  const canManageDiscovery = !!cloudProjectId;
 
   const currentEntry = discoverableFiles.find(
-    (e) => e.id === googleDriveFileId,
+    (e) => e.id === cloudProjectId,
   );
 
   const [isDiscoverable, setIsDiscoverable] = useState(
@@ -56,12 +56,12 @@ export function SyncPopover({
   }, [currentEntry?.isDiscoverable, currentEntry?.domainRestriction]);
 
   const handleDiscoveryToggle = async (next: boolean) => {
-    if (!googleDriveFileId) return;
+    if (!cloudProjectId) return;
     setIsDiscoverable(next);
     setDiscoveryError(null);
     setIsSavingDiscovery(true);
     try {
-      await updateDiscovery(googleDriveFileId, {
+      await updateDiscovery(cloudProjectId, {
         isDiscoverable: next,
         domainRestriction: domain.trim() || null,
       });
@@ -74,11 +74,11 @@ export function SyncPopover({
   };
 
   const handleDomainSave = async () => {
-    if (!googleDriveFileId) return;
+    if (!cloudProjectId) return;
     setDiscoveryError(null);
     setIsSavingDiscovery(true);
     try {
-      await updateDiscovery(googleDriveFileId, {
+      await updateDiscovery(cloudProjectId, {
         isDiscoverable,
         domainRestriction: domain.trim() || null,
       });
@@ -94,8 +94,8 @@ export function SyncPopover({
     return (
       <div className="space-y-4">
         <div>
-          <h3 className="font-semibold text-sm mb-1">Google Drive Auto-Save</h3>
-          <p className="text-xs text-muted-foreground">Sign in to unlock cloud features</p>
+          <h3 className="font-semibold text-sm mb-1">Cloud Auto-Save</h3>
+          <p className="text-xs text-muted-foreground">Automatically save changes to the cloud</p>
         </div>
 
         <div className="space-y-3">
@@ -135,7 +135,7 @@ export function SyncPopover({
             </div>
             <div className="flex-1">
               <div className="font-medium text-xs">Secure & private</div>
-              <div className="text-[10px] text-muted-foreground">Your data stays in your Drive</div>
+              <div className="text-[10px] text-muted-foreground">Your data is saved to the cloud</div>
             </div>
           </div>
         </div>
@@ -149,12 +149,12 @@ export function SyncPopover({
   }
 
   // Signed in but no file linked
-  if (!googleDriveFileId) {
+  if (!cloudProjectId) {
     return (
       <div className="space-y-4">
         <div>
-          <h3 className="font-semibold text-sm mb-1">Google Drive Auto-Save</h3>
-          <p className="text-xs text-muted-foreground">Connect this project to Drive</p>
+          <h3 className="font-semibold text-sm mb-1">Cloud Auto-Save</h3>
+          <p className="text-xs text-muted-foreground">Connect this project to the Cloud</p>
         </div>
 
         <div className="flex items-center justify-center py-6 text-muted-foreground">
@@ -184,7 +184,7 @@ export function SyncPopover({
   return (
     <div className="space-y-4">
       <div>
-        <h3 className="font-semibold text-sm mb-1">Google Drive Auto-Save</h3>
+        <h3 className="font-semibold text-sm mb-1">Cloud Auto-Save</h3>
         <p className="text-xs text-muted-foreground truncate" title={`${projectName}.json`}>
           📄 {projectName}.json
         </p>
@@ -221,8 +221,8 @@ export function SyncPopover({
         
         <div className="flex-1 min-w-0">
           <div className="text-xs font-semibold mb-0.5">
-            {syncState.syncStatus === 'saving' ? 'Saving to Drive...' :
-             syncState.syncStatus === 'saved' ? 'All changes saved' :
+            {syncState.syncStatus === 'saving' ? 'Saving to Cloud...' :
+             syncState.syncStatus === 'saved' ? 'Saved to Cloud' :
              syncState.syncStatus === 'error' ? 'Auto-save error' :
              'Cloud file linked'}
           </div>
@@ -265,7 +265,7 @@ export function SyncPopover({
           <div className="flex items-start gap-2 p-2 rounded bg-blue-50 text-blue-700">
             <Info className="w-3 h-3 mt-0.5 shrink-0" />
             <p className="text-[10px] leading-relaxed">
-              Enable automatic sync to never lose your work. Your changes will be saved to Drive in real-time.
+              Enable automatic sync to never lose your work. Your changes will be saved to the cloud in real-time.
             </p>
           </div>
         )}

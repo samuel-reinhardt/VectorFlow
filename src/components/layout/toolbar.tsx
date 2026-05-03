@@ -35,7 +35,7 @@ interface ToolbarProps {
   // Cloud Props
   user?: any;
   syncState?: SyncState;
-  googleDriveFileId?: string;
+  cloudProjectId?: string;
   onNewCloud?: () => void;
   onOpenCloud?: () => void;
   onSaveCloud?: () => void;
@@ -61,7 +61,7 @@ export function Toolbar({
   onNewLocal,
   user,
   syncState,
-  googleDriveFileId,
+  cloudProjectId,
   onNewCloud,
   onOpenCloud,
   onSaveCloud,
@@ -136,7 +136,10 @@ export function Toolbar({
           <DropdownMenuContent align="start" className="w-64">
             {!user ? (
               <div className="p-2 space-y-2">
-                <div className="text-xs font-semibold">Google Drive Auto-Save</div>
+                <div className="flex items-center gap-2 mb-2">
+                  <Cloud className="w-4 h-4 text-primary" />
+                  <div className="text-xs font-semibold">Cloud Auto-Save</div>
+                </div>
                 <div className="text-[10px] text-muted-foreground">
                   Sign in to save your work to the cloud, access it from anywhere, and never lose progress.
                 </div>
@@ -163,14 +166,14 @@ export function Toolbar({
                 <DropdownMenuSeparator />
                 <DropdownMenuItem 
                   onClick={onSaveCloud} 
-                  disabled={!googleDriveFileId}
+                  disabled={!cloudProjectId}
                 >
                   <Save className="mr-2 h-4 w-4" />
                   <span>Save</span>
                 </DropdownMenuItem>
                 <DropdownMenuItem 
                   onClick={onSaveAsCloud} 
-                  disabled={!googleDriveFileId}
+                  disabled={!cloudProjectId}
                 >
                   <SaveAll className="mr-2 h-4 w-4" />
                   <span>Save As...</span>
@@ -180,7 +183,7 @@ export function Toolbar({
                   <DropdownMenuCheckboxItem
                     checked={syncState.isSyncEnabled}
                     onCheckedChange={onToggleAutoSave}
-                    disabled={!googleDriveFileId}
+                    disabled={!cloudProjectId}
                     className="flex items-center justify-between"
                   >
                     <div className="flex items-center">
@@ -205,7 +208,7 @@ export function Toolbar({
                 <DropdownMenuSeparator />
                 <DropdownMenuItem 
                   onClick={onShareLink} 
-                  disabled={!googleDriveFileId}
+                  disabled={!cloudProjectId}
                 >
                   <Share2 className="mr-2 h-4 w-4" />
                   <span>Share Link</span>

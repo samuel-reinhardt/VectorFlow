@@ -7,7 +7,7 @@ export interface ExportData {
   projectId: string;
   flows: Flow[];
   activeFlowId: string;
-  googleDriveFileId?: string;
+  cloudProjectId?: string;
   metadata?: Record<string, any>;
 }
 

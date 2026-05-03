@@ -104,8 +104,8 @@ export function VectorFlow() {
         hasLoadedFromStorage,
         loadProject,
         saveCurrentFlowState,
-        googleDriveFileId,
-        setGoogleDriveFileId,
+        cloudProjectId,
+        setCloudProjectId,
         projectId,
         setProjectId,
         projectName,
@@ -135,7 +135,6 @@ export function VectorFlow() {
         onImport: loadProject,
     });
 
-    // Consolidated Actions
     const { handleSignIn } = useAuthActions();
     const { requestFileName, fileNameDialogProps } = useFileNameDialog();
     
@@ -145,27 +144,27 @@ export function VectorFlow() {
         flows,
         activeFlowId,
         loadProject,
-        setGoogleDriveFileId,
+        setCloudProjectId,
         requestFileName,
     });
 
     const handleShareLink = useCallback(() => {
-        if (!googleDriveFileId) return;
-        const url = `${window.location.origin}${window.location.pathname}?driveId=${googleDriveFileId}`;
+        if (!cloudProjectId) return;
+        const url = `${window.location.origin}${window.location.pathname}?projectId=${cloudProjectId}`;
         navigator.clipboard.writeText(url);
         toast({
             title: "Link Copied",
-            description: "Share link copied. End user must have appropriate permissions to access.",
+            description: "Anyone with the link can view this flow.",
         });
-    }, [googleDriveFileId, toast]);
+    }, [cloudProjectId, toast]);
 
-    const handleUnlinkDrive = useCallback(() => {
-        setGoogleDriveFileId(undefined);
+    const handleUnlinkCloud = useCallback(() => {
+        setCloudProjectId(undefined);
         toast({
             title: "Unlinked",
-            description: "Project disconnected from Google Drive.",
+            description: "Project disconnected from the cloud.",
         });
-    }, [setGoogleDriveFileId, toast]);
+    }, [setCloudProjectId, toast]);
 
     // ── Reconnect guard + handlers ─────────────────────────────────────
     const { handleSaveToCloud, handleNewCloudProject, handleOpenCloudProject, handleDeleteCloudProject } = useProjectActions({
@@ -173,34 +172,27 @@ export function VectorFlow() {
         activeFlowId,
         projectId,
         projectName,
-        setCloudProjectId: setGoogleDriveFileId,
+        setCloudProjectId: setCloudProjectId,
         loadProject,
     });
-
-    // ... handleSaveToCloud ...
 
     // View Only Toast Logic
     useEffect(() => {
         if (isReadOnly) {
             toast({
-                title: syncState.isReadOnlyDueToPermissions ? "View-Only Mode" : "Read-Only Mode",
-                description: syncState.isReadOnlyDueToPermissions 
-                    ? "You don't have edit permission for this Drive file." 
-                    : "Editing is disabled. You can view items but cannot make changes.",
-                duration: 5000, // Show for 5 seconds (not persistent to avoid blocking too)
-                // We could make it persistent with duration: Infinity if desired, but user asked for less blocking.
+                title: "Read-Only Mode",
+                description: "Editing is disabled. You can view items but cannot make changes.",
+                duration: 5000,
                 className: "bg-amber-50 border-amber-200 text-amber-900",
             });
         }
-    }, [isReadOnly, syncState.isReadOnlyDueToPermissions, toast]);
+    }, [isReadOnly, toast]);
     
-    // Connection handling state
     const connectingNodeId = useRef<string | null>(null);
     const connectingHandleId = useRef<string | null>(null);
 
     const { fitView, getNode, getNodes, setEdges, project } = useReactFlow();
 
-    // ── Flow transition animation (tab change) ────────────────────────────
     const isTransitioning = useFlowTransition(activeFlowId, fitView);
 
     const onConnectStart = useCallback((_: any, { nodeId, handleId }: { nodeId: string | null; handleId: string | null }) => {
@@ -215,17 +207,10 @@ export function VectorFlow() {
             const targetIsPane = event.target.classList.contains('react-flow__pane');
 
             if (targetIsPane) {
-                // Remove the wrapper bounds calculation if not needed or perform exact calculations
-                // Assuming event is a mouse/touch event on the window/element
                 const { clientX, clientY } = 'changedTouches' in event ? event.changedTouches[0] : event;
-                
-                // screenToFlowPosition handles bounds and zoom automatically
                 const position = screenToFlowPosition({ x: clientX, y: clientY });
-
-                // Create new step at this position
                 const newNodeId = addStep(position);
 
-                // Add connection
                 const newEdge = {
                     id: `e${connectingNodeId.current}-${newNodeId}`,
                     source: connectingNodeId.current,
@@ -259,7 +244,6 @@ export function VectorFlow() {
     });
 
     useEffect(() => {
-        // Set initial state based on viewport, once isDesktop is determined.
         if (isDesktop === true) {
             setLeftSidebarOpen(true);
             setRightSidebarOpen(true);
@@ -273,8 +257,6 @@ export function VectorFlow() {
     const handleRightSidebarToggle = useCallback(() => setRightSidebarOpen(p => !p), []);
 
     const handleLeftSidebarChange = useCallback((open: boolean) => {
-        // The Sheet component is for mobile only. It calls onOpenChange on outside clicks.
-        // We only want this behavior on mobile.
         if (isDesktop === false) {
             setLeftSidebarOpen(open);
         }
@@ -294,8 +276,6 @@ export function VectorFlow() {
         setNodesState((nds) => nds.map((n) => ({ ...n, selected: nodeIds.includes(n.id) })));
         setEdges((eds) => eds.map((e) => ({ ...e, selected: false })));
         
-        // Optional: Fit view to selected nodes if only one or specific count? 
-        // Let's keep fit view behavior only for single select to avoid jumping around on multiselect
         if (nodeIds.length === 1) {
             fitView({ nodes: [{id: nodeIds[0]}], duration: 300, maxZoom: 1.2 });
         }
@@ -304,7 +284,6 @@ export function VectorFlow() {
     const nodesInitialized = useNodesInitialized();
     const [initialFitDone, setInitialFitDone] = useState(false);
 
-    // Context Menu State
     const [contextMenu, setContextMenu] = useState<{
         x: number;
         y: number;
@@ -317,14 +296,8 @@ export function VectorFlow() {
             if (isReadOnly) return;
             event.preventDefault();
             
-            // If the node is not currently selected, select it (exclusive)
-            // Unless it's already part of a multi-selection
             const isSelected = selectedNodes.some(n => n.id === node.id);
             if (!isSelected) {
-                // We cannot use handleStepSelect here because it was defined inside the component 
-                // but we need access to it. It IS defined above though, at line ~349.
-                // Ah, the lint error was because I pasted the definition BEFORE handleStepSelect was defined.
-                // Now I am pasting it at the end (before return), so it should be fine.
                 handleStepsSelect([node.id]);
             }
             
@@ -356,13 +329,7 @@ export function VectorFlow() {
             if (isReadOnly) return;
             event.preventDefault();
             
-            // useReactFlow provides setEdges but we also have setEdgesState from our hook?
-            // Actually useVectorFlow exposes setEdges as well? No, it exposes updateEdge...
-            // Let's use the reactflow instance setEdges which we got at line 151
             setEdges((eds) => eds.map((e) => ({ ...e, selected: e.id === edge.id })));
-            
-            // And we need to deselect nodes. 
-            // We have setNodesState exposed from useVectorFlow at line 66
             setNodesState((nds) => nds.map((n) => ({ ...n, selected: false })));
 
             setContextMenu({
@@ -375,8 +342,6 @@ export function VectorFlow() {
         [isReadOnly, setEdges, setNodesState]
     );
 
-    
-
     const onSelectionContextMenu = useCallback(
         (event: React.MouseEvent, nodes: Node[]) => {
             if (isReadOnly) return;
@@ -386,7 +351,7 @@ export function VectorFlow() {
                 x: event.clientX,
                 y: event.clientY,
                 type: 'selection',
-                data: nodes // Pass selected nodes if needed, though we rely on selectedNodes state usually
+                data: nodes 
             });
         },
         [isReadOnly]
@@ -397,31 +362,25 @@ export function VectorFlow() {
     }, []);
 
     useEffect(() => {
-        // Initial auto-layout ONLY once on mount if we haven't recovered from storage
         if (isDesktop !== null && !initialFitDone && getNodes().length > 0) {
             if (!hasLoadedFromStorage) {
                 handleAutoLayout({ silent: true });
             }
         }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [isDesktop, hasLoadedFromStorage]);
 
-    // Reliable fitView once nodes are MEASURED by the DOM
     useEffect(() => {
         if (isDesktop !== null && nodesInitialized && !initialFitDone) {
             const timer = setTimeout(() => {
                 fitView({ duration: 600 });
                 setInitialFitDone(true);
-            }, 200); // Small buffer for CSS variables/animations
+            }, 200);
             return () => clearTimeout(timer);
         }
     }, [isDesktop, nodesInitialized, initialFitDone, fitView]);
 
     const selectedStepId = useMemo(() => selectedNodes.length === 1 ? selectedNodes[0].id : null, [selectedNodes]);
 
-    // Handlers managed by hooks (useDriveFileActions, useLocalFileActions)
-
-    // ── Keyboard shortcuts (undo/redo + clipboard) ────────────────────────
     useKeyboardShortcuts({
         onUndo: undo,
         onRedo: redo,
@@ -451,12 +410,12 @@ export function VectorFlow() {
                         <SyncIndicator
                             user={user}
                             syncState={syncState}
-                            googleDriveFileId={googleDriveFileId}
+                            cloudProjectId={cloudProjectId}
                             projectId={projectId}
                             projectName={projectName}
                             onToggleSync={toggleSync}
                             onSaveToCloud={handleSaveToCloud}
-                            onUnlink={handleUnlinkDrive}
+                            onUnlink={handleUnlinkCloud}
                             onCopyLink={handleShareLink}
                         />
                     }
@@ -486,11 +445,10 @@ export function VectorFlow() {
                 onShareLink={handleShareLink}
                 user={user}
                 syncState={syncState}
-                googleDriveFileId={googleDriveFileId}
+                cloudProjectId={cloudProjectId}
             />
 
                 <div className="flex flex-1 overflow-hidden">
-                    {/* Left Sidebar - Outline */}
                     <Sidebar 
                         side="left" 
                         open={leftSidebarOpen} 
@@ -505,14 +463,13 @@ export function VectorFlow() {
                             onStepSelect={handleStepsSelect}
                             onDeliverableSelect={(nodeId, deliverableId) => {
                                 handleStepsSelect([nodeId]);
-                                selectDeliverable(nodeId, deliverableId); // Both arguments needed
+                                selectDeliverable(nodeId, deliverableId);
                             }} 
                             onToggle={handleLeftSidebarToggle}
                         />
                     </Sidebar>
 
                     <main className="relative flex-1 h-full">
-                        {/* Loading overlay during flow transitions */}
                         {isTransitioning && (
                             <div className="absolute inset-0 z-50 flex items-center justify-center bg-background/80 backdrop-blur-sm">
                                 <Orbit className="h-6 w-6 animate-spin text-primary" />
@@ -550,7 +507,7 @@ export function VectorFlow() {
                             maxZoom={4}
                             className="bg-background"
                             selectionOnDrag={true}
-                            panOnDrag={[1, 2]} // Middle and Right click to pan
+                            panOnDrag={[1, 2]}
                             selectionMode={SelectionMode.Partial}
                         >
                             <Controls />
@@ -562,7 +519,6 @@ export function VectorFlow() {
                                     y={contextMenu.y}
                                     onClose={() => setContextMenu(null)}
                                     actions={[
-                                        // Node Actions
                                         ...((contextMenu.type === 'node' || contextMenu.type === 'selection') ? [
                                             {
                                                 label: 'Copy',
@@ -583,7 +539,6 @@ export function VectorFlow() {
                                             }
                                         ] : []),
 
-                                        // Group Actions (Single Group or Multi-Select)
                                         ...((contextMenu.type === 'node' && contextMenu.data?.type === 'group') ? [
                                             {
                                                 label: 'Ungroup',
@@ -592,7 +547,6 @@ export function VectorFlow() {
                                             }
                                         ] : []),
                                         
-                                        // Grouping via Multi-Select
                                         ...((contextMenu.type === 'selection') ? [
                                             {
                                                 label: 'Group',
@@ -601,7 +555,6 @@ export function VectorFlow() {
                                             }
                                         ] : []),
 
-                                        // Pane Actions
                                         ...(contextMenu.type === 'pane' ? [
                                             {
                                                 label: 'Paste',
@@ -613,7 +566,6 @@ export function VectorFlow() {
                                             }
                                         ] : []),
                                         
-                                        // Delete Action (Common for all except pane)
                                         ...(contextMenu.type !== 'pane' ? [
                                             {
                                                 label: 'Delete',
@@ -631,8 +583,8 @@ export function VectorFlow() {
                                 activeFlowId={activeFlowId}
                                 projectId={projectId}
                                 projectName={projectName}
-                                googleDriveFileId={googleDriveFileId}
-                                setGoogleDriveFileId={setGoogleDriveFileId}
+                                cloudProjectId={cloudProjectId}
+                                setCloudProjectId={setCloudProjectId}
                                 onImport={loadProject}
                                 onSaveState={() => {
                                     saveCurrentFlowState();

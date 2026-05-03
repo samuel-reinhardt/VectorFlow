@@ -43,8 +43,8 @@ interface ExportDialogProps {
   activeFlowId: string;
   projectId: string;
   projectName: string;
-  googleDriveFileId?: string;
-  setGoogleDriveFileId: (id: string) => void;
+  cloudProjectId?: string;
+  setCloudProjectId: (id: string) => void;
   onImport: (flows: Flow[], activeFlowId: string, projectId: string, projectName?: string, driveId?: string) => void;
   onSaveState?: () => void;
   syncState: any; // We'll type this as SyncState from cloud-sync later if needed, but any is fine for now
@@ -58,8 +58,8 @@ export function ExportDialog({
   activeFlowId, 
   projectId,
   projectName,
-  googleDriveFileId, 
-  setGoogleDriveFileId,
+  cloudProjectId, 
+  setCloudProjectId,
   onImport, 
   onSaveState,
   syncState,
@@ -71,7 +71,7 @@ export function ExportDialog({
   const [format, setFormat] = useState('json');
   const [isExporting, setIsExporting] = useState(false);
   const [isImporting, setIsImporting] = useState(false);
-  const [isDriveLoading, setIsDriveLoading] = useState(false);
+  const [isCloudLoading, setIsCloudLoading] = useState(false);
   
   const { user } = useUser();
   const { toast } = useToast();
@@ -164,12 +164,12 @@ export function ExportDialog({
       return;
     }
 
-    setIsDriveLoading(true);
+    setIsCloudLoading(true);
     try {
       if (onSaveState) onSaveState();
       await handleSaveToCloud();
     } finally {
-      setIsDriveLoading(false);
+      setIsCloudLoading(false);
     }
   };
 
@@ -195,9 +195,9 @@ export function ExportDialog({
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
                 <Cloud className="w-5 h-5 text-primary" />
-                <h4 className="font-semibold text-sm">Google Drive</h4>
+                <h4 className="font-semibold text-sm">Cloud Storage</h4>
               </div>
-              {googleDriveFileId && (
+              {cloudProjectId && (
                 <div className="flex items-center gap-1 text-[10px] text-green-600 bg-green-50 px-2 py-0.5 rounded-full border border-green-100 font-medium animate-in fade-in duration-500">
                   <CheckCircle2 className="w-3 h-3" />
                   <span>Linked</span>
@@ -215,7 +215,7 @@ export function ExportDialog({
               </div>
             ) : (
               <div className="space-y-3">
-                {googleDriveFileId && (
+                {cloudProjectId && (
                   <div className="flex items-center justify-between p-3 rounded-lg border bg-muted/30">
                     <div className="flex items-center gap-3">
                       <div className={`w-2 h-2 rounded-full ${
@@ -250,14 +250,14 @@ export function ExportDialog({
                 )}
                 <div className="flex gap-2">
                   <Button 
-                    variant={googleDriveFileId ? "default" : "outline"} 
+                    variant={cloudProjectId ? "default" : "outline"} 
                     className="flex-1 h-9 gap-2 shadow-sm"
                     onClick={handleCloudSave}
-                    disabled={isDriveLoading || syncState.isSyncEnabled}
+                    disabled={isCloudLoading || syncState.isSyncEnabled}
                   >
-                    {isDriveLoading ? (
+                    {isCloudLoading ? (
                       <RefreshCw className="w-4 h-4 animate-spin" />
-                    ) : googleDriveFileId ? (
+                    ) : cloudProjectId ? (
                       <>
                         <RefreshCw className="w-4 h-4" />
                         Save Now
@@ -273,7 +273,7 @@ export function ExportDialog({
                     variant="outline" 
                     className="h-9 w-9 p-0"
                     onClick={handleOpenCloudProject}
-                    disabled={isDriveLoading}
+                    disabled={isCloudLoading}
                     title="Open Project"
                   >
                     <Search className="w-4 h-4" />

@@ -14,14 +14,14 @@ interface PersistedState {
   projectName?: string;
   flows: Flow[];
   activeFlowId: string;
-  googleDriveFileId?: string;
+  cloudProjectId?: string;
 }
 
 export const StorageManager = {
   /**
    * Saves the current application state to local storage.
    */
-  save: (flows: Flow[], activeFlowId: string, projectId: string, projectName?: string, googleDriveFileId?: string) => {
+  save: (flows: Flow[], activeFlowId: string, projectId: string, projectName?: string, cloudProjectId?: string) => {
     if (typeof window === 'undefined') return;
     
     try {
@@ -31,7 +31,7 @@ export const StorageManager = {
         projectName,
         flows,
         activeFlowId,
-        googleDriveFileId,
+        cloudProjectId,
       };
 
       const replacer = (key: string, value: any) => {
@@ -81,7 +81,7 @@ export const StorageManager = {
   /**
    * Loads the application state from local storage.
    */
-  load: (): { flows: Flow[]; activeFlowId: string; projectId: string; projectName?: string; googleDriveFileId?: string } | null => {
+  load: (): { flows: Flow[]; activeFlowId: string; projectId: string; projectName?: string; cloudProjectId?: string } | null => {
     if (typeof window === 'undefined') return null;
 
     try {
@@ -101,7 +101,7 @@ export const StorageManager = {
         activeFlowId: state.activeFlowId,
         projectId: state.projectId,
         projectName: state.projectName,
-        googleDriveFileId: state.googleDriveFileId,
+        cloudProjectId: state.cloudProjectId,
       };
     } catch (error) {
       console.error('Failed to load state from localStorage:', error);

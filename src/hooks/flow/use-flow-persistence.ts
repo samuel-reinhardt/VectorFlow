@@ -13,8 +13,8 @@ export function useFlowPersistence(
   activeFlowId: string,
   projectId: string,
   projectName: string | undefined,
-  googleDriveFileId: string | undefined,
-  onLoad: (flows: Flow[], activeFlowId: string, projectId: string, projectName?: string, googleDriveFileId?: string) => void
+  cloudProjectId: string | undefined,
+  onLoad: (flows: Flow[], activeFlowId: string, projectId: string, projectName?: string, cloudProjectId?: string) => void
 ) {
   const [isInitialized, setIsInitialized] = useState(false);
   const [hasLoadedFromStorage, setHasLoadedFromStorage] = useState(false);
@@ -43,7 +43,7 @@ export function useFlowPersistence(
         }))
       }));
 
-      onLoad(normalizedFlows, saved.activeFlowId, saved.projectId, saved.projectName, saved.googleDriveFileId);
+      onLoad(normalizedFlows, saved.activeFlowId, saved.projectId, saved.projectName, saved.cloudProjectId);
       setHasLoadedFromStorage(true);
     } else {
       // Nothing in storage, mark as loaded anyway to allow saves
@@ -56,9 +56,9 @@ export function useFlowPersistence(
   // Save to storage whenever flows or activeFlowId changes
   useEffect(() => {
     if (isInitialized && hasLoadedFromStorage) {
-      StorageManager.save(flows, activeFlowId, projectId, projectName, googleDriveFileId);
+      StorageManager.save(flows, activeFlowId, projectId, projectName, cloudProjectId);
     }
-  }, [flows, activeFlowId, projectId, projectName, googleDriveFileId, isInitialized, hasLoadedFromStorage]);
+  }, [flows, activeFlowId, projectId, projectName, cloudProjectId, isInitialized, hasLoadedFromStorage]);
 
   return {
     isInitialized,

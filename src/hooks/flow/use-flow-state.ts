@@ -19,7 +19,7 @@ export function useFlowState(
   getEdges: () => Edge[]
 ) {
   const [flows, setFlows] = useState<Flow[]>(initialFlows);
-  const [googleDriveFileId, setGoogleDriveFileId] = useState<string | undefined>(initialGoogleDriveFileId); // Added
+  const [cloudProjectId, setCloudProjectId] = useState<string | undefined>(initialGoogleDriveFileId); // Added
 
   const saveCurrentFlowState = useCallback(() => {
     const currentNodes = getNodes();
@@ -146,7 +146,7 @@ export function useFlowState(
     reorderFlow,
     updateMetaConfig,
     saveCurrentFlowState,
-    googleDriveFileId,
-    setGoogleDriveFileId
+    cloudProjectId,
+    setCloudProjectId
   };
 }

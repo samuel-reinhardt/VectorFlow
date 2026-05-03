@@ -7,7 +7,7 @@ import { SyncState } from '@/hooks/use-cloud-sync';
 interface SyncIndicatorProps {
   user: any;
   syncState: SyncState;
-  googleDriveFileId?: string;
+  cloudProjectId?: string;
   projectId: string;
   projectName: string;
   onToggleSync: () => void;
@@ -19,7 +19,7 @@ interface SyncIndicatorProps {
 export function SyncIndicator({
   user,
   syncState,
-  googleDriveFileId,
+  cloudProjectId,
   projectId,
   projectName,
   onToggleSync,
@@ -32,7 +32,7 @@ export function SyncIndicator({
       return <HelpCircle className="w-4 h-4 text-muted-foreground" />;
     }
     
-    if (!googleDriveFileId) {
+    if (!cloudProjectId) {
       return <CloudOff className="w-4 h-4 text-muted-foreground" />;
     }
 
@@ -68,7 +68,7 @@ export function SyncIndicator({
 
   const getTooltipText = () => {
     if (!user) return 'Sign in to save to cloud';
-    if (!googleDriveFileId) return 'Not saved to cloud';
+    if (!cloudProjectId) return 'Not saved to cloud';
     
     switch (syncState.syncStatus) {
       case 'saving':
@@ -104,7 +104,7 @@ export function SyncIndicator({
         <SyncPopover
           user={user}
           syncState={syncState}
-          googleDriveFileId={googleDriveFileId}
+          cloudProjectId={cloudProjectId}
           projectId={projectId}
           projectName={projectName}
           onToggleSync={onToggleSync}
