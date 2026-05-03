@@ -1,7 +1,9 @@
-import { Cloud, FileJson, Users, Shield, LogIn, Info, Share2, AlertTriangle, Check, RefreshCw } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { Cloud, FileJson, Users, Shield, LogIn, Info, AlertTriangle, Check, RefreshCw, Globe, Lock } from 'lucide-react';
 import { Button } from '@/components/ui/forms/button';
-import { SyncState } from '@/hooks/use-drive-sync';
+import { SyncState } from '@/hooks/use-cloud-sync';
 import { useAuthActions } from '@/hooks/use-auth-actions';
+import { useDiscovery } from '@/hooks/use-discovery';
 
 interface SyncPopoverProps {
   user: any;
@@ -10,8 +12,7 @@ interface SyncPopoverProps {
   projectId: string;
   projectName: string;
   onToggleSync: () => void;
-  onBrowseDrive: () => void;
-  onCreateFile?: () => void;
+  onSaveToCloud: () => void;
   onUnlink: () => void;
   onCopyLink: () => void;
 }
@@ -23,12 +24,71 @@ export function SyncPopover({
   projectId,
   projectName,
   onToggleSync,
-  onBrowseDrive,
-  onCreateFile,
+  onSaveToCloud,
   onUnlink,
   onCopyLink,
 }: SyncPopoverProps) {
   const { handleSignIn } = useAuthActions();
+  const { discoverableFiles, updateDiscovery } = useDiscovery();
+
+  // ── Discovery state (only needed when a file is linked & user can edit) ────
+  const canManageDiscovery = !!googleDriveFileId;
+
+  const currentEntry = discoverableFiles.find(
+    (e) => e.id === googleDriveFileId,
+  );
+
+  const [isDiscoverable, setIsDiscoverable] = useState(
+    currentEntry?.isDiscoverable ?? false,
+  );
+  const [domain, setDomain] = useState(
+    currentEntry?.domainRestriction ?? '',
+  );
+  const [discoveryError, setDiscoveryError] = useState<string | null>(null);
+  const [isSavingDiscovery, setIsSavingDiscovery] = useState(false);
+
+  // Sync local state when entry loads after mount
+  useEffect(() => {
+    if (currentEntry) {
+      setIsDiscoverable(currentEntry.isDiscoverable);
+      setDomain(currentEntry.domainRestriction ?? '');
+    }
+  }, [currentEntry?.isDiscoverable, currentEntry?.domainRestriction]);
+
+  const handleDiscoveryToggle = async (next: boolean) => {
+    if (!googleDriveFileId) return;
+    setIsDiscoverable(next);
+    setDiscoveryError(null);
+    setIsSavingDiscovery(true);
+    try {
+      await updateDiscovery(googleDriveFileId, {
+        isDiscoverable: next,
+        domainRestriction: domain.trim() || null,
+      });
+    } catch (err: any) {
+      setDiscoveryError(err.message);
+      setIsDiscoverable(!next); // revert optimistic change
+    } finally {
+      setIsSavingDiscovery(false);
+    }
+  };
+
+  const handleDomainSave = async () => {
+    if (!googleDriveFileId) return;
+    setDiscoveryError(null);
+    setIsSavingDiscovery(true);
+    try {
+      await updateDiscovery(googleDriveFileId, {
+        isDiscoverable,
+        domainRestriction: domain.trim() || null,
+      });
+    } catch (err: any) {
+      setDiscoveryError(err.message);
+    } finally {
+      setIsSavingDiscovery(false);
+    }
+  };
+
   // Not signed in - show benefits
   if (!user) {
     return (
@@ -102,13 +162,9 @@ export function SyncPopover({
         </div>
 
         <div className="space-y-2">
-          <Button className="w-full gap-2" size="sm" onClick={onBrowseDrive}>
-            <FileJson className="w-4 h-4" />
-            Open Existing File
-          </Button>
-          <Button variant="outline" className="w-full gap-2" size="sm" onClick={onCreateFile || onBrowseDrive}>
+          <Button className="w-full gap-2" size="sm" onClick={onSaveToCloud}>
             <Cloud className="w-4 h-4" />
-            Create New File
+            Save to Cloud
           </Button>
         </div>
 
@@ -241,6 +297,95 @@ export function SyncPopover({
               <LogIn className="w-3 h-3 mr-1.5" />
               Reconnect Now
             </Button>
+          )}
+        </div>
+      )}
+
+      {/* ── Discovery Section (owners only) ─────────────────────────── */}
+      {canManageDiscovery && (
+        <div className="border-t pt-4 space-y-3">
+          <div className="flex items-center gap-2">
+            <Globe className="w-3.5 h-3.5 text-muted-foreground" />
+            <span className="text-xs font-semibold">File Discovery</span>
+          </div>
+
+          {/* Discoverable toggle */}
+          <div className="flex items-start justify-between gap-3">
+            <div className="flex-1">
+              <div className="text-xs font-medium mb-0.5">Make discoverable</div>
+              <div className="text-[10px] text-muted-foreground leading-relaxed">
+                {isDiscoverable
+                  ? 'Others can find and open this project'
+                  : 'Only people with a direct link can open this'}
+              </div>
+            </div>
+            <button
+              onClick={() => handleDiscoveryToggle(!isDiscoverable)}
+              disabled={isSavingDiscovery}
+              className={`relative inline-flex h-5 w-9 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed ${
+                isDiscoverable ? 'bg-primary' : 'bg-gray-200'
+              }`}
+              role="switch"
+              aria-checked={isDiscoverable}
+              aria-label="Toggle file discoverability"
+            >
+              <span
+                className={`pointer-events-none inline-block h-4 w-4 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${
+                  isDiscoverable ? 'translate-x-4' : 'translate-x-0'
+                }`}
+              />
+            </button>
+          </div>
+
+          {/* Domain restriction (shown only when discoverable) */}
+          {isDiscoverable && (
+            <div className="space-y-2">
+              <div className="flex items-center gap-1.5">
+                <Lock className="w-3 h-3 text-muted-foreground" />
+                <span className="text-[10px] font-medium text-muted-foreground uppercase tracking-wide">
+                  Restrict by email domain
+                </span>
+              </div>
+              <div className="flex gap-2">
+                <div className="relative flex-1">
+                  <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-[10px] text-muted-foreground pointer-events-none">
+                    @
+                  </span>
+                  <input
+                    type="text"
+                    id="discovery-domain-input"
+                    placeholder="bytes.co"
+                    value={domain}
+                    onChange={(e) => setDomain(e.target.value.replace(/^@/, ''))}
+                    onKeyDown={(e) => e.key === 'Enter' && handleDomainSave()}
+                    className="w-full pl-6 pr-2 py-1.5 text-[11px] rounded-md border bg-background focus:outline-none focus:ring-1 focus:ring-primary"
+                  />
+                </div>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  className="h-7 px-2.5 shrink-0 text-[10px]"
+                  onClick={handleDomainSave}
+                  disabled={isSavingDiscovery}
+                  aria-label="Save domain restriction"
+                >
+                  Save
+                </Button>
+              </div>
+              <p className="text-[10px] text-muted-foreground leading-relaxed">
+                {domain.trim()
+                  ? `Only @${domain.trim()} users can discover this file.`
+                  : 'All signed-in users can discover this file.'}
+              </p>
+            </div>
+          )}
+
+          {/* Discovery save error */}
+          {discoveryError && (
+            <div className="flex items-start gap-2 p-2 rounded bg-red-50 text-red-700">
+              <AlertTriangle className="w-3 h-3 mt-0.5 shrink-0" />
+              <p className="text-[10px] leading-relaxed">{discoveryError}</p>
+            </div>
           )}
         </div>
       )}

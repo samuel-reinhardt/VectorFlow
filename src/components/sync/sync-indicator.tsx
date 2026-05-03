@@ -2,7 +2,7 @@ import { Cloud, CloudOff, AlertTriangle, HelpCircle, Check, RefreshCw, LogIn } f
 import { Button } from '@/components/ui/forms/button';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/overlay/popover';
 import { SyncPopover } from './sync-popover';
-import { SyncState } from '@/hooks/use-drive-sync';
+import { SyncState } from '@/hooks/use-cloud-sync';
 
 interface SyncIndicatorProps {
   user: any;
@@ -11,8 +11,7 @@ interface SyncIndicatorProps {
   projectId: string;
   projectName: string;
   onToggleSync: () => void;
-  onBrowseDrive: () => void;
-  onCreateFile?: () => void;
+  onSaveToCloud: () => void;
   onUnlink: () => void;
   onCopyLink: () => void;
 }
@@ -24,8 +23,7 @@ export function SyncIndicator({
   projectId,
   projectName,
   onToggleSync,
-  onBrowseDrive,
-  onCreateFile,
+  onSaveToCloud,
   onUnlink,
   onCopyLink,
 }: SyncIndicatorProps) {
@@ -69,16 +67,16 @@ export function SyncIndicator({
   };
 
   const getTooltipText = () => {
-    if (!user) return 'Sign in to auto-save to Drive';
-    if (!googleDriveFileId) return 'Not auto-saving to Drive';
+    if (!user) return 'Sign in to save to cloud';
+    if (!googleDriveFileId) return 'Not saved to cloud';
     
     switch (syncState.syncStatus) {
       case 'saving':
-        return 'Saving to Drive...';
+        return 'Saving to cloud...';
       case 'saved':
         return syncState.lastSyncTime 
-          ? `Saved to Drive at ${syncState.lastSyncTime.toLocaleTimeString()}`
-          : 'Saved to Drive';
+          ? `Saved at ${syncState.lastSyncTime.toLocaleTimeString()}`
+          : 'Saved to cloud';
       case 'error':
         if (syncState.errorType === 'auth') {
           return 'Re-authentication required';
@@ -110,8 +108,7 @@ export function SyncIndicator({
           projectId={projectId}
           projectName={projectName}
           onToggleSync={onToggleSync}
-          onBrowseDrive={onBrowseDrive}
-          onCreateFile={onCreateFile}
+          onSaveToCloud={onSaveToCloud}
           onUnlink={onUnlink}
           onCopyLink={onCopyLink}
         />

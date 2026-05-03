@@ -13,7 +13,7 @@ import {
   DropdownMenuTrigger,
   DropdownMenuCheckboxItem,
 } from '@/components/ui/overlay/dropdown-menu';
-import { SyncState } from '@/hooks/use-drive-sync';
+import { SyncState } from '@/hooks/use-cloud-sync';
 
 interface ToolbarProps {
   onAutoLayout: () => void;

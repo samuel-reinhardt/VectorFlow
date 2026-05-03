@@ -1,0 +1,19 @@
+name = "vector-flow"
+compatibility_date = "2024-09-23"
+compatibility_flags = ["nodejs_compat"]
+
+# ---------------------------------------------------------------------------
+# Pages deployment — run `pnpm pages:deploy` to ship to Cloudflare Pages.
+# ---------------------------------------------------------------------------
+pages_build_output_dir = ".vercel/output/static"
+
+# ---------------------------------------------------------------------------
+# KV Namespaces
+# ---------------------------------------------------------------------------
+# VF_DISCOVERY stores the per-file discovery registry entries.
+# After running `wrangler kv:namespace create VF_DISCOVERY` (and the preview
+# variant), replace the placeholder IDs below with the real ones.
+[[kv_namespaces]]
+binding = "VF_DISCOVERY"
+id = "REPLACE_WITH_PRODUCTION_KV_ID"
+preview_id = "REPLACE_WITH_PREVIEW_KV_ID"

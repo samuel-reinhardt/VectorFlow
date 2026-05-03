@@ -1,8 +1,6 @@
 import { useAuthActions } from '@/hooks/use-auth-actions';
 
 import { useUser } from '@/firebase/auth/use-user';
-import { useGoogleDriveToken } from '@/hooks/use-google-drive';
-import { signOut, signInWithGoogle } from '@/firebase/auth/auth';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/data-display/avatar';
 import {
   DropdownMenu,
@@ -14,12 +12,9 @@ import {
 } from '@/components/ui/overlay/dropdown-menu';
 import { LogIn, LogOut, User as UserIcon } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
-import { GoogleDriveService } from '@/lib/google-drive/service';
-import { GoogleAuthProvider } from 'firebase/auth';
 
 export function UserProfile() {
   const { user, isLoading } = useUser();
-  const accessToken = useGoogleDriveToken();
   const { toast } = useToast();
   const { handleSignIn, handleSignOut } = useAuthActions();
 
@@ -79,12 +74,7 @@ export function UserProfile() {
         </DropdownMenuLabel>
         <DropdownMenuSeparator />
 
-        {!accessToken && (
-            <DropdownMenuItem className="cursor-pointer text-amber-600 focus:text-amber-600 focus:bg-amber-50" onClick={handleSignIn}>
-                <LogIn className="mr-2 h-4 w-4" />
-                <span>Reconnect Drive</span>
-            </DropdownMenuItem>
-        )}
+
         <DropdownMenuItem className="cursor-pointer" onClick={handleSignOut}>
             <LogOut className="mr-2 h-4 w-4" />
             <span>Log out</span>

@@ -8,11 +8,63 @@ import type { FieldDefinition } from '@/types';
 import { Layers, Square, Share2, FileText, LayoutGrid, Boxes } from 'lucide-react';
 import { DEFAULT_COLORS } from '@/lib/constants';
 import { DynamicIcon } from '@/components/common/dynamic-icon';
+import { SidebarHeader } from '@/components/ui/layout/sidebar';
+import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/layout/tabs';
+
+const EMPTY_OBJECT = {};
+
+// ---------------------------------------------------------------------------
+// Helpers
+// ---------------------------------------------------------------------------
+
+/**
+ * Returns the shared value for a given property across all `items`, or a
+ * fallback when the values differ. Uses a key extractor so it works for both
+ * node data properties and edge style/data properties.
+ */
+function getBulkValue<T, V>(
+  items: T[],
+  extractor: (item: T) => V | undefined,
+  fallback: V,
+): V {
+  if (items.length === 0) return fallback;
+  const first = extractor(items[0]);
+  const allSame = items.every((item) => extractor(item) === first);
+  return allSame && first !== undefined ? first : fallback;
+}
+
+/** Renders a consistent section heading inside the multi-select panel. */
+function SectionHeader({ icon: Icon, label }: { icon: React.ElementType; label: string }) {
+  return (
+    <div className="flex items-center gap-2 text-sm font-semibold border-b pb-2">
+      <Icon className="w-4 h-4" />
+      {label}
+    </div>
+  );
+}
+
+/** Returns common metadata values across a list of items (used for bulk edits). */
+function getCommonValues(items: any[], fields: FieldDefinition[], metadataExtractor: (item: any) => any) {
+    const commonValues: Record<string, any> = {};
+    if (items.length === 0) return commonValues;
+
+    fields.forEach(field => {
+        const firstVal = metadataExtractor(items[0])?.[field.id];
+        const allSame = items.every(item => {
+            const val = metadataExtractor(item)?.[field.id];
+            return val === firstVal;
+        });
+        if (allSame && firstVal !== undefined) {
+            commonValues[field.id] = firstVal;
+        }
+    });
+    return commonValues;
+}
 
 interface SettingsPanelProps {
   selectedSteps: Node[];
   selectedEdges: Edge[];
-  selectedEdge: Edge | null; // Keep for backward compat/single edge check usage
+  selectedEdge: Edge | null;
   selectedDeliverableId?: string | null;
   onAddStep: () => void;
   onAddDeliverable: (stepId: string, afterDeliverableId?: string) => void;
@@ -35,32 +87,6 @@ interface SettingsPanelProps {
   onUpdateEdgeMetaData: (edgeId: string, fieldId: string, value: any) => void;
   onToggle?: () => void;
 }
-
-import { SidebarHeader } from '@/components/ui/layout/sidebar';
-
-const EMPTY_OBJECT = {};
-
-// Helper to find common values across a list of items
-function getCommonValues(items: any[], fields: FieldDefinition[], metadataExtractor: (item: any) => any) {
-    const commonValues: Record<string, any> = {};
-    if (items.length === 0) return commonValues;
-
-    fields.forEach(field => {
-        const firstVal = metadataExtractor(items[0])?.[field.id];
-        // Check if all items have this same value
-        const allSame = items.every(item => {
-            const val = metadataExtractor(item)?.[field.id];
-            // Simple equality check, deep check might be needed for arrays/objects but for primitives fine
-            return val === firstVal;
-        });
-        if (allSame && firstVal !== undefined) {
-            commonValues[field.id] = firstVal;
-        }
-    });
-    return commonValues;
-}
-
-import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/layout/tabs';
 
 export function SettingsPanel({
   selectedSteps,
@@ -345,15 +371,12 @@ export function SettingsPanel({
                         <div className="space-y-6">
                             {selectionGroups.steps.length > 0 && (
                                 <div className="space-y-3">
-                                    <div className="flex items-center gap-2 text-sm font-semibold border-b pb-2">
-                                        <Square className="w-4 h-4" />
-                                        Steps ({selectionGroups.steps.length})
-                                    </div>
+                                    <SectionHeader icon={Square} label={`Steps (${selectionGroups.steps.length})`} />
                                     <CommonFields
-                                        label={selectionGroups.steps.every(n => n.data.label === selectionGroups.steps[0].data.label) ? selectionGroups.steps[0].data.label : ''}
-                                        shortDescription={selectionGroups.steps.every(n => n.data.shortDescription === selectionGroups.steps[0].data.shortDescription) ? selectionGroups.steps[0].data.shortDescription : ''}
-                                        color={selectionGroups.steps.every(n => n.data.color === selectionGroups.steps[0].data.color) ? (selectionGroups.steps[0].data.color || DEFAULT_COLORS.STEP) : DEFAULT_COLORS.STEP}
-                                        icon={selectionGroups.steps.every(n => n.data.icon === selectionGroups.steps[0].data.icon) ? selectionGroups.steps[0].data.icon : ''}
+                                        label={getBulkValue(selectionGroups.steps, n => n.data.label, '')}
+                                        shortDescription={getBulkValue(selectionGroups.steps, n => n.data.shortDescription, '')}
+                                        color={getBulkValue(selectionGroups.steps, n => n.data.color, DEFAULT_COLORS.STEP)}
+                                        icon={getBulkValue(selectionGroups.steps, n => n.data.icon, '')}
                                         onLabelChange={(e) => selectionGroups.steps.forEach(n => onUpdateStepLabel(n.id, e.target.value))}
                                         onShortDescriptionChange={(e) => selectionGroups.steps.forEach(n => onUpdateStepShortDescription(n.id, e.target.value))}
                                         onColorChange={(color) => selectionGroups.steps.forEach(n => onUpdateStepColor(n.id, color))}
@@ -367,15 +390,12 @@ export function SettingsPanel({
 
                             {selectionGroups.groups.length > 0 && (
                                 <div className="space-y-3">
-                                    <div className="flex items-center gap-2 text-sm font-semibold border-b pb-2">
-                                        <Layers className="w-4 h-4" />
-                                        Groups ({selectionGroups.groups.length})
-                                    </div>
+                                    <SectionHeader icon={Layers} label={`Groups (${selectionGroups.groups.length})`} />
                                     <CommonFields
-                                        label={selectionGroups.groups.every(n => n.data.label === selectionGroups.groups[0].data.label) ? selectionGroups.groups[0].data.label : ''}
-                                        shortDescription={selectionGroups.groups.every(n => n.data.shortDescription === selectionGroups.groups[0].data.shortDescription) ? selectionGroups.groups[0].data.shortDescription : ''}
-                                        color={selectionGroups.groups.every(n => n.data.color === selectionGroups.groups[0].data.color) ? (selectionGroups.groups[0].data.color || DEFAULT_COLORS.STEP) : DEFAULT_COLORS.STEP}
-                                        icon={selectionGroups.groups.every(n => n.data.icon === selectionGroups.groups[0].data.icon) ? selectionGroups.groups[0].data.icon : ''}
+                                        label={getBulkValue(selectionGroups.groups, n => n.data.label, '')}
+                                        shortDescription={getBulkValue(selectionGroups.groups, n => n.data.shortDescription, '')}
+                                        color={getBulkValue(selectionGroups.groups, n => n.data.color, DEFAULT_COLORS.STEP)}
+                                        icon={getBulkValue(selectionGroups.groups, n => n.data.icon, '')}
                                         onLabelChange={(e) => selectionGroups.groups.forEach(n => onUpdateStepLabel(n.id, e.target.value))}
                                         onShortDescriptionChange={(e) => selectionGroups.groups.forEach(n => onUpdateStepShortDescription(n.id, e.target.value))}
                                         onColorChange={(color) => selectionGroups.groups.forEach(n => onUpdateStepColor(n.id, color))}
@@ -389,15 +409,12 @@ export function SettingsPanel({
 
                             {selectionGroups.edges.length > 0 && (
                                 <div className="space-y-3">
-                                    <div className="flex items-center gap-2 text-sm font-semibold border-b pb-2">
-                                        <Share2 className="w-4 h-4" />
-                                        Connections ({selectionGroups.edges.length})
-                                    </div>
+                                    <SectionHeader icon={Share2} label={`Connections (${selectionGroups.edges.length})`} />
                                     <CommonFields
-                                        label={selectionGroups.edges.every(e => e.label === selectionGroups.edges[0].label) ? (selectionGroups.edges[0].label as string) || '' : ''}
-                                        shortDescription={selectionGroups.edges.every(e => e.data?.shortDescription === selectionGroups.edges[0].data?.shortDescription) ? selectionGroups.edges[0].data?.shortDescription : ''}
-                                        color={selectionGroups.edges.every(e => e.style?.stroke === selectionGroups.edges[0].style?.stroke) ? (selectionGroups.edges[0].style?.stroke as string) || '#6B7280' : '#6B7280'}
-                                        icon={selectionGroups.edges.every(e => e.data?.icon === selectionGroups.edges[0].data?.icon) ? selectionGroups.edges[0].data?.icon : ''}
+                                        label={getBulkValue(selectionGroups.edges, e => e.label as string | undefined, '')}
+                                        shortDescription={getBulkValue(selectionGroups.edges, e => e.data?.shortDescription, '')}
+                                        color={getBulkValue(selectionGroups.edges, e => e.style?.stroke as string | undefined, '#6B7280')}
+                                        icon={getBulkValue(selectionGroups.edges, e => e.data?.icon, '')}
                                         onLabelChange={(e) => selectionGroups.edges.forEach(edge => onUpdateEdgeLabel(edge.id, e.target.value))}
                                         onShortDescriptionChange={(e) => selectionGroups.edges.forEach(edge => onUpdateEdgeShortDescription(edge.id, e.target.value))}
                                         onColorChange={(color) => selectionGroups.edges.forEach(edge => onUpdateEdgeColor(edge.id, color))}

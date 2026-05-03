@@ -30,16 +30,16 @@ import { Outline } from '@/components/panels/outline';
 import { FlowTabs } from '@/components/flow/flow-tabs';
 import { useMediaQuery } from '@/hooks/use-media-query';
 import { SyncIndicator } from '@/components/sync/sync-indicator';
-import { useDriveSync } from '@/hooks/use-drive-sync';
-import { useGoogleDriveToken } from '@/hooks/use-google-drive';
-import { GoogleDriveService } from '@/lib/google-drive/service';
 import { useUser } from '@/firebase/auth/use-user';
 import { useToast } from '@/hooks/use-toast';
 import { useAuthActions } from '@/hooks/use-auth-actions';
-import { useDriveFileActions } from '@/hooks/use-drive-file-actions';
 import { useLocalFileActions } from '@/hooks/use-local-file-actions';
 import { useFileNameDialog, FileNameDialog } from '@/hooks/use-file-name-dialog';
-import { DriveBrowserDialog } from '@/components/drive/drive-browser-dialog';
+import { useKeyboardShortcuts } from '@/hooks/use-keyboard-shortcuts';
+import { useFlowTransition } from '@/hooks/flow/use-flow-transition';
+import { useCloudSync } from '@/hooks/use-cloud-sync';
+import { useProjectActions } from '@/hooks/use-project-actions';
+import { ExportDialog } from '@/components/export-import/export-dialog';
 
 import { ReadOnlyPropertiesPanel } from '@/components/panels/read-only-properties-panel';
 import { FlowContextMenu, ContextMenuAction } from '@/components/ui/flow-context-menu';
@@ -126,24 +126,14 @@ export function VectorFlow() {
     // ... existing hooks ...
     const { user } = useUser();
     const { toast } = useToast();
-    const accessToken = useGoogleDriveToken();
 
-
-    const { syncState, toggleSync, manualSync } = useDriveSync({
-        fileId: googleDriveFileId,
+    const { syncState, toggleSync, manualSync } = useCloudSync({
         projectId,
         projectName,
         flows,
         activeFlowId,
         onImport: loadProject,
-        onPermissionsChange: (shouldBeReadOnly) => {
-            if (shouldBeReadOnly) {
-                setIsReadOnly(true);
-            }
-        },
     });
-
-    // ... existing code ...
 
     // Consolidated Actions
     const { handleSignIn } = useAuthActions();
@@ -177,21 +167,17 @@ export function VectorFlow() {
         });
     }, [setGoogleDriveFileId, toast]);
 
-    const { handleBrowseDrive, handleCreateDriveFile, handleNewCloud, driveBrowserProps } = useDriveFileActions({
-        user,
-        accessToken,
-        projectId,
-        projectName,
+    // ── Reconnect guard + handlers ─────────────────────────────────────
+    const { handleSaveToCloud, handleNewCloudProject, handleOpenCloudProject, handleDeleteCloudProject } = useProjectActions({
         flows,
         activeFlowId,
+        projectId,
+        projectName,
+        setCloudProjectId: setGoogleDriveFileId,
         loadProject,
-        setGoogleDriveFileId,
-        requestFileName,
     });
-    
-    // ... handleBrowseDrive, handleCreateDriveFile ...
 
-    // ... existing code ...
+    // ... handleSaveToCloud ...
 
     // View Only Toast Logic
     useEffect(() => {
@@ -214,153 +200,8 @@ export function VectorFlow() {
 
     const { fitView, getNode, getNodes, setEdges, project } = useReactFlow();
 
-    // URL Hydration Logic
-    const hasAttemptedHydration = useRef(false);
-
-    // Track previous activeFlowId to detect flow changes (skip initial mount)
-    const prevActiveFlowIdRef = useRef(activeFlowId);
-
-    // Flow transition state – drives loading overlay.
-    const [isTransitioning, setIsTransitioning] = useState(false);
-
-    // Auto-center when the active flow changes (tab switch, import, delete, etc.)
-    // Hide viewport + show spinner → snap to center → fade in + gentle zoom.
-    useEffect(() => {
-        if (prevActiveFlowIdRef.current === activeFlowId) return;
-        prevActiveFlowIdRef.current = activeFlowId;
-
-        // Hide viewport & show spinner immediately.
-        const viewportEl = document.querySelector('.react-flow__viewport') as HTMLElement;
-        if (viewportEl) {
-            viewportEl.style.transition = 'none';
-            viewportEl.style.opacity = '0';
-        }
-        setIsTransitioning(true);
-
-        // Wait for ReactFlow to measure and render the new nodes (hidden).
-        const timer = setTimeout(() => {
-            // Snap to centered view (still hidden).
-            fitView({ padding: 0.2 });
-
-            // Fade viewport in with a CSS transition.
-            if (viewportEl) {
-                viewportEl.style.transition = 'opacity 250ms ease-in';
-                viewportEl.style.opacity = '1';
-            }
-            setIsTransitioning(false);
-
-            // Gentle zoom-in to the final tight fit.
-            requestAnimationFrame(() => {
-                fitView({ duration: 400, padding: 0.15 });
-            });
-
-            // Clean up inline styles after fade completes.
-            const cleanupTimer = setTimeout(() => {
-                if (viewportEl) viewportEl.style.transition = '';
-            }, 300);
-            return () => clearTimeout(cleanupTimer);
-        }, 300);
-
-        return () => {
-            clearTimeout(timer);
-            if (viewportEl) {
-                viewportEl.style.transition = '';
-                viewportEl.style.opacity = '1';
-            }
-            setIsTransitioning(false);
-        };
-    }, [activeFlowId, fitView]);
-
-    useEffect(() => {
-        // Only run on client
-        if (typeof window === 'undefined') return;
-
-        const params = new URLSearchParams(window.location.search);
-        const driveIdParam = params.get('driveId');
-
-        // If no driveId, we're done
-        if (!driveIdParam) return;
-
-        // If we already tried, stop (prevent infinite loops)
-        if (hasAttemptedHydration.current) return;
-
-        // Common success handler
-        const handleSuccess = (data: any) => {
-             loadProject(data.flows, data.activeFlowId, data.projectId, data.projectName, driveIdParam);
-             
-             // Clear the URL parameter
-             const newUrl = window.location.pathname;
-             window.history.replaceState({}, '', newUrl);
-
-             // Fit view will be handled by the effect above interacting with nodes change
-        };
-
-        // If we have a user and access token, we can try to load
-        if (user && accessToken && !googleDriveFileId && !hasLoadedFromStorage) {
-            hasAttemptedHydration.current = true;
-            
-            const loadDriveFile = async () => {
-                try {
-                    toast({
-                        title: "Loading Project...",
-                        description: "Fetching project from Google Drive link.",
-                    });
-
-                    const data = await GoogleDriveService.getFileContent(driveIdParam);
-                    handleSuccess(data);
-                    
-                    toast({
-                        title: "Project Loaded",
-                        description: `Successfully loaded "${data.projectName || 'project'}" from shared link.`,
-                    });
-
-                } catch (error: any) {
-                    console.error('Failed to hydrate from driveId:', error);
-                    toast({
-                        variant: "destructive",
-                        title: "Load Failed",
-                        description: error.message || "Failed to load shared project. You may need to request access.",
-                    });
-                }
-            };
-
-            loadDriveFile();
-        } else if (!user && !googleDriveFileId && !hasLoadedFromStorage) {
-            // Not logged in - try public download first
-             if (!hasAttemptedHydration.current) {
-                 hasAttemptedHydration.current = true;
-                 
-                 const loadPublicFile = async () => {
-                     try {
-                         toast({
-                             title: "Loading Shared Project...",
-                             description: "Attempting to load public project...",
-                         });
-
-                         const data = await GoogleDriveService.downloadPublicFile(driveIdParam);
-                         handleSuccess(data);
-                         
-                         // Force read-only for public views
-                         setIsReadOnly(true);
-                         
-                         toast({
-                             title: "View-Only Mode",
-                             description: `Loaded "${data.projectName || 'project'}". Sign in to edit.`,
-                         });
-                    } catch (error: any) {
-                        console.warn('Public download failed, prompting login:', error);
-                        // If public download fails, just notify them to sign in
-                        toast({
-                            title: "Sign In Required",
-                            description: "Please sign in to access this private project.",
-                        });
-                    }
-                 }
-                 
-                 loadPublicFile();
-             }
-        }
-    }, [user, accessToken, googleDriveFileId, hasLoadedFromStorage, loadProject, toast, setIsReadOnly]);
+    // ── Flow transition animation (tab change) ────────────────────────────
+    const isTransitioning = useFlowTransition(activeFlowId, fitView);
 
     const onConnectStart = useCallback((_: any, { nodeId, handleId }: { nodeId: string | null; handleId: string | null }) => {
         connectingNodeId.current = nodeId;
@@ -372,12 +213,6 @@ export function VectorFlow() {
             if (!connectingNodeId.current) return;
 
             const targetIsPane = event.target.classList.contains('react-flow__pane');
-            console.log('onConnectEnd EVENT', {
-                target: event.target,
-                classes: Array.from(event.target.classList),
-                targetIsPane,
-                connectingNodeId: connectingNodeId.current
-            });
 
             if (targetIsPane) {
                 // Remove the wrapper bounds calculation if not needed or perform exact calculations
@@ -586,61 +421,24 @@ export function VectorFlow() {
 
     // Handlers managed by hooks (useDriveFileActions, useLocalFileActions)
 
-    // Keyboard Shortcuts for Undo/Redo
-    useEffect(() => {
-        const handleKeyDown = (e: KeyboardEvent) => {
-            if (isReadOnly) return;
-            
-            if ((e.metaKey || e.ctrlKey) && e.key === 'z') {
-                e.preventDefault();
-                if (e.shiftKey) {
-                    redo();
-                } else {
-                    undo();
-                }
-            } else if ((e.metaKey || e.ctrlKey) && e.key === 'y') {
-                e.preventDefault();
-                redo();
+    // ── Keyboard shortcuts (undo/redo + clipboard) ────────────────────────
+    useKeyboardShortcuts({
+        onUndo: undo,
+        onRedo: redo,
+        onCopy: () => {
+            const result = copySelection();
+            if (result) {
+                toast({
+                    title: 'Copied',
+                    description: result.type === 'nodes'
+                        ? `Copied ${result.count} step(s) to clipboard.`
+                        : 'Copied deliverable to clipboard.',
+                });
             }
-        };
-
-        window.addEventListener('keydown', handleKeyDown);
-        return () => window.removeEventListener('keydown', handleKeyDown);
-    }, [undo, redo, isReadOnly]);
-
-    // Copy/Paste Shortcuts
-    useEffect(() => {
-        const handleKeyDown = (e: KeyboardEvent) => {
-            if (isReadOnly) return;
-            // Ignore if input/textarea is focused
-            if (['INPUT', 'TEXTAREA'].includes((e.target as HTMLElement).tagName)) return;
-
-            if ((e.metaKey || e.ctrlKey) && e.key === 'c') {
-                e.preventDefault();
-                const result = copySelection();
-                if (result) {
-                    toast({
-                        title: "Copied",
-                        description: result.type === 'nodes' 
-                            ? `Copied ${result.count} step(s) to clipboard.` 
-                            : "Copied deliverable to clipboard.",
-                    });
-                }
-            } else if ((e.metaKey || e.ctrlKey) && e.key === 'v') {
-                e.preventDefault();
-                // Paste happens via callback in hook, which updates state
-                // We don't get immediate feedback here unless we wrap it or trust the hook
-                // The hook currently logs warn on error.
-                // We can't catch the error from the hook's internal callback easily here without changing the hook signature
-                // to return a promise or take a toast callback.
-                // For now, let's just trigger it.
-                pasteSelection(); 
-            }
-        };
-
-        window.addEventListener('keydown', handleKeyDown);
-        return () => window.removeEventListener('keydown', handleKeyDown);
-    }, [copySelection, pasteSelection, isReadOnly, toast]);
+        },
+        onPaste: pasteSelection,
+        isReadOnly,
+    });
 
     return (
         <FlowProvider value={{ metaConfig }}>
@@ -657,8 +455,7 @@ export function VectorFlow() {
                             projectId={projectId}
                             projectName={projectName}
                             onToggleSync={toggleSync}
-                            onBrowseDrive={handleBrowseDrive}
-                            onCreateFile={handleCreateDriveFile}
+                            onSaveToCloud={handleSaveToCloud}
                             onUnlink={handleUnlinkDrive}
                             onCopyLink={handleShareLink}
                         />
@@ -672,22 +469,18 @@ export function VectorFlow() {
                 onExport={handleExport}
                 onImport={handleImport}
                 isReadOnly={isReadOnly}
-                onToggleReadOnly={() => {
-                    if (!syncState.isReadOnlyDueToPermissions) {
-                        setIsReadOnly(!isReadOnly);
-                    }
-                }}
-                isReadOnlyForced={syncState.isReadOnlyDueToPermissions}
+                onToggleReadOnly={() => setIsReadOnly(!isReadOnly)}
+                isReadOnlyForced={false}
                 onUndo={undo}
                 onRedo={redo}
                 canUndo={canUndo}
                 canRedo={canRedo}
 
                 onNewLocal={handleNewLocal}
-                onNewCloud={handleNewCloud}
-                onOpenCloud={handleBrowseDrive}
+                onNewCloud={handleNewCloudProject}
+                onOpenCloud={() => handleOpenCloudProject(projectId)}
                 onSaveCloud={manualSync}
-                onSaveAsCloud={handleCreateDriveFile}
+                onSaveAsCloud={handleSaveToCloud}
                 onToggleAutoSave={toggleSync}
                 onSignIn={handleSignIn}
                 onShareLink={handleShareLink}
@@ -833,6 +626,22 @@ export function VectorFlow() {
                                     ]}
                                 />
                             )}
+                            <ExportDialog
+                                flows={flows}
+                                activeFlowId={activeFlowId}
+                                projectId={projectId}
+                                projectName={projectName}
+                                googleDriveFileId={googleDriveFileId}
+                                setGoogleDriveFileId={setGoogleDriveFileId}
+                                onImport={loadProject}
+                                onSaveState={() => {
+                                    saveCurrentFlowState();
+                                }}
+                                syncState={syncState}
+                                toggleSync={toggleSync}
+                                handleSaveToCloud={handleSaveToCloud}
+                                handleOpenCloudProject={() => handleOpenCloudProject(projectId)}
+                            />
                         </ReactFlow>
                     </main>
                     
@@ -928,7 +737,6 @@ export function VectorFlow() {
                 </div>
                 
                 <FileNameDialog {...fileNameDialogProps} />
-                <DriveBrowserDialog {...driveBrowserProps} />
             </div>
         </FlowProvider>
     );

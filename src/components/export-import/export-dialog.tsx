@@ -34,9 +34,8 @@ import { ExportImportService, ExportData } from '@/lib/export-import';
 import { Flow } from '@/types';
 import { useToast } from '@/hooks/use-toast';
 import { useUser } from '@/firebase/auth/use-user';
-import { GoogleDriveService, DriveFile } from '@/lib/google-drive/service';
-import { useDrivePicker, PickerFile } from '@/lib/google-drive/picker';
-import { useDriveSync } from '@/hooks/use-drive-sync';
+import { useCloudSync } from '@/hooks/use-cloud-sync';
+import { useProjectActions } from '@/hooks/use-project-actions';
 
 
 interface ExportDialogProps {
@@ -48,6 +47,10 @@ interface ExportDialogProps {
   setGoogleDriveFileId: (id: string) => void;
   onImport: (flows: Flow[], activeFlowId: string, projectId: string, projectName?: string, driveId?: string) => void;
   onSaveState?: () => void;
+  syncState: any; // We'll type this as SyncState from cloud-sync later if needed, but any is fine for now
+  toggleSync: () => void;
+  handleSaveToCloud: () => Promise<void>;
+  handleOpenCloudProject: () => void;
 }
 
 export function ExportDialog({ 
@@ -58,7 +61,11 @@ export function ExportDialog({
   googleDriveFileId, 
   setGoogleDriveFileId,
   onImport, 
-  onSaveState 
+  onSaveState,
+  syncState,
+  toggleSync,
+  handleSaveToCloud,
+  handleOpenCloudProject,
 }: ExportDialogProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [format, setFormat] = useState('json');
@@ -68,17 +75,6 @@ export function ExportDialog({
   
   const { user } = useUser();
   const { toast } = useToast();
-  const accessToken = GoogleDriveService.getAccessToken();
-  const { openPicker } = useDrivePicker(accessToken);
-
-  const { syncState, toggleSync, manualSync } = useDriveSync({
-    fileId: googleDriveFileId,
-    projectId,
-    projectName,
-    flows,
-    activeFlowId,
-    onImport,
-  });
 
   const handleExport = async () => {
     setIsExporting(true);
@@ -159,11 +155,11 @@ export function ExportDialog({
     }
   };
 
-  const handleDriveSave = async (isQuickSave = false) => {
+  const handleCloudSave = async () => {
     if (!user) {
       toast({
         title: "Login Required",
-        description: "Please sign in with Google to save to Drive.",
+        description: "Please sign in with Google to save to the cloud.",
       });
       return;
     }
@@ -171,96 +167,7 @@ export function ExportDialog({
     setIsDriveLoading(true);
     try {
       if (onSaveState) onSaveState();
-
-      const data: ExportData = {
-        version: '1.0.0',
-        timestamp: new Date().toISOString(),
-        projectId,
-        projectName,
-        flows,
-        activeFlowId,
-        googleDriveFileId,
-      };
-
-      if (isQuickSave && googleDriveFileId) {
-        await GoogleDriveService.updateFile(googleDriveFileId, data);
-        toast({
-          title: "Project Saved",
-          description: `Changes saved to "${projectName}" on Google Drive.`,
-        });
-      } else {
-        const name = `${projectName || 'vectorflow-project'}.json`;
-        const fileId = await GoogleDriveService.createFile(name, data);
-        setGoogleDriveFileId(fileId);
-        toast({
-          title: "Saved to Drive",
-          description: `Project created as "${name}" on Google Drive.`,
-        });
-      }
-    } catch (error: any) {
-      console.error('Drive save failed:', error);
-      toast({
-        variant: "destructive",
-        title: "Drive Error",
-        description: error.message || "Failed to save to Google Drive.",
-      });
-    } finally {
-      setIsDriveLoading(false);
-    }
-  };
-
-  const handleOpenPicker = async () => {
-    if (!user || !accessToken) {
-      toast({
-        title: "Login Required",
-        description: "Please sign in with Google to browse Drive.",
-      });
-      return;
-    }
-
-    // Close the dialog to avoid z-index conflicts with Picker
-    setIsOpen(false);
-
-    try {
-      await openPicker(
-        (file: PickerFile) => handlePickerSelect(file),
-        () => {
-          // Reopen dialog if user cancels
-          setIsOpen(true);
-        }
-      );
-    } catch (error: any) {
-      console.error('Picker error:', error);
-      // Reopen dialog on error
-      setIsOpen(true);
-      toast({
-        variant: "destructive",
-        title: "Drive Error",
-        description: "Failed to open Drive picker.",
-      });
-    }
-  };
-
-  const handlePickerSelect = async (file: PickerFile) => {
-    setIsDriveLoading(true);
-    try {
-      const data = await GoogleDriveService.getFileContent(file.id);
-      onImport(data.flows, data.activeFlowId, data.projectId, data.projectName, file.id);
-      setGoogleDriveFileId(file.id);
-      toast({
-        title: "Project Loaded",
-        description: `Successfully imported "${file.name}" from Google Drive.`,
-      });
-      // Dialog is already closed, no need to close again
-    } catch (error: any) {
-      console.error('Drive import failed:', error);
-      toast({
-        variant: "destructive",
-        title: "Drive Error",
-        description: "Failed to download project from Google Drive.",
-      });
-      // Reopen dialog on error so user can try again
-      setIsOpen(true);
+      await handleSaveToCloud();
     } finally {
       setIsDriveLoading(false);
     }
@@ -300,7 +207,7 @@ export function ExportDialog({
 
             {!user ? (
               <div className="flex flex-col items-center justify-center py-4 text-center gap-2">
-                 <p className="text-xs text-muted-foreground">Sign in to auto-save your projects to Google Drive.</p>
+                 <p className="text-xs text-muted-foreground">Sign in to auto-save your projects to the cloud.</p>
                 <div className="flex items-center gap-2 p-2 bg-yellow-50 text-yellow-700 text-[10px] rounded border border-yellow-100">
                   <AlertCircle className="w-3 h-3" />
                   <span>Portability requires a Google Account</span>
@@ -319,8 +226,8 @@ export function ExportDialog({
                       }`} />
                       <div className="text-xs">
                         <div className="font-medium">
-                          {syncState.syncStatus === 'saving' ? 'Saving to Drive...' :
-                           syncState.syncStatus === 'saved' ? 'Saved to Drive' :
+                          {syncState.syncStatus === 'saving' ? 'Saving to cloud...' :
+                           syncState.syncStatus === 'saved' ? 'Saved to cloud' :
                            syncState.syncStatus === 'error' ? 'Auto-save Error' :
                            'Auto-save Off'}
                         </div>
@@ -345,7 +252,7 @@ export function ExportDialog({
                   <Button 
                     variant={googleDriveFileId ? "default" : "outline"} 
                     className="flex-1 h-9 gap-2 shadow-sm"
-                    onClick={() => handleDriveSave(!!googleDriveFileId)}
+                    onClick={handleCloudSave}
                     disabled={isDriveLoading || syncState.isSyncEnabled}
                   >
                     {isDriveLoading ? (
@@ -358,16 +265,16 @@ export function ExportDialog({
                     ) : (
                       <>
                         <Cloud className="w-4 h-4" />
-                        Save to Drive
+                        Save to Cloud
                       </>
                     )}
                   </Button>
                   <Button 
                     variant="outline" 
                     className="h-9 w-9 p-0"
-                    onClick={handleOpenPicker}
+                    onClick={handleOpenCloudProject}
                     disabled={isDriveLoading}
-                    title="Link to Existing File"
+                    title="Open Project"
                   >
                     <Search className="w-4 h-4" />
                   </Button>
@@ -444,10 +351,8 @@ export function ExportDialog({
         <div className="flex items-start gap-2 p-3 rounded-xl bg-muted/50 text-[10px] text-muted-foreground border border-border/50">
           <AlertCircle className="w-3.5 h-3.5 mt-0.5 shrink-0 text-amber-500" />
           <p className="leading-relaxed">
-            <strong className="text-foreground">Safety Note:</strong> Google Drive syncing uses 
-            <code className="bg-muted px-1 rounded mx-1 italic">drive.file</code> scope which only 
-            allows VectorFlow to see and edit files it created itself. 
-            Local imports will overwrite current session data.
+            <strong className="text-foreground">Safety Note:</strong> Local imports will completely 
+            overwrite current session data. To keep your current work, save it to the cloud first.
           </p>
         </div>
       </DialogContent>
