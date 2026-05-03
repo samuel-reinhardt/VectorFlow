@@ -8,12 +8,12 @@ compatibility_flags = ["nodejs_compat"]
 pages_build_output_dir = ".vercel/output/static"
 
 # ---------------------------------------------------------------------------
-# KV Namespaces
+# D1 Database
 # ---------------------------------------------------------------------------
-# VF_DISCOVERY stores the per-file discovery registry entries.
-# After running `wrangler kv:namespace create VF_DISCOVERY` (and the preview
-# variant), replace the placeholder IDs below with the real ones.
-[[kv_namespaces]]
-binding = "VF_DISCOVERY"
-id = "REPLACE_WITH_PRODUCTION_KV_ID"
-preview_id = "REPLACE_WITH_PREVIEW_KV_ID"
+# DB stores the relational data for projects and discovery.
+# Create the database with: pnpm dlx wrangler d1 create vectorflow
+# Then update the database_id below.
+[[d1_databases]]
+binding = "vectorflow"
+database_name = "vectorflow"
+database_id = "0fd95ffb-7f5e-440f-93c8-227e4104e391"
