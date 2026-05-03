@@ -1,6 +1,5 @@
-import { initializeApp, getApps, getApp, FirebaseApp } from 'firebase/app';
-import { getAuth, Auth, setPersistence, browserLocalPersistence } from 'firebase/auth';
-import { getFirestore, Firestore } from 'firebase/firestore';
+import { initializeApp, getApps, getApp } from 'firebase/app';
+import { getAuth, setPersistence, browserLocalPersistence } from 'firebase/auth';
 import { firebaseConfig } from './config';
 
 function initializeFirebase() {
@@ -13,8 +12,7 @@ function initializeFirebase() {
     console.warn('Failed to set Firebase auth persistence:', error);
   });
 
-  const firestore = getFirestore(app);
-  return { app, auth, firestore };
+  return { app, auth };
 }
 
 // Export the initialization function

@@ -114,7 +114,7 @@ export const consumeAuthHandover = async (): Promise<string | null> => {
     };
 
     // Sign the Firebase user in via Google credential so Firebase Auth
-    // state (useUser hook, Firestore security rules, etc.) stays in sync.
+    // state (useUser hook, etc.) stays in sync.
     if (idToken) {
       const auth = getAuth();
       const credential = GoogleAuthProvider.credential(idToken, accessToken);

@@ -166,7 +166,7 @@ export function VectorFlow() {
         });
     }, [setCloudProjectId, toast]);
 
-    // ── Reconnect guard + handlers ─────────────────────────────────────
+    // ── Cloud Project Handlers ─────────────────────────────────────────
     const { handleSaveToCloud, handleNewCloudProject, handleOpenCloudProject, handleDeleteCloudProject } = useProjectActions({
         flows,
         activeFlowId,
