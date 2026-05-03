@@ -169,9 +169,12 @@ export function useProjectActions({
 
   /** Opens a cloud project by fetching it from D1. */
   const handleOpenCloudProject = useCallback(
-    async (cloudProjectId: string) => {
+    async (cloudProjectId: string, isDiscoverable: boolean = false) => {
       try {
-        const res = await fetch(`/api/projects/${cloudProjectId}`);
+        const url = isDiscoverable 
+          ? `/api/discovery?projectId=${cloudProjectId}`
+          : `/api/projects/${cloudProjectId}`;
+        const res = await fetch(url);
         if (!res.ok) {
           throw new Error(`Project not found (${res.status})`);
         }

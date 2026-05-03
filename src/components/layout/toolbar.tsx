@@ -1,6 +1,6 @@
 'use client';
 
-import { Workflow, Settings2, Download, Upload, Eye, RotateCcw, RotateCw, File, Cloud, Plus, Save, FileJson, LogIn, Check, Share2, RefreshCw, AlertTriangle, SaveAll } from 'lucide-react';
+import { Workflow, Settings2, Download, Upload, Eye, RotateCcw, RotateCw, File, Cloud, Plus, Save, FileJson, LogIn, Check, Share2, RefreshCw, AlertTriangle, SaveAll, FolderOpen } from 'lucide-react';
 import { Button } from '@/components/ui/forms/button';
 import { MetaConfigEditor } from '@/components/editors/meta-config-editor';
 import type { MetaConfig, FieldDefinition } from '@/types';
@@ -159,8 +159,8 @@ export function Toolbar({
                   <span>New</span>
                 </DropdownMenuItem>
                 <DropdownMenuItem onClick={onOpenCloud}>
-                  <FileJson className="mr-2 h-4 w-4" />
-                  <span>Open</span>
+                  <FolderOpen className="mr-2 h-4 w-4" />
+                  <span>Manage Flows</span>
                 </DropdownMenuItem>
                 
                 <DropdownMenuSeparator />

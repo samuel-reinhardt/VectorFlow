@@ -39,7 +39,7 @@ import { useKeyboardShortcuts } from '@/hooks/use-keyboard-shortcuts';
 import { useFlowTransition } from '@/hooks/flow/use-flow-transition';
 import { useCloudSync } from '@/hooks/use-cloud-sync';
 import { useProjectActions } from '@/hooks/use-project-actions';
-
+import { CloudProjectsDialog } from '@/components/cloud/cloud-projects-dialog';
 
 import { ReadOnlyPropertiesPanel } from '@/components/panels/read-only-properties-panel';
 import { FlowContextMenu, ContextMenuAction } from '@/components/ui/flow-context-menu';
@@ -137,6 +137,7 @@ export function VectorFlow() {
 
     const { handleSignIn } = useAuthActions();
     const { requestFileName, fileNameDialogProps } = useFileNameDialog();
+    const [isCloudBrowserOpen, setIsCloudBrowserOpen] = useState(false);
     
     const { handleNewLocal, handleExport, handleImport } = useLocalFileActions({
         projectId,
@@ -436,9 +437,9 @@ export function VectorFlow() {
                 canUndo={canUndo}
                 canRedo={canRedo}
 
-                onNewLocal={handleNewLocal}
+                cloudProjectId={cloudProjectId}
                 onNewCloud={handleNewCloudProject}
-                onOpenCloud={() => handleOpenCloudProject(projectId)}
+                onOpenCloud={() => setIsCloudBrowserOpen(true)}
                 onSaveCloud={manualSync}
                 onSaveAsCloud={handleSaveToCloud}
                 onToggleAutoSave={toggleSync}
@@ -446,7 +447,6 @@ export function VectorFlow() {
                 onShareLink={handleShareLink}
                 user={user}
                 syncState={syncState}
-                cloudProjectId={cloudProjectId}
             />
 
                 <div className="flex flex-1 overflow-hidden">
@@ -674,6 +674,13 @@ export function VectorFlow() {
                 </div>
                 
                 <FileNameDialog {...fileNameDialogProps} />
+
+                <CloudProjectsDialog
+                    isOpen={isCloudBrowserOpen}
+                    onOpenChange={setIsCloudBrowserOpen}
+                    onOpenProject={handleOpenCloudProject}
+                    onDeleteProject={handleDeleteCloudProject}
+                />
             </div>
         </FlowProvider>
     );
