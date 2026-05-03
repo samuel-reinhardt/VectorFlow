@@ -44,6 +44,14 @@ export interface ProjectMeta {
   domainRestriction: string | null;
   createdAt: string;
   updatedAt: string;
+  permissionLevel?: 'owner' | 'read' | 'edit';
+}
+
+export interface ProjectPermission {
+  projectId: string;
+  entityType: 'email' | 'domain' | 'public';
+  entityValue: string;
+  permissionLevel: 'read' | 'edit';
 }
 
 export interface ProjectFull extends ProjectMeta {
@@ -195,34 +203,51 @@ export async function createProject(params: {
  */
 export async function updateProject(
   id: string,
-  userId: string,
+  user: { userId: string; email: string },
   patch: { name?: string; data?: ExportData },
 ): Promise<ProjectMeta | null> {
   const now = new Date().toISOString();
   const db = getDb();
+  const callerDomain = user.email.split('@')[1]?.toLowerCase() ?? '';
 
   if (db) {
-    // Check ownership first
+    // Check ownership OR edit permissions
     const existing = await db
-      .prepare('SELECT id FROM projects WHERE id = ? AND user_id = ?')
-      .bind(id, userId)
+      .prepare(`
+        SELECT p.id, p.user_id 
+        FROM projects p
+        LEFT JOIN project_permissions pp ON p.id = pp.project_id
+        WHERE p.id = ? 
+          AND (
+            p.user_id = ?
+            OR (
+              pp.permission_level = 'edit'
+              AND (
+                (pp.entity_type = 'public' AND pp.entity_value = '*') OR
+                (pp.entity_type = 'domain' AND pp.entity_value = ?) OR
+                (pp.entity_type = 'email' AND pp.entity_value = ?)
+              )
+            )
+          )
+      `)
+      .bind(id, user.userId, callerDomain, user.email)
       .first<{ id: string }>();
     if (!existing) return null;
 
     if (patch.name !== undefined && patch.data !== undefined) {
       await db
-        .prepare('UPDATE projects SET name = ?, data = ?, updated_at = ? WHERE id = ? AND user_id = ?')
-        .bind(patch.name, JSON.stringify(patch.data), now, id, userId)
+        .prepare('UPDATE projects SET name = ?, data = ?, updated_at = ? WHERE id = ?')
+        .bind(patch.name, JSON.stringify(patch.data), now, id)
         .run();
     } else if (patch.name !== undefined) {
       await db
-        .prepare('UPDATE projects SET name = ?, updated_at = ? WHERE id = ? AND user_id = ?')
-        .bind(patch.name, now, id, userId)
+        .prepare('UPDATE projects SET name = ?, updated_at = ? WHERE id = ?')
+        .bind(patch.name, now, id)
         .run();
     } else if (patch.data !== undefined) {
       await db
-        .prepare('UPDATE projects SET data = ?, updated_at = ? WHERE id = ? AND user_id = ?')
-        .bind(JSON.stringify(patch.data), now, id, userId)
+        .prepare('UPDATE projects SET data = ?, updated_at = ? WHERE id = ?')
+        .bind(JSON.stringify(patch.data), now, id)
         .run();
     }
 
@@ -235,7 +260,8 @@ export async function updateProject(
 
   // Local fallback
   const row = localProjects.get(id);
-  if (!row || row.user_id !== userId) return null;
+  // local fallback doesn't support granular permissions yet, just checks ownership
+  if (!row || row.user_id !== user.userId) return null;
 
   if (patch.name !== undefined) row.name = patch.name;
   if (patch.data !== undefined) row.data = JSON.stringify(patch.data);
@@ -265,38 +291,7 @@ export async function deleteProject(id: string, userId: string): Promise<boolean
   return true;
 }
 
-/**
- * Updates a project's discovery settings. Only the owner can change this.
- */
-export async function updateDiscovery(
-  id: string,
-  userId: string,
-  isDiscoverable: boolean,
-  domainRestriction: string | null,
-): Promise<ProjectMeta | null> {
-  const now = new Date().toISOString();
-  const db = getDb();
 
-  if (db) {
-    const result = await db
-      .prepare(
-        'UPDATE projects SET is_discoverable = ?, domain_restriction = ?, updated_at = ? WHERE id = ? AND user_id = ?',
-      )
-      .bind(isDiscoverable ? 1 : 0, domainRestriction, now, id, userId)
-      .run();
-    if (result.meta.changes === 0) return null;
-    const updated = await db.prepare('SELECT * FROM projects WHERE id = ?').bind(id).first<ProjectRow>();
-    return updated ? rowToMeta(updated) : null;
-  }
-
-  const row = localProjects.get(id);
-  if (!row || row.user_id !== userId) return null;
-  row.is_discoverable = isDiscoverable ? 1 : 0;
-  row.domain_restriction = domainRestriction;
-  row.updated_at = now;
-  localProjects.set(id, row);
-  return rowToMeta(row);
-}
 
 /**
  * Lists all discoverable projects visible to a caller with `callerEmail`.
@@ -307,18 +302,26 @@ export async function listDiscoverableProjects(callerEmail: string): Promise<Pro
   const db = getDb();
 
   if (db) {
-    // Return projects where: discoverable=1 AND (no domain restriction OR domain matches caller)
     const { results } = await db
       .prepare(
-        `SELECT id, user_id, name, is_discoverable, domain_restriction, created_at, updated_at
-         FROM projects
-         WHERE is_discoverable = 1
-           AND (domain_restriction IS NULL OR lower(domain_restriction) = ?)
-         ORDER BY updated_at DESC`,
+        `SELECT p.id, p.user_id, p.name, p.is_discoverable, p.domain_restriction, p.created_at, p.updated_at,
+           MAX(CASE WHEN pp.permission_level = 'edit' THEN 2 ELSE 1 END) as max_perm
+         FROM projects p
+         JOIN project_permissions pp ON p.id = pp.project_id
+         WHERE (
+           (pp.entity_type = 'public' AND pp.entity_value = '*') OR
+           (pp.entity_type = 'domain' AND pp.entity_value = ?) OR
+           (pp.entity_type = 'email' AND pp.entity_value = ?)
+         )
+         GROUP BY p.id
+         ORDER BY p.updated_at DESC`
       )
-      .bind(callerDomain)
-      .all<ProjectRow>();
-    return results.map(rowToMeta);
+      .bind(callerDomain, callerEmail)
+      .all<ProjectRow & { max_perm: number }>();
+    return results.map((r) => ({
+      ...rowToMeta(r),
+      permissionLevel: r.max_perm === 2 ? 'edit' : 'read'
+    }));
   }
 
   // Local fallback
@@ -347,16 +350,79 @@ export async function getDiscoverableProject(
   if (db) {
     const row = await db
       .prepare(
-        `SELECT * FROM projects WHERE id = ? AND is_discoverable = 1
-         AND (domain_restriction IS NULL OR lower(domain_restriction) = ?)`,
+        `SELECT p.*,
+           MAX(CASE WHEN pp.permission_level = 'edit' THEN 2 ELSE 1 END) as max_perm
+         FROM projects p
+         JOIN project_permissions pp ON p.id = pp.project_id
+         WHERE p.id = ? 
+           AND (
+             (pp.entity_type = 'public' AND pp.entity_value = '*') OR
+             (pp.entity_type = 'domain' AND pp.entity_value = ?) OR
+             (pp.entity_type = 'email' AND pp.entity_value = ?)
+           )
+         GROUP BY p.id`
       )
-      .bind(id, callerDomain)
-      .first<ProjectRow>();
-    return row ? rowToFull(row) : null;
+      .bind(id, callerDomain, callerEmail)
+      .first<ProjectRow & { max_perm: number }>();
+    if (!row) return null;
+    const full = rowToFull(row);
+    full.permissionLevel = row.max_perm === 2 ? 'edit' : 'read';
+    return full;
   }
 
   const row = localProjects.get(id);
   if (!row || !row.is_discoverable) return null;
   if (row.domain_restriction && row.domain_restriction.toLowerCase() !== callerDomain) return null;
   return rowToFull(row);
+}
+
+/**
+ * Fetches the explicit granular permissions for a project.
+ */
+export async function getProjectPermissions(projectId: string): Promise<ProjectPermission[]> {
+  const db = getDb();
+  if (db) {
+    const { results } = await db
+      .prepare('SELECT project_id, entity_type, entity_value, permission_level FROM project_permissions WHERE project_id = ?')
+      .bind(projectId)
+      .all<any>();
+    return results.map(row => ({
+      projectId: row.project_id,
+      entityType: row.entity_type,
+      entityValue: row.entity_value,
+      permissionLevel: row.permission_level
+    }));
+  }
+  return [];
+}
+
+/**
+ * Replaces all explicit granular permissions for a project.
+ * Only the owner can do this.
+ */
+export async function setProjectPermissions(
+  projectId: string, 
+  userId: string, 
+  permissions: Omit<ProjectPermission, 'projectId'>[]
+): Promise<boolean> {
+  const db = getDb();
+  if (!db) return false;
+
+  // Verify ownership
+  const ownerCheck = await db.prepare('SELECT id FROM projects WHERE id = ? AND user_id = ?').bind(projectId, userId).first();
+  if (!ownerCheck) return false;
+
+  // We must execute these sequentially as D1 batching might be complex to type here,
+  // or we can just delete and insert.
+  await db.prepare('DELETE FROM project_permissions WHERE project_id = ?').bind(projectId).run();
+
+  // Re-insert
+  for (const p of permissions) {
+    await db
+      .prepare('INSERT INTO project_permissions (project_id, entity_type, entity_value, permission_level) VALUES (?, ?, ?, ?)')
+      .bind(projectId, p.entityType, p.entityValue, p.permissionLevel)
+      .run();
+  }
+  
+  return true;
 }

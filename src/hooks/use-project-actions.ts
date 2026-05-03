@@ -30,7 +30,7 @@ interface UseProjectActionsProps {
     activeFlowId: string,
     projectId: string,
     name: string,
-    cloudProjectId: string,
+    cloudProjectId?: string,
   ) => void;
 }
 
@@ -169,9 +169,9 @@ export function useProjectActions({
 
   /** Opens a cloud project by fetching it from D1. */
   const handleOpenCloudProject = useCallback(
-    async (cloudProjectId: string, isDiscoverable: boolean = false) => {
+    async (cloudProjectId: string, permissionLevel: 'owner' | 'edit' | 'read' = 'owner') => {
       try {
-        const url = isDiscoverable 
+        const url = permissionLevel !== 'owner' 
           ? `/api/discovery?projectId=${cloudProjectId}`
           : `/api/projects/${cloudProjectId}`;
         const res = await fetch(url);
@@ -179,14 +179,22 @@ export function useProjectActions({
           throw new Error(`Project not found (${res.status})`);
         }
         const { project } = await res.json() as { project: { data: ExportData; name: string } };
+        
+        const linkedCloudId = permissionLevel === 'read' ? undefined : cloudProjectId;
+        
         loadProject(
           project.data.flows,
           project.data.activeFlowId,
           project.data.projectId,
           project.data.projectName ?? project.name,
-          cloudProjectId,
+          linkedCloudId,
         );
-        toast({ title: 'Project opened', description: `"${project.data.projectName}" loaded from cloud.` });
+        
+        if (permissionLevel === 'read') {
+          toast({ title: 'Opened as Copy', description: `"${project.data.projectName}" loaded as a local copy.` });
+        } else {
+          toast({ title: 'Project opened', description: `"${project.data.projectName}" loaded from cloud.` });
+        }
       } catch (err: any) {
         toast({ variant: 'destructive', title: 'Open failed', description: err.message });
       }

@@ -62,7 +62,7 @@ export async function PUT(request: NextRequest, { params }: RouteContext): Promi
   }
 
   try {
-    const project = await updateProject(id, user.userId, {
+    const project = await updateProject(id, user, {
       name: body.name,
       data: body.data,
     });

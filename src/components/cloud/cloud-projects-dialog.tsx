@@ -18,7 +18,7 @@ import { ProjectMeta } from '@/lib/db';
 interface CloudProjectsDialogProps {
   isOpen: boolean;
   onOpenChange: (open: boolean) => void;
-  onOpenProject: (projectId: string, isDiscoverable: boolean) => void;
+  onOpenProject: (projectId: string, permissionLevel: 'owner' | 'edit' | 'read') => void;
   onDeleteProject: (projectId: string, projectName: string) => Promise<void>;
 }
 
@@ -143,7 +143,7 @@ export function CloudProjectsDialog({
                           size="sm" 
                           className="flex-1 sm:flex-none"
                           onClick={() => {
-                            onOpenProject(project.id, false);
+                            onOpenProject(project.id, 'owner');
                             onOpenChange(false);
                           }}
                         >
@@ -187,15 +187,15 @@ export function CloudProjectsDialog({
                       </div>
                       <div className="flex items-center gap-2 shrink-0 w-full sm:w-auto">
                         <Button 
-                          variant="default" 
+                          variant={project.permissionLevel === 'edit' ? 'outline' : 'default'} 
                           size="sm" 
                           className="flex-1 sm:flex-none w-full"
                           onClick={() => {
-                            onOpenProject(project.id, true);
+                            onOpenProject(project.id, project.permissionLevel || 'read');
                             onOpenChange(false);
                           }}
                         >
-                          Open as Copy
+                          {project.permissionLevel === 'edit' ? 'Open' : 'Open as Copy'}
                         </Button>
                       </div>
                     </div>
