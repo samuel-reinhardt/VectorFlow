@@ -73,7 +73,8 @@ type D1PreparedStatement = {
 function getDb(): D1Database | null {
   try {
     const ctx = getRequestContext();
-    const db = (ctx.env as Record<string, unknown>)['DB'] as D1Database | undefined;
+    const env = ctx.env as Record<string, unknown>;
+    const db = (env['vectorflow'] || env['DB']) as D1Database | undefined;
     return db ?? null;
   } catch {
     return null;
