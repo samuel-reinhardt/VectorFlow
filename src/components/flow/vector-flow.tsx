@@ -39,7 +39,7 @@ import { useKeyboardShortcuts } from '@/hooks/use-keyboard-shortcuts';
 import { useFlowTransition } from '@/hooks/flow/use-flow-transition';
 import { useCloudSync } from '@/hooks/use-cloud-sync';
 import { useProjectActions } from '@/hooks/use-project-actions';
-import { ExportDialog } from '@/components/export-import/export-dialog';
+
 
 import { ReadOnlyPropertiesPanel } from '@/components/panels/read-only-properties-panel';
 import { FlowContextMenu, ContextMenuAction } from '@/components/ui/flow-context-menu';
@@ -579,22 +579,6 @@ export function VectorFlow() {
                                     ]}
                                 />
                             )}
-                            <ExportDialog
-                                flows={flows}
-                                activeFlowId={activeFlowId}
-                                projectId={projectId}
-                                projectName={projectName}
-                                cloudProjectId={cloudProjectId}
-                                setCloudProjectId={setCloudProjectId}
-                                onImport={loadProject}
-                                onSaveState={() => {
-                                    saveCurrentFlowState();
-                                }}
-                                syncState={syncState}
-                                toggleSync={toggleSync}
-                                handleSaveToCloud={handleSaveToCloud}
-                                handleOpenCloudProject={() => handleOpenCloudProject(projectId)}
-                            />
                         </ReactFlow>
                     </main>
                     
