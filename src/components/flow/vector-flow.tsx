@@ -128,7 +128,7 @@ export function VectorFlow() {
     const { toast } = useToast();
 
     const { syncState, toggleSync, manualSync } = useCloudSync({
-        projectId,
+        cloudProjectId,
         projectName,
         flows,
         activeFlowId,

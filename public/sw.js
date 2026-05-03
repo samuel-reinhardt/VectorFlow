@@ -22,8 +22,8 @@ self.addEventListener("fetch", (event) => {
   event.respondWith(
     fetch(event.request)
       .then((response) => {
-        // If successful, update the cache
-        if (response && response.status === 200 && response.type === "basic") {
+        // If successful and it's a valid http/https request, update the cache
+        if (response && response.status === 200 && response.type === "basic" && event.request.url.startsWith('http')) {
           const responseToCache = response.clone();
           caches.open(CACHE_NAME).then((cache) => {
             cache.put(event.request, responseToCache);

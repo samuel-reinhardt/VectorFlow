@@ -1,6 +1,8 @@
 'use client';
 import { ReactFlowProvider } from 'reactflow';
-import { VectorFlow } from '@/components/flow/vector-flow';
+import dynamic from 'next/dynamic';
+
+const VectorFlow = dynamic(() => import('@/components/flow/vector-flow').then(m => m.VectorFlow), { ssr: false });
 
 export default function Home() {
   return (

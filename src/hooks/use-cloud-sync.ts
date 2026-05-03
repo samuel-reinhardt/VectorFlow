@@ -26,7 +26,7 @@ export interface SyncState {
 
 interface UseCloudSyncProps {
   /** D1 project ID (UUID). Undefined when no cloud project is linked. */
-  projectId: string | undefined;
+  cloudProjectId: string | undefined;
   projectName: string;
   flows: Flow[];
   activeFlowId: string;
@@ -40,7 +40,7 @@ interface UseCloudSyncProps {
 }
 
 export function useCloudSync({
-  projectId,
+  cloudProjectId,
   projectName,
   flows,
   activeFlowId,
@@ -59,17 +59,17 @@ export function useCloudSync({
 
   // Auto-enable sync when a cloud projectId is linked and user is signed in
   useEffect(() => {
-    const enabled = !!(projectId && user);
+    const enabled = !!(cloudProjectId && user);
     setSyncState((prev) =>
       prev.isSyncEnabled !== enabled
         ? { ...prev, isSyncEnabled: enabled, syncStatus: enabled ? prev.syncStatus : 'idle' }
         : prev,
     );
-  }, [projectId, user]);
+  }, [cloudProjectId, user]);
 
   // Debounced auto-save on any flow change
   useEffect(() => {
-    if (!syncState.isSyncEnabled || !projectId) return;
+    if (!syncState.isSyncEnabled || !cloudProjectId) return;
 
     setSyncState((prev) =>
       prev.syncStatus !== 'saving' ? { ...prev, syncStatus: 'saving' } : prev,
@@ -85,16 +85,16 @@ export function useCloudSync({
       if (autoSaveTimeout.current) clearTimeout(autoSaveTimeout.current);
     };
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [flows, activeFlowId, syncState.isSyncEnabled, projectId]);
+  }, [flows, activeFlowId, syncState.isSyncEnabled, cloudProjectId]);
 
   /** Pushes the current project state to D1 via PUT /api/projects/:id. */
   const pushLocalChanges = useCallback(async () => {
-    if (!projectId || !user) return;
+    if (!cloudProjectId || !user) return;
 
     const data: ExportData = {
       version: '1.0.0',
       timestamp: new Date().toISOString(),
-      projectId,
+      projectId: cloudProjectId,
       projectName,
       flows,
       activeFlowId,
@@ -103,7 +103,7 @@ export function useCloudSync({
     try {
       setSyncState((prev) => ({ ...prev, syncStatus: 'saving' }));
 
-      const res = await fetch(`/api/projects/${projectId}`, {
+      const res = await fetch(`/api/projects/${cloudProjectId}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ name: projectName, data }),
@@ -145,7 +145,7 @@ export function useCloudSync({
           : err.message || 'Failed to auto-save.',
       }));
     }
-  }, [projectId, projectName, flows, activeFlowId, user]);
+  }, [cloudProjectId, projectName, flows, activeFlowId, user]);
 
   const toggleSync = useCallback(() => {
     setSyncState((prev) => ({ ...prev, isSyncEnabled: !prev.isSyncEnabled }));
