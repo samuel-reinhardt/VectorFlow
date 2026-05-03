@@ -23,6 +23,7 @@ interface UseProjectActionsProps {
   activeFlowId: string;
   projectId: string;
   projectName: string;
+  cloudProjectId: string | undefined;
   setCloudProjectId: (id: string) => void;
   loadProject: (
     flows: Flow[],
@@ -38,6 +39,7 @@ export function useProjectActions({
   activeFlowId,
   projectId,
   projectName,
+  cloudProjectId,
   setCloudProjectId,
   loadProject,
 }: UseProjectActionsProps) {
@@ -55,21 +57,14 @@ export function useProjectActions({
     const data: ExportData = {
       version: '1.0.0',
       timestamp: new Date().toISOString(),
-      projectId,
+      projectId: cloudProjectId || projectId, // If already cloud linked, preserve that ID
       projectName,
       flows,
       activeFlowId,
     };
 
     try {
-      // Try updating first; if 404 the project doesn't exist yet → create.
-      const updateRes = await fetch(`/api/projects/${projectId}`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name: projectName, data }),
-      });
-
-      if (updateRes.status === 404) {
+      if (!cloudProjectId) {
         // First cloud save for this project — create it.
         const createRes = await fetch('/api/projects', {
           method: 'POST',
@@ -87,6 +82,13 @@ export function useProjectActions({
         return;
       }
 
+      // It is already linked to the cloud, update it
+      const updateRes = await fetch(`/api/projects/${cloudProjectId}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name: projectName, data }),
+      });
+
       if (!updateRes.ok) {
         const err = await updateRes.json().catch(() => ({})) as any;
         throw new Error(err.error ?? `Update failed: ${updateRes.status}`);
@@ -96,7 +98,7 @@ export function useProjectActions({
     } catch (err: any) {
       toast({ variant: 'destructive', title: 'Save failed', description: err.message });
     }
-  }, [user, projectId, projectName, flows, activeFlowId, setCloudProjectId, toast]);
+  }, [user, projectId, cloudProjectId, projectName, flows, activeFlowId, setCloudProjectId, toast]);
 
   /** Creates a brand-new cloud project (prompts for name). */
   const handleNewCloudProject = useCallback(async () => {

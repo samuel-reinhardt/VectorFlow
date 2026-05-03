@@ -172,6 +172,7 @@ export function VectorFlow() {
         activeFlowId,
         projectId,
         projectName,
+        cloudProjectId,
         setCloudProjectId: setCloudProjectId,
         loadProject,
     });
