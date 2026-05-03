@@ -1,5 +1,5 @@
 import * as React from 'react';
-import { Plus, Trash2, Settings2, X, Grip, LayoutTemplate, Palette, Search, List as ListIcon, ChevronDown, ChevronRight } from 'lucide-react';
+import { Plus, Trash2, Settings2, X, Grip, LayoutTemplate, Palette, Search, List as ListIcon, ChevronDown, ChevronRight, Shield, Cloud } from 'lucide-react';
 import { Button } from '@/components/ui/forms/button';
 import { Input } from '@/components/ui/forms/input';
 import { Label } from '@/components/ui/forms/label';
@@ -25,15 +25,17 @@ import { normalizeOptions } from '@/lib/metadata-utils';
 import { VisualRulesEditor } from './visual-rules-editor';
 import { ListsManager } from './lists-manager';
 import { ListDefinition } from '@/types';
+import { PermissionsManager } from '@/components/cloud/permissions-manager';
 import { cn } from '@/lib/utils';
 
 interface MetaConfigEditorProps {
   config: MetaConfig;
   onUpdate: (type: keyof MetaConfig, value: any) => void;
+  cloudProjectId?: string;
 }
 
-export function MetaConfigEditor({ config, onUpdate }: MetaConfigEditorProps) {
-  const [activeSection, setActiveSection] = React.useState<'structure' | 'visuals' | 'lists'>('structure');
+export function MetaConfigEditor({ config, onUpdate, cloudProjectId }: MetaConfigEditorProps) {
+  const [activeSection, setActiveSection] = React.useState<'structure' | 'visuals' | 'lists' | 'permissions'>('structure');
   const [activeFieldId, setActiveFieldId] = React.useState<string | null>(null); // For collapsible sections
   const [searchQuery, setSearchQuery] = React.useState('');
   const [targetFilter, setTargetFilter] = React.useState<UnifiedTarget | 'all'>('all');
@@ -164,6 +166,13 @@ export function MetaConfigEditor({ config, onUpdate }: MetaConfigEditorProps) {
                     onClick={() => setActiveSection('lists')}
                 >
                     <ListIcon className="w-4 h-4" /> Lists
+                </Button>
+                <Button 
+                    variant={activeSection === 'permissions' ? 'secondary' : 'ghost'} 
+                    className="w-full justify-start gap-2 h-9" 
+                    onClick={() => setActiveSection('permissions')}
+                >
+                    <Shield className="w-4 h-4" /> Permissions
                 </Button>
             </div>
 
@@ -402,13 +411,35 @@ export function MetaConfigEditor({ config, onUpdate }: MetaConfigEditorProps) {
                             onChange={(newRules) => onUpdate('visualRules', newRules)} 
                         />
                     </div>
-                ) : (
+                ) : activeSection === 'lists' ? (
                     <div className="flex-1 overflow-hidden">
                         <ListsManager 
                             lists={config.lists || []}
                             onChange={(lists) => onUpdate('lists', lists)}
                             palette={config.visualRules?.palette || []}
                         />
+                    </div>
+                ) : (
+                    <div className="flex-1 overflow-hidden flex flex-col">
+                        <div className="px-6 py-4 border-b bg-muted/5">
+                            <h3 className="text-sm font-medium mb-1">Access Control</h3>
+                            <p className="text-xs text-muted-foreground">Manage who can view or edit this flow.</p>
+                        </div>
+                        <div className="p-6 overflow-y-auto">
+                            {cloudProjectId ? (
+                                <div className="max-w-xl">
+                                    <PermissionsManager cloudProjectId={cloudProjectId} />
+                                </div>
+                            ) : (
+                                <div className="flex flex-col items-center justify-center py-12 text-muted-foreground border-2 border-dashed rounded-lg max-w-xl mx-auto mt-8">
+                                    <Cloud className="w-12 h-12 opacity-20 mb-4" />
+                                    <p className="text-sm font-medium">Flow not connected to Cloud</p>
+                                    <p className="text-xs text-muted-foreground mt-1 text-center px-8">
+                                        You need to save this project to the cloud before you can manage its share settings.
+                                    </p>
+                                </div>
+                            )}
+                        </div>
                     </div>
                 )}
             </div>

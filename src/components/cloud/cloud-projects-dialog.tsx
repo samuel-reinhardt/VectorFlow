@@ -42,6 +42,20 @@ export function CloudProjectsDialog({
       fetchMyProjects();
       fetchDiscoverableProjects();
     }
+    
+    // Safety fallback for Radix UI body pointer-events lock bug
+    let timeoutId: NodeJS.Timeout;
+    if (!isOpen) {
+      timeoutId = setTimeout(() => {
+        if (document.body.style.pointerEvents === 'none') {
+          document.body.style.pointerEvents = '';
+        }
+      }, 500);
+    }
+    
+    return () => {
+      if (timeoutId) clearTimeout(timeoutId);
+    };
   }, [isOpen, user]);
 
   const fetchMyProjects = async () => {

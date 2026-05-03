@@ -154,11 +154,11 @@ export function Toolbar({
                   {user.email}
                 </DropdownMenuLabel>
                 <DropdownMenuSeparator />
-                <DropdownMenuItem onClick={onNewCloud}>
+                <DropdownMenuItem onSelect={() => setTimeout(() => onNewCloud?.(), 150)}>
                   <Plus className="mr-2 h-4 w-4" />
                   <span>New</span>
                 </DropdownMenuItem>
-                <DropdownMenuItem onClick={onOpenCloud}>
+                <DropdownMenuItem onSelect={() => setTimeout(() => onOpenCloud?.(), 150)}>
                   <FolderOpen className="mr-2 h-4 w-4" />
                   <span>Manage Flows</span>
                 </DropdownMenuItem>
@@ -172,7 +172,7 @@ export function Toolbar({
                   <span>Save</span>
                 </DropdownMenuItem>
                 <DropdownMenuItem 
-                  onClick={onSaveAsCloud} 
+                  onSelect={() => setTimeout(() => onSaveAsCloud?.(), 150)} 
                   disabled={!cloudProjectId}
                 >
                   <SaveAll className="mr-2 h-4 w-4" />
@@ -238,6 +238,7 @@ export function Toolbar({
             <MetaConfigEditor 
               config={metaConfig} 
               onUpdate={onUpdateMetaConfig} 
+              cloudProjectId={cloudProjectId}
             />
           </>
         )}
