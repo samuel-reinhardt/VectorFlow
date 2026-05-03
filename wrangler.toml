@@ -14,6 +14,6 @@ pages_build_output_dir = ".vercel/output/static"
 # Create the database with: pnpm dlx wrangler d1 create vectorflow
 # Then update the database_id below.
 [[d1_databases]]
-binding = "vectorflow"
+binding = "DB"
 database_name = "vectorflow"
 database_id = "0fd95ffb-7f5e-440f-93c8-227e4104e391"
