@@ -39,7 +39,7 @@ export default function RootLayout({
           }}
         />
       </head>
-      <body className="font-body antialiased flex flex-col h-[100dvh] overflow-hidden">
+      <body className="font-body antialiased flex flex-col h-[100dvh] overflow-hidden" suppressHydrationWarning>
         <FirebaseClientProvider>
           <AuthGate>
             <div className="flex-1 relative overflow-hidden flex flex-col">

@@ -89,6 +89,24 @@ export function useProjectActions({
         body: JSON.stringify({ name: projectName, data }),
       });
 
+      if (updateRes.status === 404) {
+        // The project was likely deleted from the cloud database but is still linked locally.
+        // Recreate it silently.
+        const createRes = await fetch('/api/projects', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ name: projectName, data }),
+        });
+
+        if (!createRes.ok) {
+          const err = await createRes.json().catch(() => ({})) as any;
+          throw new Error(err.error ?? `Re-create failed: ${createRes.status}`);
+        }
+
+        toast({ title: 'Saved to cloud', description: `"${projectName}" saved to your account.` });
+        return;
+      }
+
       if (!updateRes.ok) {
         const err = await updateRes.json().catch(() => ({})) as any;
         throw new Error(err.error ?? `Update failed: ${updateRes.status}`);
