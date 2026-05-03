@@ -10,7 +10,7 @@ import { EMPTY_META_CONFIG } from '@/types';
 export function useFlowState(
   initialFlows: Flow[],
   activeFlowId: string,
-  initialGoogleDriveFileId: string | undefined, // Added
+  initialCloudProjectId: string | undefined,
   setActiveFlowId: (id: string) => void,
   setNodes: (nodes: Node[]) => void,
   setEdges: (edges: Edge[]) => void,
@@ -19,7 +19,7 @@ export function useFlowState(
   getEdges: () => Edge[]
 ) {
   const [flows, setFlows] = useState<Flow[]>(initialFlows);
-  const [cloudProjectId, setCloudProjectId] = useState<string | undefined>(initialGoogleDriveFileId); // Added
+  const [cloudProjectId, setCloudProjectId] = useState<string | undefined>(initialCloudProjectId);
 
   const saveCurrentFlowState = useCallback(() => {
     const currentNodes = getNodes();

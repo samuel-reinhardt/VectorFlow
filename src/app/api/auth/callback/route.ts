@@ -24,9 +24,7 @@ const HANDOVER_MAX_AGE = 120;
  * GET /api/auth/callback
  *
  * Receives the OAuth authorization code from Google, exchanges it for an
- * access token + refresh token, stores the refresh token in an HttpOnly
- * cookie (inaccessible to JavaScript), and passes the short-lived access
- * token + id_token to the client via a second, readable, short-lived
+ * access token + id_token to the client via a second, readable, short-lived
  * "handover" cookie. Finally redirects back to the app root.
  */
 export async function GET(request: NextRequest): Promise<NextResponse> {
@@ -85,15 +83,9 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
 
   const tokens = await tokenResponse.json() as {
     access_token: string;
-    refresh_token?: string;
     id_token?: string;
     expires_in: number;
   };
-
-  if (!tokens.refresh_token) {
-    console.error('[/api/auth/callback] No refresh_token in response');
-    return redirectWithError(origin, 'no_refresh_token');
-  }
 
   // ── Fetch user identity ──────────────────────────────────────────────────
   // Resolve the user's email and Google subject ID so we can store them in
@@ -119,13 +111,12 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
   const secure = !isLocalhost;
 
   const signedSession = await encodeSession(
-    { refreshToken: tokens.refresh_token, userId, email: userEmail },
+    { userId, email: userEmail },
     sessionSecret,
   );
 
   // The handover cookie carries the short-lived tokens the client needs to:
   //   1. Sign into Firebase (via id_token + signInWithCredential)
-  //   2. Make Drive API calls (via access_token)
   // Base64-encoded so the payload requires no additional escaping in the
   // Set-Cookie header (base64 chars are always cookie-safe).
   const handoverPayload = btoa(JSON.stringify({

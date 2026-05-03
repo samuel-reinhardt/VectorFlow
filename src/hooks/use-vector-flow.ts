@@ -234,7 +234,7 @@ export const useVectorFlow = (initialNodes: Node[], initialEdges: Edge[]) => {
   }, [nodes, edges, saveCurrentFlowState]);
 
   // 9. Persistence Hook
-  const handleOnLoad = useCallback((loadedFlows: any[], loadedActiveId: string, loadedProjectId?: string, loadedProjectName?: string, loadedDriveId?: string) => {
+  const handleOnLoad = useCallback((loadedFlows: any[], loadedActiveId: string, loadedProjectId?: string, loadedProjectName?: string, loadedCloudProjectId?: string) => {
     let finalFlows = loadedFlows;
     let finalActiveId = loadedActiveId;
 
@@ -261,7 +261,7 @@ export const useVectorFlow = (initialNodes: Node[], initialEdges: Edge[]) => {
     setActiveFlowId(finalActiveId);
     if (loadedProjectId) setProjectId(loadedProjectId);
     if (loadedProjectName) setProjectName(loadedProjectName);
-    if (loadedDriveId) setCloudProjectId(loadedDriveId);
+    if (loadedCloudProjectId) setCloudProjectId(loadedCloudProjectId);
     
     const activeFlow = normalizedFlows.find(f => f.id === finalActiveId);
     if (activeFlow) {

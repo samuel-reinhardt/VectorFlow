@@ -16,12 +16,6 @@ const SCOPES = [
   'openid',
   'email',
   'profile',
-  // drive.file scope: create and update files that VectorFlow itself created.
-  // All read operations (getFileContent, getFileMetadata, getFilePermissions)
-  // are routed through the /api/proxy-drive Edge route, which authenticates
-  // server-side using the HttpOnly session cookie — the client never needs a
-  // broad Drive scope for reads.
-  'https://www.googleapis.com/auth/drive.file',
 ].join(' ');
 
 const STATE_COOKIE = 'vf_oauth_state';
@@ -49,15 +43,12 @@ function generateState(): string {
  * Initiates the Google OAuth authorization-code flow by redirecting the
  * browser to Google's OAuth consent page.
  *
- * Key parameters:
- *  - `access_type=offline`  → tells Google to issue a refresh token
- *  - `prompt=consent`       → forces the consent screen so the refresh token
- *                             is always returned (even for returning users)
+ *  - `access_type` and `prompt` have been removed since we no longer need Drive offline access.
  *
  * Google will redirect back to `/api/auth/callback` with an authorization
  * code. That Edge route exchanges the code for tokens, stores the refresh
- * token in an HttpOnly cookie, and redirects to `/`. The `useGoogleDriveToken`
- * hook then consumes the short-lived handover cookie on the next mount.
+ * token in an HttpOnly cookie, and redirects to `/`. The `FirebaseClientProvider`
+ * then consumes the short-lived handover cookie on the next mount.
  */
 export const initiateGoogleSignIn = (): void => {
   const clientId = process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID;
@@ -83,8 +74,6 @@ export const initiateGoogleSignIn = (): void => {
     redirect_uri: redirectUri,
     response_type: 'code',
     scope: SCOPES,
-    access_type: 'offline',
-    prompt: 'consent',
     state,
   });
 
@@ -96,8 +85,7 @@ export const initiateGoogleSignIn = (): void => {
  *
  * On success:
  *  1. Signs the Firebase user in using `signInWithCredential` (id_token).
- *  2. Returns the short-lived Google OAuth access token (for Drive API calls).
- *  3. Clears the handover cookie (single-use).
+ *  2. Clears the handover cookie (single-use).
  *
  * Returns `null` if no handover cookie is present (normal case on non-redirect
  * page loads).

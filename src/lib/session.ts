@@ -79,13 +79,6 @@ export interface Session {
   userId: string;
   /** User's email address — used for API route auth and domain restriction checks. */
   email: string;
-  /**
-   * Google OAuth refresh token (present on sessions established via the
-   * Google OAuth callback). Kept for backwards compatibility; not used by
-   * the Cloudflare storage API.
-   * @deprecated No longer needed after the Drive→D1 migration.
-   */
-  refreshToken?: string;
 }
 
 /**

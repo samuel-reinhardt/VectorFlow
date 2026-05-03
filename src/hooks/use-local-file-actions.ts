@@ -8,7 +8,7 @@ interface UseLocalFileActionsProps {
     projectName: string;
     flows: Flow[];
     activeFlowId: string;
-    loadProject: (flows: Flow[], activeFlowId: string, projectId: string, projectName?: string, driveId?: string | undefined) => void;
+    loadProject: (flows: Flow[], activeFlowId: string, projectId: string, projectName?: string, cloudProjectId?: string | undefined) => void;
     setCloudProjectId: (id: string | undefined) => void;
     requestFileName: (title: string, defaultValue?: string, description?: string, confirmLabel?: string) => Promise<string | null>;
 }
@@ -40,7 +40,7 @@ export function useLocalFileActions({
         };
 
         loadProject([defaultFlow], '1', newProjectId, name, undefined);
-        setCloudProjectId(undefined); // Unlink drive file
+        setCloudProjectId(undefined); // Unlink cloud file
     };
 
     const handleExport = async () => {
@@ -100,7 +100,7 @@ export function useLocalFileActions({
                 const extension = file.name.split('.').pop() || 'json';
                 const data = await ExportImportService.import(extension, file);
                 
-                // loadProject signature: (flows, activeFlowId, projectId, projectName, driveId)
+                // loadProject signature: (flows, activeFlowId, projectId, projectName, cloudProjectId)
                 loadProject(data.flows, data.activeFlowId, data.projectId, data.projectName, undefined);
 
                 toast({
