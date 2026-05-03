@@ -106,7 +106,8 @@ export const consumeAuthHandover = async (): Promise<string | null> => {
 
   try {
     // The cookie value is base64-encoded JSON — decode with atob before parsing.
-    const raw = atob(cookieEntry.split('=').slice(1).join('='));
+    // Next.js cookies.set() automatically URL-encodes the value, so decodeURIComponent is needed.
+    const raw = atob(decodeURIComponent(cookieEntry.split('=').slice(1).join('=')));
     const { accessToken, idToken } = JSON.parse(raw) as {
       accessToken: string;
       idToken: string | null;
