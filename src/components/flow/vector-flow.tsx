@@ -467,6 +467,8 @@ export function VectorFlow() {
                 onToggleAutoSave={toggleSync}
                 onSignIn={handleSignIn}
                 onUnlinkCloud={handleUnlinkCloud}
+                user={user}
+                syncState={syncState}
             />
 
                 <div className="flex flex-1 overflow-hidden">
