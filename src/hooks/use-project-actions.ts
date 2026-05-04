@@ -174,7 +174,7 @@ export function useProjectActions({
         const url = permissionLevel !== 'owner' 
           ? `/api/discovery?projectId=${cloudProjectId}`
           : `/api/projects/${cloudProjectId}`;
-        const res = await fetch(url);
+        const res = await fetch(url, { cache: 'no-store' });
         if (!res.ok) {
           throw new Error(`Project not found (${res.status})`);
         }

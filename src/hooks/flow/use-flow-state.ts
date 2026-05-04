@@ -21,12 +21,12 @@ export function useFlowState(
   const [flows, setFlows] = useState<Flow[]>(initialFlows);
   const [cloudProjectId, setCloudProjectId] = useState<string | undefined>(initialCloudProjectId);
 
-  const saveCurrentFlowState = useCallback(() => {
-    const currentNodes = getNodes();
-    const currentEdges = getEdges();
+  const saveCurrentFlowState = useCallback((currentNodes?: Node[], currentEdges?: Edge[]) => {
+    const n = currentNodes ?? getNodes();
+    const e = currentEdges ?? getEdges();
     
     setFlows(prev => prev.map(f => 
-      f.id === activeFlowId ? { ...f, nodes: currentNodes, edges: currentEdges } : f
+      f.id === activeFlowId ? { ...f, nodes: n, edges: e } : f
     ));
   }, [activeFlowId, getNodes, getEdges]);
 

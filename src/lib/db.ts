@@ -78,15 +78,27 @@ type D1PreparedStatement = {
   run(): Promise<{ meta: { changes: number } }>;
 };
 
+let _db: D1Database | null = null;
+
 function getDb(): D1Database | null {
+  if (_db) return _db;
+  if (process.env.NODE_ENV === 'development') {
+    return null; // Fallback to memory in local dev
+  }
+
   try {
     const ctx = getRequestContext();
     const env = ctx.env as Record<string, unknown>;
-    const db = (env['vectorflow'] || env['DB']) as D1Database | undefined;
-    return db ?? null;
+    _db = ((env['vectorflow'] || env['DB']) as D1Database | undefined) ?? null;
   } catch {
-    return null;
+    // If getRequestContext fails, we still want to throw if in production
   }
+
+  if (!_db) {
+    throw new Error('CRITICAL FATAL: D1 Database binding "DB" is missing in production environment. Application cannot safely persist data.');
+  }
+
+  return _db;
 }
 
 // ---------------------------------------------------------------------------

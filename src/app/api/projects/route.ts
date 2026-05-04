@@ -4,6 +4,7 @@ import { listProjects, createProject } from '@/lib/db';
 import type { ExportData } from '@/lib/export-import';
 
 export const runtime = 'edge';
+export const dynamic = 'force-dynamic';
 
 /**
  * GET /api/projects
@@ -17,7 +18,11 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
 
   try {
     const projects = await listProjects(user.userId);
-    return NextResponse.json({ projects });
+    return NextResponse.json({ projects }, {
+      headers: {
+        'Cache-Control': 'no-store, max-age=0'
+      }
+    });
   } catch (err: any) {
     console.error('[/api/projects GET]', err);
     return NextResponse.json({ error: 'Failed to list projects' }, { status: 500 });

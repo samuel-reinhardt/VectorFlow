@@ -437,6 +437,7 @@ export function VectorFlow() {
                 canUndo={canUndo}
                 canRedo={canRedo}
 
+                onNewLocal={handleNewLocal}
                 cloudProjectId={cloudProjectId}
                 onNewCloud={handleNewCloudProject}
                 onOpenCloud={() => setIsCloudBrowserOpen(true)}

@@ -1,7 +1,7 @@
 // Basic Service Worker for VectorFlow PWA
 // Enables offline caching of essential assets
 
-const CACHE_NAME = "vectorflow-v1";
+const CACHE_NAME = "vectorflow-v2";
 const ASSETS_TO_CACHE = [
   "/",
   "/manifest.json",
@@ -19,6 +19,12 @@ self.addEventListener("install", (event) => {
 
 self.addEventListener("fetch", (event) => {
   // Use Network-First strategy for the root page and main assets
+  
+  // Do not attempt to cache non-GET requests (PUT, POST, DELETE) or API routes
+  if (event.request.method !== 'GET' || event.request.url.includes('/api/')) {
+    return;
+  }
+
   event.respondWith(
     fetch(event.request)
       .then((response) => {

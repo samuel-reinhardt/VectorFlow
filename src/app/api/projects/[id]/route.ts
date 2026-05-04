@@ -4,6 +4,7 @@ import { getProject, updateProject, deleteProject } from '@/lib/db';
 import type { ExportData } from '@/lib/export-import';
 
 export const runtime = 'edge';
+export const dynamic = 'force-dynamic';
 
 interface RouteContext {
   params: Promise<{ id: string }>;
@@ -25,7 +26,11 @@ export async function GET(request: NextRequest, { params }: RouteContext): Promi
     if (!project) {
       return NextResponse.json({ error: 'Project not found' }, { status: 404 });
     }
-    return NextResponse.json({ project });
+    return NextResponse.json({ project }, {
+      headers: {
+        'Cache-Control': 'no-store, max-age=0'
+      }
+    });
   } catch (err: any) {
     console.error('[/api/projects/[id] GET]', err);
     return NextResponse.json({ error: 'Failed to fetch project' }, { status: 500 });

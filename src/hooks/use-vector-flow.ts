@@ -230,7 +230,7 @@ export const useVectorFlow = (initialNodes: Node[], initialEdges: Edge[]) => {
   
   // Sync interactive canvas state back to the flows array
   useEffect(() => {
-    saveCurrentFlowState();
+    saveCurrentFlowState(nodes, edges);
   }, [nodes, edges, saveCurrentFlowState]);
 
   // 9. Persistence Hook

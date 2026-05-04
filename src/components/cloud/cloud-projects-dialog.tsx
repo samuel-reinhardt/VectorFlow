@@ -61,7 +61,7 @@ export function CloudProjectsDialog({
   const fetchMyProjects = async () => {
     setIsLoadingMyProjects(true);
     try {
-      const res = await fetch('/api/projects');
+      const res = await fetch('/api/projects', { cache: 'no-store' });
       if (!res.ok) throw new Error('Failed to fetch projects');
       const data = await res.json();
       setMyProjects(data.projects || []);
@@ -75,7 +75,7 @@ export function CloudProjectsDialog({
   const fetchDiscoverableProjects = async () => {
     setIsLoadingDiscoverable(true);
     try {
-      const res = await fetch('/api/discovery');
+      const res = await fetch('/api/discovery', { cache: 'no-store' });
       if (!res.ok) throw new Error('Failed to fetch discoverable projects');
       const data = await res.json();
       setDiscoverableProjects(data.projects || []);

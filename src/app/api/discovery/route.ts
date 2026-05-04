@@ -6,6 +6,7 @@ import {
 } from '@/lib/db';
 
 export const runtime = 'edge';
+export const dynamic = 'force-dynamic';
 
 /** Returns true if `domain` is a valid plain domain string (e.g. "bytes.co"). */
 function isValidDomain(domain: string): boolean {
@@ -33,7 +34,11 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
       if (!project) {
         return NextResponse.json({ error: 'Not found or access denied' }, { status: 404 });
       }
-      return NextResponse.json({ project });
+      return NextResponse.json({ project }, {
+      headers: {
+        'Cache-Control': 'no-store, max-age=0'
+      }
+    });
     } catch (err: any) {
       console.error('[/api/discovery GET single]', err);
       return NextResponse.json({ error: 'Failed to fetch project' }, { status: 500 });
@@ -43,7 +48,11 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
   // List all discoverable projects visible to this caller
   try {
     const projects = await listDiscoverableProjects(user.email);
-    return NextResponse.json({ projects });
+    return NextResponse.json({ projects }, {
+      headers: {
+        'Cache-Control': 'no-store, max-age=0'
+      }
+    });
   } catch (err: any) {
     console.error('[/api/discovery GET list]', err);
     return NextResponse.json({ error: 'Failed to list discoverable projects' }, { status: 500 });
