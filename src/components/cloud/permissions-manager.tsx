@@ -1,7 +1,8 @@
 import { useState, useEffect } from 'react';
-import { Users, Globe, Lock } from 'lucide-react';
+import { Users, Globe, Lock, Share2, Copy } from 'lucide-react';
 import { Button } from '@/components/ui/forms/button';
 import { usePermissions } from '@/hooks/use-permissions';
+import { useToast } from '@/hooks/use-toast';
 
 interface PermissionsManagerProps {
   cloudProjectId: string;
@@ -12,6 +13,7 @@ export function PermissionsManager({ cloudProjectId }: PermissionsManagerProps) 
   const [newType, setNewType] = useState<'email' | 'domain' | 'public'>('email');
   const [newValue, setNewValue] = useState('');
   const [newLevel, setNewLevel] = useState<'read' | 'edit'>('read');
+  const { toast } = useToast();
 
   useEffect(() => {
     if (cloudProjectId) {
@@ -45,8 +47,35 @@ export function PermissionsManager({ cloudProjectId }: PermissionsManagerProps) 
     await updatePermissions(newList);
   };
 
+  const handleShareLink = () => {
+    if (!cloudProjectId) return;
+    const url = `${window.location.origin}${window.location.pathname}?projectId=${cloudProjectId}`;
+    navigator.clipboard.writeText(url);
+    toast({
+        title: "Link Copied",
+        description: "Share link has been copied to your clipboard.",
+    });
+  };
+
   return (
-    <div className="space-y-3">
+    <div className="space-y-4">
+      {/* Share Link */}
+      <div className="flex items-center justify-between p-3 rounded-lg border bg-muted/20">
+        <div className="flex items-center gap-2">
+          <Share2 className="w-4 h-4 text-primary" />
+          <div>
+            <div className="text-xs font-semibold">Share Link</div>
+            <div className="text-[10px] text-muted-foreground">Copy a direct link to this project</div>
+          </div>
+        </div>
+        <Button variant="outline" size="sm" className="h-7 text-xs px-3" onClick={handleShareLink}>
+          <Copy className="w-3 h-3 mr-1.5" />
+          Copy Link
+        </Button>
+      </div>
+
+      <div className="space-y-2">
+        <h4 className="text-xs font-semibold">Access Permissions</h4>
       {/* Add new permission */}
       <div className="flex flex-col gap-2 p-2 rounded-lg border bg-muted/20">
         <div className="flex gap-2">
@@ -125,6 +154,7 @@ export function PermissionsManager({ cloudProjectId }: PermissionsManagerProps) 
           ))}
         </div>
       )}
+      </div>
     </div>
   );
 }

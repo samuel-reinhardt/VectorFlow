@@ -20,8 +20,8 @@ export interface SyncState {
   lastSyncTime: Date | null;
   errorMessage?: string;
   errorType?: 'auth' | 'network' | 'generic';
-  /** Always false — D1 projects are owned, never read-only for the owner. */
-  isReadOnlyDueToPermissions: false;
+  /** True if the user has opened someone else's project with view-only permissions. */
+  isReadOnlyDueToPermissions: boolean;
 }
 
 interface UseCloudSyncProps {
@@ -37,6 +37,7 @@ interface UseCloudSyncProps {
     projectName?: string,
     cloudProjectId?: string,
   ) => void;
+  isReadOnly?: boolean;
 }
 
 export function useCloudSync({
@@ -45,6 +46,7 @@ export function useCloudSync({
   flows,
   activeFlowId,
   onImport,
+  isReadOnly = false,
 }: UseCloudSyncProps) {
   const { user } = useUser();
 
@@ -59,17 +61,22 @@ export function useCloudSync({
 
   // Auto-enable sync when a cloud projectId is linked and user is signed in
   useEffect(() => {
-    const enabled = !!(cloudProjectId && user);
+    const enabled = !!(cloudProjectId && user && !isReadOnly);
     setSyncState((prev) =>
-      prev.isSyncEnabled !== enabled
-        ? { ...prev, isSyncEnabled: enabled, syncStatus: enabled ? prev.syncStatus : 'idle' }
+      prev.isSyncEnabled !== enabled || prev.isReadOnlyDueToPermissions !== isReadOnly
+        ? { 
+            ...prev, 
+            isSyncEnabled: enabled, 
+            syncStatus: enabled ? prev.syncStatus : 'idle',
+            isReadOnlyDueToPermissions: isReadOnly
+          }
         : prev,
     );
-  }, [cloudProjectId, user]);
+  }, [cloudProjectId, user, isReadOnly]);
 
   // Debounced auto-save on any flow change
   useEffect(() => {
-    if (!syncState.isSyncEnabled || !cloudProjectId) return;
+    if (!syncState.isSyncEnabled || !cloudProjectId || isReadOnly) return;
 
     setSyncState((prev) =>
       prev.syncStatus !== 'saving' ? { ...prev, syncStatus: 'saving' } : prev,
@@ -89,7 +96,7 @@ export function useCloudSync({
 
   /** Pushes the current project state to D1 via PUT /api/projects/:id. */
   const pushLocalChanges = useCallback(async () => {
-    if (!cloudProjectId || !user) return;
+    if (!cloudProjectId || !user || isReadOnly) return;
 
     const data: ExportData = {
       version: '1.0.0',

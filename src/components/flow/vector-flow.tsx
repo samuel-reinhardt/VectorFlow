@@ -13,6 +13,7 @@ import ReactFlow, {
 } from 'reactflow';
 import 'reactflow/dist/style.css';
 import Link from 'next/link';
+import { useSearchParams } from 'next/navigation';
 import { cn } from '@/lib/utils';
 import { Plus, Settings2, X, Grip, LayoutGrid, Square, FileText, Layers, Boxes, Share2, Info, Orbit } from 'lucide-react';
 import { FlowProvider } from '@/components/flow/flow-context';
@@ -43,7 +44,7 @@ import { CloudProjectsDialog } from '@/components/cloud/cloud-projects-dialog';
 
 import { ReadOnlyPropertiesPanel } from '@/components/panels/read-only-properties-panel';
 import { FlowContextMenu, ContextMenuAction } from '@/components/ui/flow-context-menu';
-import { Copy, Trash2, ClipboardPaste, Group, Ungroup, CopyPlus } from 'lucide-react';
+import { Copy, Trash2, ClipboardPaste, Group, Ungroup, CopyPlus, Link as LinkIcon } from 'lucide-react';
 
 import { demoNodes } from './data/demo-nodes';
 import { demoEdges } from './data/demo-edges';
@@ -133,6 +134,7 @@ export function VectorFlow() {
         flows,
         activeFlowId,
         onImport: loadProject,
+        isReadOnly,
     });
 
     const { handleSignIn } = useAuthActions();
@@ -149,15 +151,7 @@ export function VectorFlow() {
         requestFileName,
     });
 
-    const handleShareLink = useCallback(() => {
-        if (!cloudProjectId) return;
-        const url = `${window.location.origin}${window.location.pathname}?projectId=${cloudProjectId}`;
-        navigator.clipboard.writeText(url);
-        toast({
-            title: "Link Copied",
-            description: "Anyone with the link can view this flow.",
-        });
-    }, [cloudProjectId, toast]);
+
 
     const handleUnlinkCloud = useCallback(() => {
         setCloudProjectId(undefined);
@@ -168,7 +162,7 @@ export function VectorFlow() {
     }, [setCloudProjectId, toast]);
 
     // ── Cloud Project Handlers ─────────────────────────────────────────
-    const { handleSaveToCloud, handleNewCloudProject, handleOpenCloudProject, handleDeleteCloudProject } = useProjectActions({
+    const { handleSaveToCloud, handleNewCloudProject, handleOpenCloudProject, handleLoadSharedProject, handleDeleteCloudProject } = useProjectActions({
         flows,
         activeFlowId,
         projectId,
@@ -176,7 +170,23 @@ export function VectorFlow() {
         cloudProjectId,
         setCloudProjectId: setCloudProjectId,
         loadProject,
+        setIsReadOnly,
     });
+
+    const searchParams = useSearchParams();
+    const urlProjectId = searchParams?.get('projectId');
+    const urlNodeId = searchParams?.get('nodeId');
+    const [hasLoadedFromUrl, setHasLoadedFromUrl] = useState(false);
+    const [focusedNodeId, setFocusedNodeId] = useState<string | null>(urlNodeId || null);
+
+    useEffect(() => {
+        if (urlProjectId && !hasLoadedFromUrl && user) {
+            setHasLoadedFromUrl(true);
+            handleLoadSharedProject(urlProjectId);
+        }
+    }, [urlProjectId, hasLoadedFromUrl, user, handleLoadSharedProject]);
+
+
 
     // View Only Toast Logic
     useEffect(() => {
@@ -194,6 +204,18 @@ export function VectorFlow() {
     const connectingHandleId = useRef<string | null>(null);
 
     const { fitView, getNode, getNodes, setEdges, project } = useReactFlow();
+    
+    // Focus on deep-linked node
+    useEffect(() => {
+        if (focusedNodeId && nodes.some(n => n.id === focusedNodeId)) {
+            // Use setTimeout to ensure React Flow has fully rendered dimensions
+            setTimeout(() => {
+                fitView({ nodes: [{ id: focusedNodeId }], duration: 800, maxZoom: 1.5 });
+                setNodesState((nds: Node[]) => nds.map((n: Node) => ({ ...n, selected: n.id === focusedNodeId })));
+                setFocusedNodeId(null);
+            }, 100);
+        }
+    }, [nodes, focusedNodeId, fitView, setNodesState]);
 
     const isTransitioning = useFlowTransition(activeFlowId, fitView);
 
@@ -418,7 +440,6 @@ export function VectorFlow() {
                             onToggleSync={toggleSync}
                             onSaveToCloud={handleSaveToCloud}
                             onUnlink={handleUnlinkCloud}
-                            onCopyLink={handleShareLink}
                         />
                     }
                 />
@@ -445,9 +466,7 @@ export function VectorFlow() {
                 onSaveAsCloud={handleSaveToCloud}
                 onToggleAutoSave={toggleSync}
                 onSignIn={handleSignIn}
-                onShareLink={handleShareLink}
-                user={user}
-                syncState={syncState}
+                onUnlinkCloud={handleUnlinkCloud}
             />
 
                 <div className="flex flex-1 overflow-hidden">
@@ -537,6 +556,17 @@ export function VectorFlow() {
                                                 action: () => {
                                                     duplicateSelection();
                                                     toast({ title: "Duplicated", description: "Selection duplicated." });
+                                                }
+                                            },
+                                            {
+                                                label: 'Copy Link to Node',
+                                                icon: LinkIcon,
+                                                action: () => {
+                                                    const baseUrl = `${window.location.origin}${window.location.pathname}`;
+                                                    const activeProjectId = cloudProjectId || projectId;
+                                                    const linkUrl = `${baseUrl}?projectId=${activeProjectId}&nodeId=${contextMenu.data?.id}`;
+                                                    navigator.clipboard.writeText(linkUrl);
+                                                    toast({ title: "Link Copied", description: "Direct link to node copied to clipboard." });
                                                 }
                                             }
                                         ] : []),

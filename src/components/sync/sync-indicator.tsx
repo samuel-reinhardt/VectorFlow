@@ -13,7 +13,6 @@ interface SyncIndicatorProps {
   onToggleSync: () => void;
   onSaveToCloud: () => void;
   onUnlink: () => void;
-  onCopyLink: () => void;
 }
 
 export function SyncIndicator({
@@ -25,7 +24,6 @@ export function SyncIndicator({
   onToggleSync,
   onSaveToCloud,
   onUnlink,
-  onCopyLink,
 }: SyncIndicatorProps) {
   const getSyncIcon = () => {
     if (!user) {
@@ -110,7 +108,6 @@ export function SyncIndicator({
           onToggleSync={onToggleSync}
           onSaveToCloud={onSaveToCloud}
           onUnlink={onUnlink}
-          onCopyLink={onCopyLink}
         />
       </PopoverContent>
     </Popover>

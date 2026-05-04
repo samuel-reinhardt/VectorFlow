@@ -42,7 +42,7 @@ interface ToolbarProps {
   onSaveAsCloud?: () => void;
   onToggleAutoSave?: () => void;
   onSignIn?: () => void;
-  onShareLink?: () => void;
+  onUnlinkCloud?: () => void;
 }
 
 export function Toolbar({
@@ -68,7 +68,7 @@ export function Toolbar({
   onSaveAsCloud,
   onToggleAutoSave,
   onSignIn,
-  onShareLink,
+  onUnlinkCloud,
 }: ToolbarProps) {
   return (
     <div className="flex items-center justify-between px-4 py-2 border-b border-border bg-card shrink-0 overflow-x-auto gap-4 no-scrollbar scroll-shadows">
@@ -205,14 +205,6 @@ export function Toolbar({
                   </DropdownMenuCheckboxItem>
                 )}
 
-                <DropdownMenuSeparator />
-                <DropdownMenuItem 
-                  onClick={onShareLink} 
-                  disabled={!cloudProjectId}
-                >
-                  <Share2 className="mr-2 h-4 w-4" />
-                  <span>Share Link</span>
-                </DropdownMenuItem>
               </>
             )}
           </DropdownMenuContent>

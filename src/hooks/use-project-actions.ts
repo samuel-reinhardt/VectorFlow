@@ -24,14 +24,15 @@ interface UseProjectActionsProps {
   projectId: string;
   projectName: string;
   cloudProjectId: string | undefined;
-  setCloudProjectId: (id: string) => void;
+  setCloudProjectId: (id: string | undefined) => void;
   loadProject: (
     flows: Flow[],
     activeFlowId: string,
-    projectId: string,
-    name: string,
+    projectId?: string,
+    projectName?: string,
     cloudProjectId?: string,
   ) => void;
+  setIsReadOnly: (isReadOnly: boolean) => void;
 }
 
 export function useProjectActions({
@@ -42,6 +43,7 @@ export function useProjectActions({
   cloudProjectId,
   setCloudProjectId,
   loadProject,
+  setIsReadOnly,
 }: UseProjectActionsProps) {
   const { user } = useUser();
   const { toast } = useToast();
@@ -169,7 +171,7 @@ export function useProjectActions({
 
   /** Opens a cloud project by fetching it from D1. */
   const handleOpenCloudProject = useCallback(
-    async (cloudProjectId: string, permissionLevel: 'owner' | 'edit' | 'read' = 'owner') => {
+    async (cloudProjectId: string, permissionLevel: 'owner' | 'edit' | 'read' = 'owner', asReadOnly: boolean = false) => {
       try {
         const url = permissionLevel !== 'owner' 
           ? `/api/discovery?projectId=${cloudProjectId}`
@@ -180,8 +182,14 @@ export function useProjectActions({
         }
         const { project } = await res.json() as { project: { data: ExportData; name: string } };
         
-        const linkedCloudId = permissionLevel === 'read' ? undefined : cloudProjectId;
+        const linkedCloudId = (permissionLevel === 'read' && !asReadOnly) ? undefined : cloudProjectId;
         
+        if (asReadOnly) {
+          setIsReadOnly(true);
+        } else {
+          setIsReadOnly(false);
+        }
+
         loadProject(
           project.data.flows,
           project.data.activeFlowId,
@@ -191,7 +199,11 @@ export function useProjectActions({
         );
         
         if (permissionLevel === 'read') {
-          toast({ title: 'Opened as Copy', description: `"${project.data.projectName}" loaded as a local copy.` });
+          if (asReadOnly) {
+            toast({ title: 'Opened as Read-Only', description: `"${project.data.projectName}" loaded in view-only mode.` });
+          } else {
+            toast({ title: 'Opened as Copy', description: `"${project.data.projectName}" loaded as a local copy.` });
+          }
         } else {
           toast({ title: 'Project opened', description: `"${project.data.projectName}" loaded from cloud.` });
         }
@@ -199,7 +211,32 @@ export function useProjectActions({
         toast({ variant: 'destructive', title: 'Open failed', description: err.message });
       }
     },
-    [loadProject, toast],
+    [loadProject, toast, setIsReadOnly],
+  );
+
+  /** Loads a shared project from a URL projectId parameter, probing access level. */
+  const handleLoadSharedProject = useCallback(
+    async (sharedProjectId: string) => {
+      try {
+        // Try owner access first
+        let res = await fetch(`/api/projects/${sharedProjectId}`, { cache: 'no-store' });
+        if (res.ok) {
+          return handleOpenCloudProject(sharedProjectId, 'owner');
+        }
+        
+        // If 404/403, try discovery access
+        res = await fetch(`/api/discovery?projectId=${sharedProjectId}`, { cache: 'no-store' });
+        if (res.ok) {
+          const { project } = await res.json() as { project: { permissionLevel: 'edit' | 'read' } };
+          return handleOpenCloudProject(sharedProjectId, project.permissionLevel);
+        }
+        
+        throw new Error('Project not found or you do not have permission to view it.');
+      } catch (err: any) {
+        toast({ variant: 'destructive', title: 'Shared Link Failed', description: err.message });
+      }
+    },
+    [handleOpenCloudProject, toast]
   );
 
   /** Deletes a cloud project. */
@@ -225,6 +262,7 @@ export function useProjectActions({
     handleSaveToCloud,
     handleNewCloudProject,
     handleOpenCloudProject,
+    handleLoadSharedProject,
     handleDeleteCloudProject,
   };
 }

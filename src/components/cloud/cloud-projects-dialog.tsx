@@ -18,8 +18,8 @@ import { ProjectMeta } from '@/lib/db';
 interface CloudProjectsDialogProps {
   isOpen: boolean;
   onOpenChange: (open: boolean) => void;
-  onOpenProject: (projectId: string, permissionLevel: 'owner' | 'edit' | 'read') => void;
-  onDeleteProject: (projectId: string, projectName: string) => Promise<void>;
+  onOpenProject: (id: string, permission: 'owner' | 'edit' | 'read', asReadOnly?: boolean) => void;
+  onDeleteProject: (id: string, name: string) => Promise<void>;
 }
 
 export function CloudProjectsDialog({
@@ -200,17 +200,44 @@ export function CloudProjectsDialog({
                         </p>
                       </div>
                       <div className="flex items-center gap-2 shrink-0 w-full sm:w-auto">
-                        <Button 
-                          variant={project.permissionLevel === 'edit' ? 'outline' : 'default'} 
-                          size="sm" 
-                          className="flex-1 sm:flex-none w-full"
-                          onClick={() => {
-                            onOpenProject(project.id, project.permissionLevel || 'read');
-                            onOpenChange(false);
-                          }}
-                        >
-                          {project.permissionLevel === 'edit' ? 'Open' : 'Open as Copy'}
-                        </Button>
+                        {project.permissionLevel === 'edit' ? (
+                          <Button 
+                            variant="outline" 
+                            size="sm" 
+                            className="flex-1 sm:flex-none w-full"
+                            onClick={() => {
+                              onOpenProject(project.id, 'edit');
+                              onOpenChange(false);
+                            }}
+                          >
+                            Open
+                          </Button>
+                        ) : (
+                          <>
+                            <Button 
+                              variant="outline" 
+                              size="sm" 
+                              className="flex-1 sm:flex-none w-full"
+                              onClick={() => {
+                                onOpenProject(project.id, 'read', true);
+                                onOpenChange(false);
+                              }}
+                            >
+                              Open (View Only)
+                            </Button>
+                            <Button 
+                              variant="default" 
+                              size="sm" 
+                              className="flex-1 sm:flex-none w-full"
+                              onClick={() => {
+                                onOpenProject(project.id, 'read', false);
+                                onOpenChange(false);
+                              }}
+                            >
+                              Open as Copy
+                            </Button>
+                          </>
+                        )}
                       </div>
                     </div>
                   ))}

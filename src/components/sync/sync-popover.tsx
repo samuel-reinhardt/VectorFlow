@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Cloud, FileJson, Users, Shield, LogIn, Info, AlertTriangle, Check, RefreshCw, Globe, Lock } from 'lucide-react';
+import { Cloud, FileJson, Users, Shield, LogIn, Info, AlertTriangle, Check, RefreshCw, Globe, Lock, Eye } from 'lucide-react';
 import { Button } from '@/components/ui/forms/button';
 import { SyncState } from '@/hooks/use-cloud-sync';
 import { useAuthActions } from '@/hooks/use-auth-actions';
@@ -15,7 +15,6 @@ interface SyncPopoverProps {
   onToggleSync: () => void;
   onSaveToCloud: () => void;
   onUnlink: () => void;
-  onCopyLink: () => void;
 }
 
 export function SyncPopover({
@@ -27,7 +26,6 @@ export function SyncPopover({
   onToggleSync,
   onSaveToCloud,
   onUnlink,
-  onCopyLink,
 }: SyncPopoverProps) {
   const { handleSignIn } = useAuthActions();
 
@@ -119,6 +117,29 @@ export function SyncPopover({
             <li>• Access from any device</li>
             <li>• Collaborate with teammates</li>
           </ul>
+        </div>
+      </div>
+    );
+  }
+
+  // Read-only project (View Only Access)
+  if (syncState.isReadOnlyDueToPermissions) {
+    return (
+      <div className="space-y-4">
+        <div>
+          <h3 className="font-semibold text-sm mb-1">Read-Only Flow</h3>
+          <p className="text-xs text-muted-foreground truncate" title={`${projectName}.json`}>
+            📄 {projectName}.json
+          </p>
+        </div>
+        <div className="p-3 rounded-lg border bg-amber-50 flex items-center gap-4">
+            <Eye className="w-5 h-5 text-amber-500" />
+            <div className="flex-1 min-w-0">
+                <div className="text-xs font-semibold mb-0.5 text-amber-900">View Only Access</div>
+                <div className="text-[10px] text-amber-700 leading-relaxed">
+                    You do not have permission to edit or save changes to this flow.
+                </div>
+            </div>
         </div>
       </div>
     );
