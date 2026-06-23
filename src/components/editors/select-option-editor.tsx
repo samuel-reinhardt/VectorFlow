@@ -1,7 +1,7 @@
 'use client';
 
 import * as React from 'react';
-import { Plus, X, Tag as TagIcon, Image as ImageIcon } from 'lucide-react';
+import { Plus, X, Tag as TagIcon, Image as ImageIcon, ChevronUp, ChevronDown } from 'lucide-react';
 import { Button } from '@/components/ui/forms/button';
 import { Input } from '@/components/ui/forms/input';
 import { Label } from '@/components/ui/forms/label';
@@ -36,6 +36,17 @@ export function SelectOptionEditor({ options, onChange, palette = [] }: SelectOp
     onChange(options.filter((_, i) => i !== index));
   };
 
+  const moveOption = (index: number, direction: 'up' | 'down') => {
+    const nextIndex = direction === 'up' ? index - 1 : index + 1;
+    if (nextIndex < 0 || nextIndex >= options.length) return;
+    
+    const next = [...options];
+    const temp = next[index];
+    next[index] = next[nextIndex];
+    next[nextIndex] = temp;
+    onChange(next);
+  };
+
   const handleIconSelect = (icon: string) => {
     if (dialogState?.type === 'icon') {
       updateOption(dialogState.index, { icon });
@@ -54,6 +65,8 @@ export function SelectOptionEditor({ options, onChange, palette = [] }: SelectOp
             onRemove={() => removeOption(i)}
             onEditColor={() => setDialogState({ type: 'color', index: i })}
             onEditIcon={() => setDialogState({ type: 'icon', index: i })}
+            onMoveUp={i > 0 ? () => moveOption(i, 'up') : undefined}
+            onMoveDown={i < options.length - 1 ? () => moveOption(i, 'down') : undefined}
           />
         ))}
       </div>
@@ -91,13 +104,17 @@ function OptionRow({
   onChange, 
   onRemove,
   onEditColor,
-  onEditIcon
+  onEditIcon,
+  onMoveUp,
+  onMoveDown
 }: { 
   option: SelectOption; 
   onChange: (updates: Partial<SelectOption>) => void; 
   onRemove: () => void;
   onEditColor: () => void;
   onEditIcon: () => void;
+  onMoveUp?: () => void;
+  onMoveDown?: () => void;
 }) {
   const [showValue, setShowValue] = React.useState(false);
 
@@ -144,6 +161,30 @@ function OptionRow({
         </div>
 
         <div className="flex items-center gap-1 border-l pl-2 ml-1">
+             <div className="flex flex-col gap-0.5 shrink-0 mr-1">
+                  <Button
+                     type="button"
+                     variant="ghost"
+                     size="icon"
+                     className="h-3.5 w-5 p-0 text-muted-foreground hover:bg-muted hover:text-foreground shrink-0 disabled:opacity-30"
+                     onClick={onMoveUp}
+                     disabled={!onMoveUp}
+                     title="Move Up"
+                  >
+                     <ChevronUp className="h-3 w-3" />
+                  </Button>
+                  <Button
+                     type="button"
+                     variant="ghost"
+                     size="icon"
+                     className="h-3.5 w-5 p-0 text-muted-foreground hover:bg-muted hover:text-foreground shrink-0 disabled:opacity-30"
+                     onClick={onMoveDown}
+                     disabled={!onMoveDown}
+                     title="Move Down"
+                  >
+                     <ChevronDown className="h-3 w-3" />
+                  </Button>
+             </div>
              <Button
                 variant={showValue ? 'secondary' : 'ghost'}
                 size="icon"
