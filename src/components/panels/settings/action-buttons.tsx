@@ -7,6 +7,7 @@ interface ActionButtonsProps {
   isStepSelected: boolean;
   isGroupSelected: boolean;
   onAddDeliverable?: () => void;
+  onAddStepToGroup?: () => void;
   onUngroup?: () => void;
   onDeleteSelection: () => void;
 }
@@ -19,11 +20,19 @@ export function ActionButtons({
   isStepSelected,
   isGroupSelected,
   onAddDeliverable,
+  onAddStepToGroup,
   onUngroup,
   onDeleteSelection,
 }: ActionButtonsProps) {
   return (
     <div className="flex flex-col gap-2">
+      {isGroupSelected && onAddStepToGroup && (
+        <Button onClick={onAddStepToGroup} className="w-full" variant="outline" size="sm">
+          <Plus className="mr-2 h-3.5 w-3.5" />
+          Add Step
+        </Button>
+      )}
+
       {onAddDeliverable && (
         <Button onClick={onAddDeliverable} className="w-full" variant="outline" size="sm">
           <Plus className="mr-2 h-3.5 w-3.5" />

@@ -8,7 +8,7 @@ interface EmptyStatePanelProps {
   selectedStepsCount: number;
   onGroupSelection?: () => void;
   onDeleteSelection?: () => void;
-  onAddStep?: () => void;
+  onAddStep?: (position?: { x: number; y: number }, parentId?: string) => void;
 }
 
 /**

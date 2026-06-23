@@ -13,35 +13,52 @@ export function useNodeOperations(
 ) {
   const { project, screenToFlowPosition } = useReactFlow();
 
-  const addStep = useCallback((position?: { x: number; y: number }) => {
+  const addStep = useCallback((position?: { x: number; y: number }, parentId?: string) => {
     let pos = position;
 
     // smart placement logic
     if (!pos) {
-        const selectedNodes = nodes.filter(n => n.selected);
-        if (selectedNodes.length > 0) {
-            // Place to the right of the right-most selected node
-            const rightMost = selectedNodes.reduce((prev, curr) => 
-                (curr.position.x > prev.position.x) ? curr : prev
-            );
-            
-            pos = {
-                x: rightMost.position.x + DIMENSIONS.STEP_WIDTH + 100, // 100px gap
-                y: rightMost.position.y
-            };
+        if (parentId) {
+            // Find children of this parent
+            const children = nodes.filter(n => n.parentNode === parentId);
+            if (children.length > 0) {
+                const rightMost = children.reduce((prev, curr) => 
+                    (curr.position.x > prev.position.x) ? curr : prev
+                );
+                pos = {
+                    x: rightMost.position.x + DIMENSIONS.STEP_WIDTH + 40, // 40px gap inside group
+                    y: rightMost.position.y
+                };
+            } else {
+                // Default position inside a new/empty group
+                pos = { x: 40, y: 80 };
+            }
         } else {
-            // Default center placement with jitter using screenToFlowPosition
-            // Use window center converted to flow coords
-            const center = screenToFlowPosition({ 
-                x: window.innerWidth / 2, 
-                y: window.innerHeight / 2 
-            });
-            
-            // Add slight jitter to prevent exact stacking
-            pos = {
-                x: center.x + (Math.random() * 40 - 20),
-                y: center.y + (Math.random() * 40 - 20)
-            };
+            const selectedNodes = nodes.filter(n => n.selected);
+            if (selectedNodes.length > 0) {
+                // Place to the right of the right-most selected node
+                const rightMost = selectedNodes.reduce((prev, curr) => 
+                    (curr.position.x > prev.position.x) ? curr : prev
+                );
+                
+                pos = {
+                    x: rightMost.position.x + DIMENSIONS.STEP_WIDTH + 100, // 100px gap
+                    y: rightMost.position.y
+                };
+            } else {
+                // Default center placement with jitter using screenToFlowPosition
+                // Use window center converted to flow coords
+                const center = screenToFlowPosition({ 
+                    x: window.innerWidth / 2, 
+                    y: window.innerHeight / 2 
+                });
+                
+                // Add slight jitter to prevent exact stacking
+                pos = {
+                    x: center.x + (Math.random() * 40 - 20),
+                    y: center.y + (Math.random() * 40 - 20)
+                };
+            }
         }
     }
     
@@ -54,12 +71,16 @@ export function useNodeOperations(
       style: { width: DIMENSIONS.STEP_WIDTH, height: 'auto' },
       zIndex: 30,
       selected: true, // Auto-select
+      ...(parentId ? { parentNode: parentId } : {})
     };
     
-    setNodes((nds) => (nds.map(n => ({ ...n, selected: false })) as Node[]).concat(newNode));
+    setNodes((nds) => {
+        const nextNodes = (nds.map(n => ({ ...n, selected: false })) as Node[]).concat(newNode);
+        return autoResizeGroups ? autoResizeGroups(nextNodes) : nextNodes;
+    });
     
     return newNodeId;
-  }, [nodes, project, setNodes]);
+  }, [nodes, project, setNodes, autoResizeGroups]);
 
   const updateStepLabel = useCallback((stepId: string, label: string) => {
     setNodes((nds) => {

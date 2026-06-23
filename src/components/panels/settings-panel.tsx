@@ -24,13 +24,13 @@ const EMPTY_OBJECT = {};
  */
 function getBulkValue<T, V>(
   items: T[],
-  extractor: (item: T) => V | undefined,
+  extractor: (item: T) => V | undefined | null,
   fallback: V,
 ): V {
   if (items.length === 0) return fallback;
   const first = extractor(items[0]);
   const allSame = items.every((item) => extractor(item) === first);
-  return allSame && first !== undefined ? first : fallback;
+  return allSame && first !== undefined && first !== null ? first : fallback;
 }
 
 /** Renders a consistent section heading inside the multi-select panel. */
@@ -66,7 +66,7 @@ interface SettingsPanelProps {
   selectedEdges: Edge[];
   selectedEdge: Edge | null;
   selectedDeliverableId?: string | null;
-  onAddStep: () => void;
+  onAddStep: (position?: { x: number; y: number }, parentId?: string) => void;
   onAddDeliverable: (stepId: string, afterDeliverableId?: string) => void;
   onUpdateStepLabel: (stepId: string, label: string) => void;
   onUpdateStepShortDescription: (stepId: string, description: string) => void;
@@ -510,6 +510,11 @@ export function SettingsPanel({
             <ActionButtons
                 isStepSelected={!!isStepSelected}
                 isGroupSelected={!!isGroupSelected}
+                onAddStepToGroup={
+                  isGroupSelected && singleSelectedStep
+                    ? () => onAddStep(undefined, singleSelectedStep.id)
+                    : undefined
+                }
                 onAddDeliverable={
                   isStepSelected 
                     ? () => onAddDeliverable(singleSelectedStep!.id)

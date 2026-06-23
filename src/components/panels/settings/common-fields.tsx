@@ -57,7 +57,7 @@ export function CommonFields({
         <Label htmlFor="label-input" className="font-semibold">Label</Label>
         <Input
           id="label-input"
-          value={label}
+          value={label ?? ''}
           onChange={onLabelChange}
           placeholder="Enter label"
         />
@@ -110,11 +110,11 @@ export function CommonFields({
           <Input
             id="color-input"
             type="color"
-            value={color}
+            value={color || '#000000'}
             onChange={(e) => onColorChange(e.target.value)}
             className="p-1 h-10 w-14 cursor-pointer"
           />
-          <Input value={color} onChange={(e) => onColorChange(e.target.value)} placeholder="#RRGGBB" />
+          <Input value={color ?? ''} onChange={(e) => onColorChange(e.target.value)} placeholder="#RRGGBB" />
         </div>
       </div>
 

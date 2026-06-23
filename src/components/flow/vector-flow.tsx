@@ -125,7 +125,7 @@ export function VectorFlow() {
         splitEdgeWithNode
     } = useVectorFlow(initialNodes, initialEdges);
     // ... existing hooks ...
-    const { user } = useUser();
+    const { user, isLoading: authLoading } = useUser();
     const { toast } = useToast();
 
     const { syncState, toggleSync, manualSync } = useCloudSync({
@@ -180,11 +180,11 @@ export function VectorFlow() {
     const [focusedNodeId, setFocusedNodeId] = useState<string | null>(urlNodeId || null);
 
     useEffect(() => {
-        if (urlProjectId && !hasLoadedFromUrl && user) {
+        if (urlProjectId && !hasLoadedFromUrl && !authLoading) {
             setHasLoadedFromUrl(true);
             handleLoadSharedProject(urlProjectId);
         }
-    }, [urlProjectId, hasLoadedFromUrl, user, handleLoadSharedProject]);
+    }, [urlProjectId, hasLoadedFromUrl, authLoading, handleLoadSharedProject]);
 
 
 

@@ -125,9 +125,9 @@ export const useVectorFlow = (initialNodes: Node[], initialEdges: Edge[]) => {
   const nodeOps = useNodeOperations(nodes, setNodesState, autoResizeGroups);
   
   // Wrap addStep
-  const addStepWithSnapshot = useCallback((position?: { x: number; y: number }) => {
+  const addStepWithSnapshot = useCallback((position?: { x: number; y: number }, parentId?: string) => {
       takeSnapshot();
-      return nodeOps.addStep(position);
+      return nodeOps.addStep(position, parentId);
   }, [nodeOps.addStep, takeSnapshot]);
 
   // 4. Edge Operations

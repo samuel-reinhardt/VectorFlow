@@ -15,12 +15,16 @@ export function useNodeLayout(
   const { fitView } = useReactFlow();
 
   const getNodeSize = useCallback((node: Node) => {
-    const width = node.width || (node.style?.width as number) || DIMENSIONS.STEP_WIDTH;
+    const styleWidth = typeof node.style?.width === 'number' ? node.style.width : parseFloat(node.style?.width as string);
+    const width = node.width || (isNaN(styleWidth) ? null : styleWidth) || DIMENSIONS.STEP_WIDTH;
+    
     const deliverables = node.data.deliverables || [];
-    const height = node.height || (node.style?.height as number) || 
+    const styleHeight = typeof node.style?.height === 'number' ? node.style.height : parseFloat(node.style?.height as string);
+    const height = node.height || (isNaN(styleHeight) ? null : styleHeight) || 
       (DIMENSIONS.STEP_HEADER_HEIGHT + 
        (deliverables.length * DIMENSIONS.DELIVERABLE_HEIGHT) + 
        DIMENSIONS.DELIVERABLE_Y_PADDING);
+       
     return { width, height };
   }, []);
 
